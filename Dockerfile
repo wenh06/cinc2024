@@ -4,6 +4,7 @@ FROM pytorch/pytorch:2.1.2-cuda11.8-cudnn8-runtime
 # pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime has python version 3.10.8, system version Ubuntu 18.04.6 LTS
 # pytorch/pytorch:1.10.1-cuda11.3-cudnn8-runtime has python version 3.7.x
 # pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime has python version 3.10.11, system version Ubuntu 20.04.6 LTS
+# pytorch/pytorch:2.1.2-cuda11.8-cudnn8-runtime has python version 3.10.13, system version Ubuntu 20.04.6 LTS
 
 
 # set the environment variable to avoid interactive installation

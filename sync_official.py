@@ -6,18 +6,18 @@ from pathlib import Path
 
 project_dir = Path(__file__).resolve().parent
 official_dir = {
-    "baseline": project_dir / "official_baseline_classifier",
+    "baseline": project_dir / "official_baseline",
     "scoring": project_dir / "official_scoring_metric",
 }
 
 files = {
     "baseline": [
         "helper_code.py",
-        "remove_data.py",
-        "remove_labels.py",
+        "remove_hidden_data.py",
+        "add_image_filenames.py",
         "run_model.py",
         "train_model.py",
-        "truncate_data.py",
+        "prepare_ptbxl_data.py",
     ],
     "scoring": [
         "evaluate_model.py",
