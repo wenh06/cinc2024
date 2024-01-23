@@ -4,3 +4,6 @@
 [submodule "official_scoring_metric"]
 	path = official_scoring_metric
 	url = https://github.com/physionetchallenges/evaluation-2024.git
+[submodule "ecg-image-kit"]
+	path = ecg-image-kit
+	url = https://github.com/alphanumericslab/ecg-image-kit.git
