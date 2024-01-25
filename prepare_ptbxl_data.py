@@ -3,27 +3,24 @@
 # Load libraries.
 import argparse
 import ast
+import numpy as np
 import os
 import os.path
+import pandas as pd
 import shutil
 import sys
 
-import numpy as np
-import pandas as pd
-
 from helper_code import *
-
 
 # Parse arguments.
 def get_parser():
-    description = "Prepare PTB-XL data."
+    description = 'Prepare PTB-XL data.'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("-i", "--input_folder", type=str, required=True)
-    parser.add_argument("-d", "--database_file", type=str, required=True)  # ptbxl_database.csv
-    parser.add_argument("-s", "--statements_file", type=str, required=True)  # scp_statements.csv
-    parser.add_argument("-o", "--output_folder", type=str, required=True)
+    parser.add_argument('-i', '--input_folder', type=str, required=True)
+    parser.add_argument('-d', '--database_file', type=str, required=True) # ptbxl_database.csv
+    parser.add_argument('-s', '--statements_file', type=str, required=True) # scp_statements.csv
+    parser.add_argument('-o', '--output_folder', type=str, required=True)
     return parser
-
 
 # Run script.
 def run(args):
@@ -31,9 +28,9 @@ def run(args):
     df = pd.read_csv(args.statements_file, index_col=0)
     subclass_to_superclass = dict()
     for i, row in df.iterrows():
-        if row["diagnostic"] == 1:
+        if row['diagnostic'] == 1:
             subclass = i.strip()
-            superclass = row["diagnostic_class"].strip()
+            superclass = row['diagnostic_class'].strip()
             subclass_to_superclass[subclass] = superclass
 
     # For the PTB-XL database, assign superclasses to subclasses; commands from PhysioNet project documentation.
@@ -47,9 +44,9 @@ def run(args):
         return superclasses
 
     # Apply PTB-XL superclasses.
-    dg = pd.read_csv(args.database_file, index_col="ecg_id")
+    dg = pd.read_csv(args.database_file, index_col='ecg_id')
     dg.scp_codes = dg.scp_codes.apply(lambda x: ast.literal_eval(x))
-    dg["diagnostic_superclass"] = dg.scp_codes.apply(assign_superclass)
+    dg['diagnostic_superclass'] = dg.scp_codes.apply(assign_superclass)
 
     # Identify header files.
     records = find_records(args.input_folder)
@@ -59,65 +56,60 @@ def run(args):
 
         # Extract the demographics data.
         record_path, record_basename = os.path.split(record)
-        ecg_id = int(record_basename.split("_")[0])
+        ecg_id = int(record_basename.split('_')[0])
         row = dg.loc[ecg_id]
 
-        recording_date_string = row["recording_date"]
-        date_string, time_string = recording_date_string.split(" ")
-        yyyy, mm, dd = date_string.split("-")
-        date_string = f"{dd}/{mm}/{yyyy}"
+        recording_date_string = row['recording_date']
+        date_string, time_string = recording_date_string.split(' ')
+        yyyy, mm, dd = date_string.split('-')
+        date_string = f'{dd}/{mm}/{yyyy}'
 
-        age = row["age"]
+        age = row['age']
         age = cast_int_float_unknown(age)
 
-        sex = row["sex"]
+        sex = row['sex']
         if sex == 0:
-            sex = "Male"
+            sex = 'Male'
         elif sex == 1:
-            sex = "Female"
+            sex = 'Female'
         else:
-            sex = "Unknown"
+            sex = 'Unknown'
 
-        height = row["height"]
+        height = row['height']
         height = cast_int_float_unknown(height)
 
-        weight = row["weight"]
+        weight = row['weight']
         weight = cast_int_float_unknown(weight)
 
         # Extract the diagnostic superclasses.
-        dx = ", ".join(row["diagnostic_superclass"])
+        dx = ', '.join(row['diagnostic_superclass'])
 
         # Update the header file.
-        input_header_file = os.path.join(args.input_folder, record + ".hea")
-        output_header_file = os.path.join(args.output_folder, record + ".hea")
+        input_header_file = os.path.join(args.input_folder, record + '.hea')
+        output_header_file = os.path.join(args.output_folder, record + '.hea')
 
         input_path = os.path.join(args.input_folder, record_path)
         output_path = os.path.join(args.output_folder, record_path)
 
         os.makedirs(output_path, exist_ok=True)
 
-        with open(input_header_file, "r") as f:
+        with open(input_header_file, 'r') as f:
             input_header = f.read()
 
-        lines = input_header.split("\n")
-        record_line = " ".join(lines[0].strip().split(" ")[:4]) + "\n"
-        signal_lines = "\n".join(l.strip() for l in lines[1:] if l.strip() and not l.startswith("#")) + "\n"
-        comment_lines = (
-            "\n".join(
-                l.strip()
-                for l in lines[1:]
-                if l.startswith("#") and not any((l.startswith(x) for x in ("#Age:", "#Sex:", "#Height:", "#Weight:", "#Dx:")))
-            )
-            + "\n"
-        )
+        lines = input_header.split('\n')
+        record_line = ' '.join(lines[0].strip().split(' ')[:4]) + '\n'
+        signal_lines = '\n'.join(l.strip() for l in lines[1:] \
+            if l.strip() and not l.startswith('#')) + '\n'
+        comment_lines = '\n'.join(l.strip() for l in lines[1:] \
+            if l.startswith('#') and not any((l.startswith(x) for x in ('#Age:', '#Sex:', '#Height:', '#Weight:', '#Dx:')))) + '\n'
 
-        record_line = record_line.strip() + f" {time_string} {date_string} " + "\n"
-        signal_lines = signal_lines.strip() + "\n"
-        comment_lines = comment_lines.strip() + f"#Age: {age}\n#Sex: {sex}\n#Height: {height}\n#Weight: {weight}\n#Dx: {dx}\n"
+        record_line = record_line.strip() + f' {time_string} {date_string} ' + '\n'
+        signal_lines = signal_lines.strip() + '\n'
+        comment_lines = comment_lines.strip() + f'#Age: {age}\n#Sex: {sex}\n#Height: {height}\n#Weight: {weight}\n#Dx: {dx}\n'
 
         output_header = record_line + signal_lines + comment_lines
 
-        with open(output_header_file, "w") as f:
+        with open(output_header_file, 'w') as f:
             f.write(output_header)
 
         # Copy the signal files if the input and output folders are different.
@@ -131,6 +123,5 @@ def run(args):
                 if os.path.isfile(input_signal_file):
                     shutil.copy2(input_signal_file, output_signal_file)
 
-
-if __name__ == "__main__":
+if __name__=='__main__':
     run(get_parser().parse_args(sys.argv[1:]))
