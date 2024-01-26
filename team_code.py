@@ -211,6 +211,7 @@ def run_dx_model(dx_model, record, signal, verbose):
 #
 ################################################################################
 
+
 # Extract features.
 def extract_features(record):
     images = load_image(record)
