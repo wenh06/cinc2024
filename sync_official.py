@@ -26,6 +26,7 @@ files = {
 
 
 def main():
+    updated = False
     for repo, file_list in files.items():
         for filename in file_list:
             src = official_dir[repo] / filename
@@ -34,6 +35,9 @@ def main():
                 continue
             print(f"Copying **{src.relative_to(project_dir)}** " f"to **{dst.relative_to(project_dir)}**")
             dst.write_text(src.read_text())
+            updated = True
+    if not updated:
+        print("Submodules of the official repositories are up-to-date.")
 
 
 if __name__ == "__main__":
