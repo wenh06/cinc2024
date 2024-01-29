@@ -18,7 +18,6 @@ env:
   revenger_test_dir: /challenge/test
   revenger_output_dir: /challenge/output
   docker_main_filename: Dockerfile
-  docker_test_filename: Dockerfile.torch2
 
 jobs:
 
@@ -62,50 +61,6 @@ jobs:
           -e revenger_output_dir=${{ env.revenger_output_dir }} \
           -v ${{ env.download_data_dir }}:${{ env.revenger_data_dir }}:ro \
           deeppsp-cinc2024-docker-image:latest \
-          bash -c "bash test_run_challenge.sh"
-        docker ps -a
-        docker stop $(docker ps -a -q)
-
-  test:
-    if: contains(fromJson('["wenh06", "kjs11", "DeepPSP"]'), github.repository_owner)
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - name: Build the Docker image
-      run: docker build . --file ${{ env.docker_test_filename }} --tag deeppsp-cinc2024-docker-image:test
-
-    - name: Download the training_subset data
-      # this step is done before running the test of challenge entry
-      # in the Docker image in the next step since the data directory
-      # is mounted as read-only in the challenge settings
-      run: |
-        mkdir -p ${{ env.download_data_dir }}
-        docker run \
-          -e CINC2024_REVENGER_TEST=${{ env.CINC2024_REVENGER_TEST }} \
-          -e revenger_data_dir=${{ env.revenger_data_dir }} \
-          -v ${{ env.download_data_dir }}:${{ env.revenger_data_dir }} \
-          deeppsp-cinc2024-docker-image:test \
-          bash -c "python data_reader.py download --db-dir ${{ env.revenger_data_dir }}"
-        docker ps -a
-        docker stop $(docker ps -a -q)
-
-    - name: Run the Docker image
-      # NOTE: mount env.download_data_dir to env.revenger_data_dir
-      # and set it read-only as in the CinC2024 challenge settings
-      if: ${{ env.docker_test_filename == 'Dockerfile.torch2' }}
-      run: |
-        docker run \
-          -e CINC2024_REVENGER_TEST=${{ env.CINC2024_REVENGER_TEST }} \
-          -e revenger_data_dir=${{ env.revenger_data_dir }} \
-          -e revenger_model_dir=${{ env.revenger_model_dir }} \
-          -e revenger_test_dir=${{ env.revenger_test_dir }} \
-          -e revenger_output_dir=${{ env.revenger_output_dir }} \
-          -v ${{ env.download_data_dir }}:${{ env.revenger_data_dir }}:ro \
-          deeppsp-cinc2024-docker-image:test \
           bash -c "bash test_run_challenge.sh"
         docker ps -a
         docker stop $(docker ps -a -q)
