@@ -1,10 +1,11 @@
 # https://hub.docker.com/r/pytorch/pytorch
-FROM pytorch/pytorch:2.1.2-cuda11.8-cudnn8-runtime
+FROM pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
 # NOTE:
 # pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime has python version 3.10.8, system version Ubuntu 18.04.6 LTS
 # pytorch/pytorch:1.10.1-cuda11.3-cudnn8-runtime has python version 3.7.x
 # pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime has python version 3.10.11, system version Ubuntu 20.04.6 LTS
 # pytorch/pytorch:2.1.2-cuda11.8-cudnn8-runtime has python version 3.10.13, system version Ubuntu 20.04.6 LTS
+# pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime has python version 3.10.13, system version Ubuntu 22.04.3 LTS
 
 
 # set the environment variable to avoid interactive installation
@@ -26,7 +27,7 @@ RUN if [ -x "$(command -v nvcc)" ]; then nvcc --version; fi
 
 
 # NOTE: The GPU provided by the Challenge is nvidia Tesla T4
-# running on a g4ad.4xlarge (or g4dn.4xlarge?) instance on AWS,
+# running on a g4dn.4xlarge instance on AWS,
 # which has 16 vCPUs, 64 GB RAM, 300 GB of local storage.
 # nvidiaDriverVersion: 525.85.12
 # CUDA Version: 12.0
@@ -49,17 +50,6 @@ RUN apt install build-essential -y
 RUN apt install git ffmpeg libsm6 libxext6 vim libsndfile1 -y
 
 
-# NOTE that redis is not installed in the base image
-# install redis
-# https://redis.io/docs/getting-started/installation/install-redis-on-linux/
-# RUN apt install lsb-release curl -y
-# RUN curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-# RUN echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
-# RUN apt update && apt install redis -y
-# # check redis version
-# RUN redis-server --version
-
-
 RUN ln -s /usr/bin/python3 /usr/bin/python && ln -s /usr/bin/pip3 /usr/bin/pip
 
 # list packages installed in the base image
@@ -72,11 +62,7 @@ RUN pip list
 
 RUN python -m pip install --upgrade pip setuptools wheel
 
-# NOTE that torch and torchaudio should be installed first
-# torch already installed in the base image
-# RUN pip install torch==1.13.1+cu116 -f https://download.pytorch.org/whl/torch_stable.html
-# compatible with torch
-# RUN pip install torchaudio==0.13.1+cu116 --no-deps -f https://download.pytorch.org/whl/torch_stable.html
+# torch and related packages (torchvision, torchaudio, etc.) are already installed in the base image
 
 RUN pip install torch-ecg
 
