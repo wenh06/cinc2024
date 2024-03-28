@@ -1,5 +1,8 @@
 import os
 from datetime import date
+from pathlib import Path
+
+MODULE_DIR = Path(__file__).resolve().parents[1]
 
 import wfdb
 
@@ -11,7 +14,7 @@ def generate_template(header_file):
     fields = wfdb.rdheader(filename)
 
     if fields.comments == []:
-        template_file_content = open(os.path.join("TemplateFiles", "TextFile1.txt"), "r")
+        template_file_content = open(os.path.join(MODULE_DIR, "TemplateFiles", "TextFile1.txt"), "r")
         Lines = template_file_content.readlines()
         lines = []
         max = 0

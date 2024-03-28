@@ -3,7 +3,10 @@ import os
 import pickle
 import random
 from collections import namedtuple
+from pathlib import Path
 from sys import platform
+
+MODULE_DIR = Path(__file__).resolve().parents[1]
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -28,7 +31,10 @@ def get_parser():
     parser.add_argument("-i", dest="input_file", type=str, required=True)
     parser.add_argument("-o", dest="output_dir", type=str, required=True)
     parser.add_argument(
-        "--model", dest="model_path", type=str, default=os.path.join(os.path.join("HandwrittenText", "pretrained"), "model-29")
+        "--model",
+        dest="model_path",
+        type=str,
+        default=os.path.join(os.path.join(MODULE_DIR, "HandwrittenText", "pretrained"), "model-29"),
     )
     parser.add_argument("--text", dest="text", type=str, default=None)
     parser.add_argument("--style", dest="style", type=int, default=None)

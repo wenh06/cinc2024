@@ -2,6 +2,9 @@ import argparse
 import heapq
 import os
 import random
+from pathlib import Path
+
+MODULE_DIR = Path(__file__).resolve().parents[1]
 
 import cv2
 import numpy as np
@@ -261,8 +264,8 @@ def get_creased(
         # Seed with a different selection of a wrinkle image
         # read wrinkle image as grayscale and convert to float in range 0 to 1
         wrinkle_file_name = os.path.join(
-            os.path.join("CreasesWrinkles", "wrinkles-dataset"),
-            random.choice(os.listdir(os.path.join("CreasesWrinkles", "wrinkles-dataset"))),
+            os.path.join(MODULE_DIR, "CreasesWrinkles", "wrinkles-dataset"),
+            random.choice(os.listdir(os.path.join(MODULE_DIR, "CreasesWrinkles", "wrinkles-dataset"))),
         )
         wrinklesImg = quilt(wrinkle_file_name, 250, (1, 1), "Cut")
         wrinklesImg = cv2.cvtColor(wrinklesImg, cv2.COLOR_BGR2GRAY)
