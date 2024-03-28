@@ -19,3 +19,5 @@ get_paper_ecg(
     add_dc_pulse=bernoulli_dc,add_bw=bernoulli_bw,show_grid=bernoulli_grid,add_print=bernoulli_add_print,standard_colours=0
 )
 ```
+
+The [ecg_image_generator](./ecg_image_generator/) folder contains an enhanced version of the original [ecg-image-kit/ecg-image-generator](../ecg-image-kit/codes/ecg-image-generator/) module. The enhancement mainly involves paths handling, and better formatting using `pre-commit` hooks.
