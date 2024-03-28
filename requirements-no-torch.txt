@@ -27,3 +27,15 @@ accelerate
 nitime
 PyYAML
 diff-binom-confint
+# from ecg-image-kit/codes/ecg-image-generator
+validators
+spacy
+Pillow
+beautifulsoup4
+scikit-image
+imageio
+imutils
+imgaug
+html5lib
+tensorflow
+keras
