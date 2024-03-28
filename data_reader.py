@@ -198,7 +198,7 @@ class CINC2024Reader(PhysioNetDataBase):
         """
         raise NotImplementedError
 
-    def prepare_synthetic_images(
+    def _prepare_synthetic_images(
         self,
         output_folder: Optional[Union[str, bytes, os.PathLike]] = None,
         fs: int = 100,
@@ -352,6 +352,36 @@ class CINC2024Reader(PhysioNetDataBase):
 
                 output_header_file.write_text(output_header)
 
+    @add_docstring(_prepare_synthetic_images.__doc__)
+    def prepare_synthetic_images(
+        self,
+        output_folder: Optional[Union[str, bytes, os.PathLike]] = None,
+        fs: int = 100,
+        force_recompute: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        try:
+            self._prepare_synthetic_images(output_folder=output_folder, fs=fs, force_recompute=force_recompute, **kwargs)
+        except KeyboardInterrupt:
+            self.logger.info("Cancelled by user.")
+
     @property
     def database_info(self) -> DataBaseInfo:
         return _CINC2024_INFO
+
+
+if __name__ == "__main__":
+    # generate the synthetic images
+    # cli command: python data_reader.py db_dir [output_folder]
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Prepare synthetic images from the ECG time series data.")
+    parser.add_argument("db_dir", type=str, help="The database directory.")
+    parser.add_argument(
+        "-o", "--output_folder", type=str, help="The output directory to store the synthetic images.", default=None
+    )
+
+    args = parser.parse_args()
+
+    dr = CINC2024Reader(db_dir=args.db_dir)
+    dr.prepare_synthetic_images(output_folder=args.output_folder)
