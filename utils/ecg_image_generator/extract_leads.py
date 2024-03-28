@@ -2,7 +2,10 @@
 # Load libraries.
 import json
 import os
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
 from ecg_plot import ecg_plot

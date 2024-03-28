@@ -6,6 +6,8 @@ import sys
 import warnings
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from CreasesWrinkles.creases import get_creased
 from extract_leads import get_paper_ecg
 from HandwrittenText.generate import get_handwritten

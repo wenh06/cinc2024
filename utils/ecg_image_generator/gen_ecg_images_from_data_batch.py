@@ -3,6 +3,9 @@ import os
 import random
 import sys
 import warnings
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from gen_ecg_image_from_data import run_single_file
 from helper_functions import find_records

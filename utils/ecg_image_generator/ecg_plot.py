@@ -1,7 +1,11 @@
 import os
 import random
+import sys
 from math import ceil
+from pathlib import Path
 from random import randint
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import matplotlib
 import matplotlib.pyplot as plt
