@@ -8,6 +8,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 from torch_ecg.cfg import CFG
+from torch_ecg.model_configs import linear
 
 __all__ = [
     "BaseCfg",
@@ -58,3 +59,10 @@ _BASE_MODEL_CONFIG.torch_dtype = BaseCfg.torch_dtype
 
 
 ModelCfg = deepcopy(_BASE_MODEL_CONFIG)
+
+ModelCfg.backbone_name = "resnet18"
+ModelCfg.backbone_source = "torchvision"
+
+ModelCfg.dx_head = deepcopy(linear)
+
+ModelCfg.digitization_head = deepcopy(linear)
