@@ -1,7 +1,7 @@
 {
-    "input_file": "xxx",
-    "header_file": "xxx",
-    "output_directory": "xxx",
+    "input_file": "",
+    "header_file": "",
+    "output_directory": "",
     "seed": -1,
     "start_index": -1,
     "num_leads": "twelve",

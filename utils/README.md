@@ -20,4 +20,4 @@ get_paper_ecg(
 )
 ```
 
-The [ecg_image_generator](./ecg_image_generator/) folder contains an enhanced version of the original [ecg-image-kit/ecg-image-generator](../ecg-image-kit/codes/ecg-image-generator/) module. The enhancement mainly involves paths handling, and better formatting using `pre-commit` hooks.
+The [ecg_image_generator](./ecg_image_generator/) folder contains an enhanced version of the original [ecg-image-kit/ecg-image-generator](../ecg-image-kit/codes/ecg-image-generator/) module. The enhancement mainly involves paths handling, and better formatting using `pre-commit` hooks. A [folder containing json config files](./ecg_image_generator/Configs/) is also added to store the configurations for the `ecg_image_generator` module.
