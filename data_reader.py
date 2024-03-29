@@ -171,6 +171,8 @@ class CINC2024Reader(PhysioNetDataBase):
             lambda row: row["path"].parent / f"""{row["image"].split("-")[0]}.{self.header_ext}""", axis=1
         )
         self._df_images["ecg_id"] = self._df_images["image"].apply(lambda x: x[:5])
+        self._df_images["patient_id"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "patient_id"])
+        self._df_images["strat_fold"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "strat_fold"])
         self._df_images.set_index("image", inplace=True)
 
         if self._subsample is not None:
@@ -493,6 +495,21 @@ class CINC2024Reader(PhysioNetDataBase):
     @property
     def config(self) -> CFG:
         return self.__config
+
+    @property
+    def default_train_val_test_split(self) -> Dict[str, List[str]]:
+        return {
+            "train": self._df_records[self._df_records["strat_fold"] < 9].index.tolist(),
+            "val": self._df_records[self._df_records["strat_fold"] == 9].index.tolist(),
+            "test": self._df_records[self._df_records["strat_fold"] == 10].index.tolist(),
+        }
+
+    @property
+    def default_train_val_split(self) -> Dict[str, List[str]]:
+        return {
+            "train": self._df_records[self._df_records["strat_fold"] < 10].index.tolist(),
+            "val": self._df_records[self._df_records["strat_fold"] == 10].index.tolist(),
+        }
 
 
 if __name__ == "__main__":
