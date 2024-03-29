@@ -66,6 +66,11 @@ class DigitizationHead(nn.Module, SizeMixin, CitationMixin):
     Fundamentally, this head is a sequence generation head,
     which predicts the digitized values of the ECG signals from the image features.
 
+    .. note::
+
+        For running the model on the Challenge data, some information about the ECG signals is provided in the header files,
+        including the sampling frequency and the length of the signal (number of samples).
+
     Parameters
     ----------
     config : dict
@@ -80,13 +85,19 @@ class DigitizationHead(nn.Module, SizeMixin, CitationMixin):
         self.digitization_head = None  # TODO: implement the head
         self.digitization_criterion = None  # TODO: implement the criterion
 
-    def forward(self, img_features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, img_features: torch.Tensor, fs: int, siglen: int, labels: Optional[torch.Tensor] = None
+    ) -> Dict[str, torch.Tensor]:
         """Forward pass of the model.
 
         Parameters
         ----------
         img_features : torch.Tensor
             Features extracted from the backbone model.
+        fs : int
+            Sampling frequency of the ECG signal.
+        siglen : int
+            Length of the ECG signal.
         labels : torch.Tensor, optional
             Ground truth labels.
 
