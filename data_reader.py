@@ -3,17 +3,21 @@
 
 import json
 import os
+from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
 import pandas as pd
+from PIL import Image
 from torch_ecg.cfg import CFG
 from torch_ecg.databases.base import DataBaseInfo, PhysioNetDataBase
 from torch_ecg.utils.misc import add_docstring, dict_to_str  # noqa: F401
 from tqdm.auto import tqdm
 
 from add_image_filenames import find_images
+from cfg import BaseCfg
 from helper_code import cast_int_float_unknown, find_records
 from utils.ecg_image_generator.gen_ecg_image_from_data import run_single_file
 
@@ -58,6 +62,9 @@ _CINC2024_INFO = DataBaseInfo(
 )
 
 
+_ECG_IMAGE_GENERATOR_CONFIG_DIR = Path(__file__).resolve().parent / "utils/ecg_image_generator/Configs"
+
+
 @add_docstring(_CINC2024_INFO.format_database_docstring(), mode="prepend")
 class CINC2024Reader(PhysioNetDataBase):
     """
@@ -84,8 +91,13 @@ class CINC2024Reader(PhysioNetDataBase):
     __500Hz_dir__ = "records500"
     __synthetic_images_dir__ = "synthetic_images"
     __gen_img_default_config__ = CFG(
-        json.loads((Path(__file__).resolve().parent / "utils" / "ecg-image-gen-default-config.json").read_text())
+        json.loads((_ECG_IMAGE_GENERATOR_CONFIG_DIR / "ecg-image-gen-default-config.json").read_text())
     )
+    __gen_img_extra_configs__ = [
+        CFG(json.loads((_ECG_IMAGE_GENERATOR_CONFIG_DIR / cfg_file).read_text()))
+        for cfg_file in _ECG_IMAGE_GENERATOR_CONFIG_DIR.glob("*.json")
+        if cfg_file.name != "ecg-image-gen-default-config.json"
+    ]
 
     def __init__(
         self,
@@ -98,6 +110,7 @@ class CINC2024Reader(PhysioNetDataBase):
         super().__init__(db_name="ptb-xl", db_dir=db_dir, working_dir=working_dir, fs=fs, verbose=verbose, **kwargs)
         self.data_ext = "dat"
         self.header_ext = "hea"
+        self.record_pattern = "[\\d]{5}_[lh]r"
 
         assert os.access(self.db_dir, os.W_OK) or os.access(
             self.working_dir, os.W_OK
@@ -106,14 +119,19 @@ class CINC2024Reader(PhysioNetDataBase):
         self.src_datetime_fmt = "%Y-%m-%d %H:%M:%S"
         self.dst_datetime_fmt = "%d/%m/%Y %H:%M:%S"
         self.gen_img_default_fs = 100
+        self.gen_img_pattern = "[\\d]{5}_[lh]r-[\\d]+.png"
 
-        self._synthetic_images_dir = kwargs.get("synthetic_images_dir", None)
+        self._synthetic_images_dir = kwargs.pop("synthetic_images_dir", None)
+        self.__config = CFG(BaseCfg.copy())
+        self.__config.update(kwargs)
 
         self._df_records = None
         self._df_metadata = None
         self._df_scp_statements = None
+        self._df_images = None
         self._all_records = None
         self._all_subjects = None
+        self._all_images = None
         self._ls_rec()
 
     def _ls_rec(self) -> None:
@@ -146,7 +164,14 @@ class CINC2024Reader(PhysioNetDataBase):
         self._df_metadata["patient_id"] = self._df_metadata["patient_id"].astype(int)
         self._df_scp_statements = pd.read_csv(self.db_dir / self.__scp_statements_file__, index_col=0)
 
-        # TODO: search for the synthetic images and add them to the metadata dataframe
+        self._df_images = pd.DataFrame({"image": find_images(str(self._synthetic_images_dir), [".png", ".jpg", ".jpeg"])})
+        self._df_images["path"] = self._df_images["image"].apply(lambda x: self._synthetic_images_dir / x)
+        self._df_images["image"] = self._df_images["path"].apply(lambda x: x.stem)
+        self._df_images["image_header"] = self._df_images.apply(
+            lambda row: row["path"].parent / f"""{row["image"].split("-")[0]}.{self.header_ext}""", axis=1
+        )
+        self._df_images["ecg_id"] = self._df_images["image"].apply(lambda x: x[:5])
+        self._df_images.set_index("image", inplace=True)
 
         if self._subsample is not None:
             size = min(
@@ -155,6 +180,7 @@ class CINC2024Reader(PhysioNetDataBase):
             )
             self.logger.debug(f"subsample `{size}` records from `{len(self._df_records)}`")
             self._df_records = self._df_metadata.sample(n=size, random_state=self._random_state)
+            self._df_images = self._df_images[self._df_images["ecg_id"].isin(self._df_records.index)]
         else:
             self._df_records = self._df_metadata.copy()
 
@@ -165,38 +191,132 @@ class CINC2024Reader(PhysioNetDataBase):
 
         self._all_records = self._df_records.index.tolist()
         self._all_subjects = self._df_records["patient_id"].unique().tolist()
+        self._all_images = self._df_images.index.tolist()
 
-    def load_image(self, rec: Union[str, int]) -> Any:
+    def load_image(self, img: Union[str, int]) -> np.ndarray:
         """Load the image of a record.
 
         Parameters
         ----------
-        rec : str
-            The record name (ecg_id).
+        img : str or int
+            The image name or the index of the image.
 
         Returns
         -------
-        img : ndarray
-            The image of the record.
+        numpy.ndarray
+            The image of an ECG record.
 
         """
-        raise NotImplementedError
+        if isinstance(img, int):
+            img = self._all_images[img]
+        img_path = self._df_images.loc[img, "path"]
+        return np.asarray(Image.open(img_path))
 
-    def load_ann(self, rec: Union[str, int]) -> Any:
-        """Load the annotation of a record.
+    def load_metadata(self, rec: Union[str, int], items: Optional[Union[str, List[str]]] = None) -> Dict[str, Any]:
+        """Load the metadata of a record.
 
         Parameters
         ----------
-        rec : str
-            The record name (ecg_id).
+        rec : str or int
+            The record name (ecg_id) or the index of the record.
+        items : str or list of str, optional
+            The items to load.
+
+        Returns
+        -------
+        metadata : dict
+            The metadata of the record.
+
+        """
+        if isinstance(rec, int):
+            rec = self._all_records[rec]
+        if items is None:
+            return self._df_metadata.loc[rec].to_dict()
+        if isinstance(items, str):
+            items = [items]
+        return self._df_metadata.loc[rec, items].to_dict()
+
+    def load_ann(self, rec: Union[str, int], with_interpretation: bool = False) -> Dict[str, Union[float, Dict[str, Any]]]:
+        """Load the annotation (the "scp_codes" field) of a record.
+
+        Parameters
+        ----------
+        rec : str or int
+            The record name (ecg_id) or the index of the record.
+        with_interpretation : bool, default False
+            Whether to include the interpretation of the statement.
 
         Returns
         -------
         ann : dict
-            The annotation of the record.
+            The annotation of the record, of the form ``{statement: likelihood}``.
+            If ``with_interpretation`` is ``True``, the form is
+            ``{statement: {"likelihood": likelihood, ...}}``,
+            where ``...`` are other information of the statement.
 
         """
-        raise NotImplementedError
+        ann = literal_eval(self.load_metadata(rec)["scp_codes"])
+        if with_interpretation:
+            for statement, likelihood in ann.items():
+                ann[statement] = {"likelihood": likelihood}
+                ann[statement].update(self._df_scp_statements.loc[statement].to_dict())
+        return ann
+
+    def load_dx_ann(self, rec: Union[str, int], class_map: Optional[Union[bool, Dict[str, int]]] = None) -> Union[str, int]:
+        """Load the Dx annotation of a record.
+
+        Parameters
+        ----------
+        rec : str or int
+            The record name (ecg_id) or the index of the record.
+        class_map : dict or bool, optional
+            The mapping from the statement to the binary class.
+            If is ``None``, the default mapping will be used.
+            If is ``False``, the statement will be returned.
+
+        Returns
+        -------
+        dx : int or str
+            The Dx annotation of the record.
+
+        """
+        dx = self.load_ann(rec)
+        if "NORM" in dx:
+            dx = self.config.normal_class
+        else:
+            dx = self.config.abnormal_class
+        if class_map is None:
+            dx = {dx_cls: i for i, dx_cls in enumerate(self.config.classes)}[dx]
+        elif class_map is not False:
+            dx = class_map[dx]
+        return dx
+
+    def load_header(self, rec_or_img: Union[str, int], source: Optional[str] = "image") -> str:
+        """Load the header of a record or an image.
+
+        Parameters
+        ----------
+        rec_or_img : str or int
+            The record name (ecg_id) or the index of the record.
+        source : {"record", "image"}, optional
+            The source of the header.
+            If is ``record``, the header of the record will be loaded.
+            If is ``image``, the header of the image will be loaded.
+
+        Returns
+        -------
+        header : str
+            The header of the record or the image.
+
+        """
+        if source == "image":
+            if isinstance(rec_or_img, int):
+                rec_or_img = self._all_images[rec_or_img]
+            return self._df_images.loc[rec_or_img, "image_header"].read_text()
+        else:
+            if isinstance(rec_or_img, int):
+                rec_or_img = self._all_records[rec_or_img]
+            return self.load_metadata(rec_or_img)["header"]
 
     def _prepare_synthetic_images(
         self,
@@ -319,6 +439,7 @@ class CINC2024Reader(PhysioNetDataBase):
                 # print(dict_to_str(ecg_img_gen_config))
 
                 num_ecg_img_gen += run_single_file(ecg_img_gen_config)
+                pbar.set_postfix(num_ecg_img_gen=num_ecg_img_gen)
 
                 record_images = []
                 for image in find_images(str(output_dir), [".png", ".jpg", ".jpeg"]):
@@ -368,6 +489,10 @@ class CINC2024Reader(PhysioNetDataBase):
     @property
     def database_info(self) -> DataBaseInfo:
         return _CINC2024_INFO
+
+    @property
+    def config(self) -> CFG:
+        return self.__config
 
 
 if __name__ == "__main__":

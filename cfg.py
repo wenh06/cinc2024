@@ -27,3 +27,7 @@ BaseCfg.log_dir = _BASE_DIR / "log"
 BaseCfg.model_dir = _BASE_DIR / "saved_models"
 BaseCfg.log_dir.mkdir(exist_ok=True)
 BaseCfg.model_dir.mkdir(exist_ok=True)
+
+BaseCfg.normal_class = "Normal"
+BaseCfg.abnormal_class = "Abnormal"
+BaseCfg.classes = [BaseCfg.normal_class, BaseCfg.abnormal_class]
