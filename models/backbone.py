@@ -15,12 +15,19 @@ import transformers
 from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import SizeMixin
 
+from utils.misc import url_is_reachable
+
 __all__ = ["ImageBackbone"]
 
 
 _INPUT_IMAGE_TYPES = Union[
     torch.Tensor, List[torch.Tensor], np.ndarray, List[np.ndarray], PIL.Image.Image, List[PIL.Image.Image]
 ]
+
+
+if not url_is_reachable("https://huggingface.co"):
+    # workaround for using huggingface hub in China
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 
 class ImageBackbone(nn.Module, SizeMixin, CitationMixin):

@@ -1,6 +1,7 @@
 """
 """
 
+import os
 from typing import Any, Dict, Optional
 
 import torch
@@ -8,6 +9,15 @@ import torch.nn as nn
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import SizeMixin
+
+from utils.misc import url_is_reachable
+
+__all__ = ["DxHead", "DigitizationHead"]
+
+
+if not url_is_reachable("https://huggingface.co"):
+    # workaround for using huggingface hub in China
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 
 class DxHead(nn.Module, SizeMixin, CitationMixin):
