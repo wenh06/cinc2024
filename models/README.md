@@ -30,6 +30,24 @@ There are typically 3 sources of pre-trained image backbones:
         The rest two sources do not have a method for creating image preprocessors directly (`timm` is better).
         One has to use for example `IMAGENET_DEFAULT_MEAN` and `IMAGENET_DEFAULT_STD` to normalize the images manually.
 
+### A table of candidate backbones
+
+| Name                                                           | Source      | Model Size | Image size | Feature map size | Pretrained on   |
+| -------------------------------------------------------------- | ----------- | ---------- | ---------- | ---------------- | --------------- |
+| microsoft/resnet-18                                            | huggingface | 46.8 MB    | 224        | 512 x 7 x 7      | ImageNet-1k     |
+| facebook/convnextv2-atto-1k-224                                | huggingface | 14.9 MB    | 224        | 320 x 7 x 7      | ImageNet-1k     |
+| facebook/convnextv2-femto-1k-224                               | huggingface | 21.0 MB    | 224        | 384 x 7 x 7      | ImageNet-1k     |
+| facebook/convnextv2-pico-1k-224                                | huggingface | 36.3 MB    | 224        | 512 x 7 x 7      | ImageNet-1k     |
+| facebook/convnextv2-nano-22k-384                               | huggingface | 62.5 MB    | 384        | 640 x 12 x 12    | ImageNet-22k    |
+| facebook/convnextv2-tiny-22k-384                               | huggingface | 113 MB     | 384        | 768 x 12 x 12    | ImageNet-22k    |
+| facebook/convnextv2-base-22k-384                               | huggingface | 355 MB     | 384        | 1024 x 12 x 12   | ImageNet-22k    |
+| facebook/convnextv2-large-22k-384                              | huggingface | 792 MB     | 384        | 1536 x 12 x 12   | ImageNet-22k    |
+| facebook/convnextv2-huge-22k-512                               | huggingface | 2.64 GB    | 512        | 2816 x 16 x 16   | ImageNet-22k    |
+| microsoft/swinv2-tiny-patch4-window16-256                      | huggingface | 113 MB     | 512        | 768 x 8 x 8      | ImageNet-1k     |
+| microsoft/swinv2-small-patch4-window16-256                     | huggingface | 199 MB     | 512        | 768 x 8 x 8      | ImageNet-1k     |
+| microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft  | huggingface | 352 MB     | 512        | 1024 x 12 x 12   | ImageNet-22k-1k |
+| microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft | huggingface | 787 MB     | 512        | 1536 x 12 x 12   | ImageNet-22k-1k |
+
 ## Dx head
 
 Dx head is typically a multi-layer perceptron (MLP) that takes the features extracted by the image backbone and produces classification predictions.

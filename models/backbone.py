@@ -273,7 +273,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         else:
             return self.backbone.fc.in_features
 
-    def compute_output_shape(self, input_shape: Optional[Sequence[int]] = None) -> List[int]:
+    def compute_output_shape(self, input_shape: Optional[Union[Sequence[int], int]] = None) -> List[int]:
         """Compute the output shape of the backbone model, not including the batch dimension.
 
         Parameters
@@ -292,7 +292,10 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
                 return self.__default_output_shape
             _input_shape = [3, 224, 224]
         else:
-            _input_shape = input_shape
+            if isinstance(input_shape, int):
+                _input_shape = [3, input_shape, input_shape]
+            else:
+                _input_shape = input_shape
         test_input = torch.randint(0, 255, (1, *_input_shape), dtype=torch.uint8)
         with torch.no_grad():
             output = self.pipeline(test_input)

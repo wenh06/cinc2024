@@ -63,8 +63,19 @@ _BASE_MODEL_CONFIG.torch_dtype = BaseCfg.torch_dtype
 ModelCfg = deepcopy(_BASE_MODEL_CONFIG)
 
 # a list of candidate backbones
-# microsoft/resnet-18
-# facebook/convnextv2-
+# microsoft/resnet-18  (46.8MB in memory consumption, including the classification head, pretrained on ImageNet-1k)
+# facebook/convnextv2-atto-1k-224  (14.9 MB)
+# facebook/convnextv2-femto-1k-224  (21.0 MB)
+# facebook/convnextv2-pico-1k-224  (36.3 MB)
+# facebook/convnextv2-nano-22k-384  (62.5 MB)
+# facebook/convnextv2-tiny-22k-384  (115 MB)
+# facebook/convnextv2-base-22k-384  (355 MB)
+# facebook/convnextv2-large-22k-384  (792 MB)
+# facebook/convnextv2-huge-22k-512  (2.64 GB)
+# microsoft/swinv2-tiny-patch4-window16-256  (113 MB, pretrained on ImageNet-1k)
+# microsoft/swinv2-small-patch4-window16-256  (199 MB, pretrained on ImageNet-1k)
+# microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft  (352 MB)
+# microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft  (787MB)
 ModelCfg.backbone_name = "microsoft/resnet-18"
 ModelCfg.backbone_source = "hf"
 
@@ -94,7 +105,7 @@ ModelCfg.dx_head.label_smoothing = 0.1
 
 # digitization_head now use 1D convolutional layer instead
 ModelCfg.digitization_head = CFG()
-ModelCfg.digitization_head.kernel_size = 31
+ModelCfg.digitization_head.kernel_size = 51
 ModelCfg.digitization_head.dilation = 1
 
 ModelCfg.digitization_head.num_leads = ModelCfg.num_leads
