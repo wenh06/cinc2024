@@ -207,24 +207,42 @@ class CINC2024Reader(PhysioNetDataBase):
         self._all_subjects = self._df_records["patient_id"].unique().tolist()
         self._all_images = self._df_images.index.tolist()
 
-    def load_image(self, img: Union[str, int]) -> np.ndarray:
+    def load_image(self, img: Union[str, int], fmt: str = "np") -> Union[np.ndarray, Image.Image]:
         """Load the image of a record.
 
         Parameters
         ----------
         img : str or int
             The image name or the index of the image.
+        fmt : {"np", "pil"}, default "np"
+            The format of the image to be returned, case insensitive.
+            If is "np", the image will be returned as a numpy array.
+            If is "pil", the image will be returned as a PIL image.
 
         Returns
         -------
-        numpy.ndarray
-            The image of an ECG record.
+        numpy.ndarray or PIL.Image
+            The image of an ECG record, of shape ``(H, W, C)``.
+
+        .. note::
+
+            The image is converted to RGB format if it is not (e.g. RGBA format).
+            For using PyTorch models, the image should first be transformed to shape ``(C, H, W)``.
+            The image processor classes from the transformers library automatically check the shape of the input image
+            and convert it to the correct shape.
+            For using other frameworks (e.g. torchvision, timm), the image should be converted to the correct shape manually.
 
         """
         if isinstance(img, int):
             img = self._all_images[img]
         img_path = self._df_images.loc[img, "path"]
-        return np.asarray(Image.open(img_path))
+        img = Image.open(img_path).convert("RGB")  # png images are RGBA
+        if fmt.lower() == "np":
+            return np.asarray(img)
+        elif fmt.lower() == "pil":
+            return img
+        else:
+            raise ValueError(f"Invalid return format `{fmt}`")
 
     def load_metadata(self, rec: Union[str, int], items: Optional[Union[str, List[str]]] = None) -> Dict[str, Any]:
         """Load the metadata of a record.
