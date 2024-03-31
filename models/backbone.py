@@ -33,8 +33,8 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         Name or path of the backbone model.
     source : {"timm", "hf", "tv"}, default "hf"
         Source of the backbone model:
-        - "timm": models from `timm` package.
         - "hf": models from `transformers` package.
+        - "timm": models from `timm` package.
         - "tv": models from `torchvision` package.
     pretrained : bool, default True
         Whether to load pre-trained weights.
@@ -85,6 +85,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
             self.backbone = tv.models.get_model(backbone_name_or_path, pretrained=pretrained)
         else:
             raise ValueError(f"source: {source} not supported")
+        self.__default_output_shape = None
 
     def train(self, mode: bool = True) -> nn.Module:
         """Set the model and preprocessor to corresponding mode.
@@ -192,8 +193,8 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         ----------
         architectures : str or sequence of str, optional
             Specific architectures to list (e.g. "resnet", "convnext", etc.). If None, list all available architectures.
-        source : {"timm", "tv", "hf"}, optional
-            Source of the backbone models. If None, "timm" is used.
+        source : {"hf", "timm", "tv"}, optional
+            Source of the backbone models. If None, "hf" is used.
 
         Returns
         -------
@@ -204,17 +205,17 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         if architectures is None:
             architectures = []
         if source is None:
-            source = "timm"
+            source = "hf"
         source = source.lower()
         if source == "timm":
             model_names = ImageBackbone.__timm_models__
         elif source == "tv":
             model_names = ImageBackbone.__tv_models__
-
         elif source == "hf":
             print(
                 "transformers does not provide a list of available models. Please refer to https://huggingface.co/models for available models."
             )
+            return []
         else:
             raise ValueError(f"source: {source} not supported")
 
@@ -287,9 +288,15 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
 
         """
         if input_shape is None:
-            input_shape = [3, 224, 224]
-        test_input = torch.randint(0, 255, (1, *input_shape), dtype=torch.uint8)
+            if self.__default_output_shape is not None:
+                return self.__default_output_shape
+            _input_shape = [3, 224, 224]
+        else:
+            _input_shape = input_shape
+        test_input = torch.randint(0, 255, (1, *_input_shape), dtype=torch.uint8)
         with torch.no_grad():
             output = self.pipeline(test_input)
         del test_input
+        if input_shape is None:
+            self.__default_output_shape = list(output.shape[1:])
         return list(output.shape[1:])

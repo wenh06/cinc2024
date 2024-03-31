@@ -17,6 +17,7 @@ This module contains the loss functions for the digitized signal values.
 
 """
 
+import re
 from typing import Any, Optional
 
 import torch
@@ -128,7 +129,7 @@ def snr_loss(
 
 _dtw_loss_docstring = """Dynamic time warping loss.
 
-    DTW is an algorithm for measuring similarity between two temporal sequences that may vary in speed.
+    DTW is a method for measuring similarity between two temporal sequences that may vary in speed.
 
     Parameters
     ----------
@@ -303,6 +304,9 @@ def ks_loss(
 
 
 _asci_loss_docstring = """Adaptive signed correlation index loss.
+
+    The Adaptive Signed Correlation Index (ASCI) is a measure to
+    quantify the morphological similarity between signals.
 
     Parameters
     ----------
@@ -522,13 +526,13 @@ class ASCILoss(nn.Module):
         pass
 
 
-def get_loss_func(loss_name: str, **kwargs: Any) -> nn.Module:
+def get_loss_func(name: str, **kwargs: Any) -> nn.Module:
     """Get the loss function.
 
     Parameters
     ----------
-    loss_name : str
-        Name of the loss function.
+    name : str
+        Name of the loss function, case-insensitive.
     **kwargs : dict
         Keyword arguments for the loss function.
 
@@ -538,8 +542,14 @@ def get_loss_func(loss_name: str, **kwargs: Any) -> nn.Module:
         The loss function.
 
     """
-    if loss_name.lower() in _LOSS_FUNCTIONS:
+    name = re.sub("(?:[\\_\\-])?loss", "", name.lower())
+    if name.lower() in _LOSS_FUNCTIONS:
         # remove unwanted arguments
-        kwargs = {k: v for k, v in kwargs.items() if k in get_kwargs(_LOSS_FUNCTIONS[loss_name.lower()])}
-        return _LOSS_FUNCTIONS[loss_name.lower()](**kwargs)
-    raise ValueError(f"Unknown loss function: {loss_name}")
+        if set(kwargs.keys()) - set(get_kwargs(_LOSS_FUNCTIONS[name.lower()])):
+            print(
+                f"Unexpected arguments for {name} loss: "
+                f"{set(kwargs.keys()) - set(get_kwargs(_LOSS_FUNCTIONS[name.lower()]))} removed"
+            )
+        kwargs = {k: v for k, v in kwargs.items() if k in get_kwargs(_LOSS_FUNCTIONS[name.lower()])}
+        return _LOSS_FUNCTIONS[name.lower()](**kwargs)
+    raise ValueError(f"Unknown loss function: {name}")

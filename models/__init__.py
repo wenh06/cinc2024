@@ -6,7 +6,7 @@ It is a multi-head model for CINC2024. The backbone is a pre-trained image model
 
 import os
 from copy import deepcopy
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -19,15 +19,20 @@ from cfg import ModelCfg
 from outputs import CINC2024Outputs
 from utils.misc import url_is_reachable
 
-from .backbone import ImageBackbone
+from .backbone import _INPUT_IMAGE_TYPES, ImageBackbone
 from .heads import DigitizationHead, DxHead
+from .loss import get_loss_func
 
 __all__ = [
     "MultiHead_CINC2024",
+    "ImageBackbone",
+    "DxHead",
+    "DigitizationHead",
+    "get_loss_func",
 ]
 
 
-if not url_is_reachable("https://huggingface.co"):
+if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable("https://huggingface.co")):
     # workaround for using huggingface hub in China
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
@@ -48,17 +53,17 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
 
     def __init__(self, config: Optional[CFG] = None, **kwargs: Any) -> None:
         super().__init__()
-        if config is None:
-            self.__config = deepcopy(ModelCfg)
-        else:
-            self.__config = deepcopy(config)
+        self.__config = deepcopy(ModelCfg)
+        if config is not None:
+            self.__config.update(deepcopy(config))
         self.image_backbone = ImageBackbone(
             self.__config.backbone_name,
             source=self.__config.backbone_source,
             pretrained=True,
         )
-        self.dx_head = DxHead()
-        self.digitization_head = DigitizationHead()
+        backbone_output_shape = self.image_backbone.compute_output_shape()
+        self.dx_head = DxHead(inp_features=backbone_output_shape[0], config=self.config.dx_head)
+        self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)
 
     def forward(
         self,
@@ -72,21 +77,40 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         img : torch.Tensor
             Input image tensor.
         labels : dict, optional
-            Labels for training, including "dx" and "digitization".
+            Labels for training, including
+            - "dx": required for training the Dx classification head.
+            - "digitization": required for training the digitization head.
+            - "mask": optional for training the digitization head.
 
         Returns
         -------
         dict
-            Predictions, including "dx" and "digitization".
+            Predictions, including "dx" and "digitization",
+            and the loss if any of the labels is provided.
 
         """
         features = self.image_backbone(img)
-        dx_pred = self.dx_head(features)
-        digitization_pred = self.digitization_head(features)
+        dx_pred = self.dx_head(features, labels)
+        digitization_pred = self.digitization_head(features, labels)
+        loss = 0
+        if "loss" in dx_pred:
+            loss += dx_pred["loss"]
+        if "loss" in digitization_pred:
+            loss += digitization_pred["loss"]
         return {
             "dx": dx_pred,
             "digitization": digitization_pred,
+            "loss": loss,
         }
+
+    @add_docstring(ImageBackbone.get_input_tensors.__doc__)
+    def get_input_tensors(self, x: _INPUT_IMAGE_TYPES) -> torch.Tensor:
+        return self.image_backbone.get_input_tensors(x)
+
+    @add_docstring(ImageBackbone.list_backbones.__doc__)
+    @staticmethod
+    def list_backbones(architectures: Optional[Union[str, Sequence[str]]] = None, source: Optional[str] = None) -> List[str]:
+        return ImageBackbone.list_backbones(architectures=architectures, source=source)
 
     @torch.no_grad()
     def inference(self, img: Union[np.ndarray, torch.Tensor]) -> CINC2024Outputs:

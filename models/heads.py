@@ -62,18 +62,17 @@ class DxHead(nn.Module, SizeMixin, CitationMixin):
                 dropouts=self.config.dropouts,
             ),
         )
-
         self.dx_criterion = nn.CrossEntropyLoss()
 
-    def forward(self, img_features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]:
+    def forward(self, img_features: torch.Tensor, labels: Optional[Dict[str, torch.Tensor]] = None) -> Dict[str, torch.Tensor]:
         """Forward pass of the model.
 
         Parameters
         ----------
         img_features : torch.Tensor
             Features extracted from the backbone model.
-        labels : torch.Tensor, optional
-            Ground truth labels.
+        labels : dict of torch.Tensor, optional
+            Ground truth labels, including "dx" (required), etc.
 
         Returns
         -------
@@ -84,7 +83,7 @@ class DxHead(nn.Module, SizeMixin, CitationMixin):
         logits = self.dx_head(img_features)
         preds = torch.argmax(logits, dim=1)
         output = {"preds": preds, "logits": logits}
-        if labels is not None:
+        if "dx" in labels:
             loss = self.dx_criterion(logits, labels["dx"])
             output["loss"] = loss
         return output
@@ -155,10 +154,13 @@ class DigitizationHead(nn.Module, SizeMixin, CitationMixin):
         self.digitization_head.add_module("transpose", Rearrange("b c h w -> b (h w) c"))
         # extra_len makes the output length of the next convolutional layer to be exactly max_len
         # so that we do not do any padding or cropping
+        # NOTE that the stride is 1, so we can do this
         extra_len = (
             self.config.max_len
             - compute_conv_output_shape(
-                [None, None, self.config.max_len], kernel_size=self.config.kernel_size, dilation=self.config.dilation
+                input_shape=[None, None, self.config.max_len],
+                kernel_size=self.config.kernel_size,
+                dilation=self.config.dilation,
             )[-1]
         )
         self.digitization_head.add_module(
@@ -202,7 +204,7 @@ class DigitizationHead(nn.Module, SizeMixin, CitationMixin):
         """
         preds = self.digitization_head(img_features)
         output = {"preds": preds}
-        if labels is not None:
+        if "digitization" in labels:
             loss = self.digitization_criterion(preds, labels["digitization"], labels.get("mask", None))
             output["loss"] = loss
         return output
