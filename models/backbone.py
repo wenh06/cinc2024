@@ -3,6 +3,7 @@
 
 import os
 import re
+import warnings
 from typing import List, Optional, Sequence, Union
 
 import numpy as np
@@ -15,19 +16,12 @@ import transformers
 from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import SizeMixin
 
-from utils.misc import url_is_reachable
-
 __all__ = ["ImageBackbone"]
 
 
 _INPUT_IMAGE_TYPES = Union[
     torch.Tensor, List[torch.Tensor], np.ndarray, List[np.ndarray], PIL.Image.Image, List[PIL.Image.Image]
 ]
-
-
-if not url_is_reachable("https://huggingface.co"):
-    # workaround for using huggingface hub in China
-    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 
 class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
@@ -54,7 +48,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         - It has `AutoBackbone` class which produces feature maps from images,
           without the need to handle extra pooling layers and classifier layers.
           The rest two sources do not have a method for creating feature map extractors directly,
-          and the models does not in general have a common method for extracting feature maps (e.g. calling methods like `forward_features`)
+          and the models does not in general have a common method for extracting feature maps (e.g. calling methods like `forward_features`).
         - It has `AutoImageProcessor` class which can be used to preprocess images before feeding them to the model,
           so that one does not need to manually preprocess the images before feeding them to the model.
           The rest two sources do not have a method for creating image preprocessors directly (`timm` is better).
@@ -79,11 +73,13 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
             self.augmentor = None
             self.backbone = transformers.AutoBackbone.from_pretrained(backbone_name_or_path)
         elif self.source == "timm":
+            warnings.warn("backbone source 'timm' is not fully tested. Use it with caution.")
             self.backbone = timm.create_model(backbone_name_or_path, pretrained=pretrained)
             data_config = timm.data.resolve_model_data_config(self.backbone)
             self.preprocessor = timm.data.create_transform(**data_config, is_training=self.training)
             self.augmentor = None  # preprocessor is responsible for data augmentation
         elif self.source == "tv":
+            warnings.warn("backbone source 'tv' is not fully tested. Use it with caution.")
             self.preprocessor = None
             self.augmentor = None
             self.backbone = tv.models.get_model(backbone_name_or_path, pretrained=pretrained)
@@ -131,6 +127,8 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         """
         if self.training and self.augmentor is not None:
             x = self.augmentor(x)
+        if self.source == "hf":
+            return self.backbone(x).feature_maps[-1]
         return self.backbone(x)
 
     def pipeline(self, x: _INPUT_IMAGE_TYPES) -> torch.Tensor:
@@ -138,30 +136,53 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
 
         Parameters
         ----------
-        x : torch.Tensor
-            Input tensor.
+        x : numpy.ndarray or torch.Tensor or PIL.Image.Image or list
+            Input image(s).
 
         Returns
         -------
         torch.Tensor
-            Output tensor.
+            Output feature map tensor.
+
+        """
+        x = self.get_input_tensors(x)
+        return self.forward(x)
+
+    def get_input_tensors(self, x: _INPUT_IMAGE_TYPES) -> torch.Tensor:
+        """Get input tensors for the model.
+
+        Parameters
+        ----------
+        x : numpy.ndarray or torch.Tensor or PIL.Image.Image or list
+            Input image(s).
+
+        Returns
+        -------
+        torch.Tensor
+            Input tensor for the image backbone model.
 
         """
         assert self.preprocessor is not None, "Set up the preprocessor first."
-        x_ndim = x.ndim
+        if isinstance(x, (np.ndarray, torch.Tensor)):
+            x_ndim = x.ndim
+        elif isinstance(x, (PIL.Image.Image)):
+            x_ndim = 3
+        elif isinstance(x, (list, tuple)):
+            x_ndim = 4
+        else:
+            raise ValueError(f"Input tensor has invalid type: {type(x)}")
         if self.source == "hf":
-            x = self.preprocessor(x)
+            x = self.preprocessor(x).convert_to_tensors("pt")["pixel_values"].to(self.device)
         elif self.source == "timm":
             if x_ndim == 3:
-                x = self.preprocessor(x)
+                x = self.preprocessor(x).to(self.device)
             elif x_ndim == 4:
                 x = torch.stack([self.preprocessor(img) for img in x])
             else:
                 raise ValueError(f"Input tensor has invalid shape: {x.shape}")
         elif self.source == "tv":
-            x = self.preprocessor(x)
-
-        features = self.forward(x)
+            x = self.preprocessor(x).to(self.device)
+        return x
 
     @staticmethod
     def list_backbones(architectures: Optional[Union[str, Sequence[str]]] = None, source: Optional[str] = None) -> List[str]:
@@ -212,6 +233,63 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         freeze : bool, default True
             Whether to freeze the backbone model.
 
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        >>> bkb = ImageBackbone("microsoft/resnet-18")
+        >>> bkb.freeze_backbone()
+        >>> bkb.module_size_
+        '0.0B'
+        >>> bkb.sizeof_
+        '42.7MB'
+        >>> bkb.freeze_backbone(False)
+        >>> bkb.module_size_
+        '42.6MB'
+        >>> bkb.sizeof_
+        '42.7MB'
+
         """
         for param in self.backbone.parameters():
             param.requires_grad = not freeze
+
+    @property
+    def num_features(self) -> int:
+        """Number of output channels of the backbone model.
+
+        Returns
+        -------
+        int
+            Number of output channels.
+
+        """
+        if self.source == "hf":
+            return self.backbone.config.hidden_sizes[-1]
+        elif self.source == "timm":
+            return self.backbone.num_features
+        else:
+            return self.backbone.fc.in_features
+
+    def compute_output_shape(self, input_shape: Optional[Sequence[int]] = None) -> List[int]:
+        """Compute the output shape of the backbone model, not including the batch dimension.
+
+        Parameters
+        ----------
+        input_shape : int or sequence of int, optional
+            Input shape of the image.
+
+        Returns
+        -------
+        list
+            Output shape of the backbone model.
+
+        """
+        if input_shape is None:
+            input_shape = [3, 224, 224]
+        test_input = torch.randint(0, 255, (1, *input_shape), dtype=torch.uint8)
+        with torch.no_grad():
+            output = self.pipeline(test_input)
+        del test_input
+        return list(output.shape[1:])
