@@ -84,7 +84,7 @@ class DxHead(nn.Module, SizeMixin, CitationMixin):
         preds = torch.argmax(logits, dim=1)
         output = {"preds": preds, "logits": logits}
         if labels is not None and "dx" in labels:
-            loss = self.dx_criterion(logits, labels["dx"])
+            loss = self.dx_criterion(logits, labels["dx"].to(self.device))
             output["loss"] = loss
         return output
 

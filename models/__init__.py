@@ -61,8 +61,15 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
             pretrained=True,
         )
         backbone_output_shape = self.image_backbone.compute_output_shape()
-        self.dx_head = DxHead(inp_features=backbone_output_shape[0], config=self.config.dx_head)
-        self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)
+        if self.config.dx_head.include:
+            self.dx_head = DxHead(inp_features=backbone_output_shape[0], config=self.config.dx_head)
+        else:
+            self.dx_head = None
+        if self.config.digitization_head.include:
+            self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)
+        else:
+            self.digitization_head = None
+        assert self.dx_head is not None or self.digitization_head is not None, "at least one head should be included"
 
     def forward(
         self,
@@ -89,21 +96,27 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
 
         """
         features = self.image_backbone(img)
-        dx_pred = self.dx_head(features, labels)
-        digitization_pred = self.digitization_head(features, labels)
+        if self.dx_head is not None:
+            dx_pred = self.dx_head(features, labels)
+        else:
+            dx_pred = {}
+        if self.digitization_head is not None:
+            digitization_pred = self.digitization_head(features, labels)
+        else:
+            digitization_pred = {}
         total_loss = None
-        if "loss" in dx_pred:
+        if dx_pred and "loss" in dx_pred:
             total_loss = dx_pred["loss"]
-        if "loss" in digitization_pred:
+        if digitization_pred and "loss" in digitization_pred:
             if total_loss is None:
                 total_loss = digitization_pred["loss"]
             else:
                 total_loss += digitization_pred["loss"]
         return {
-            "dx": dx_pred["preds"],
-            "dx_logits": dx_pred["logits"],
+            "dx": dx_pred.get("preds", None),
+            "dx_logits": dx_pred.get("logits", None),
             "dx_loss": dx_pred.get("loss", None),
-            "digitization": digitization_pred["preds"],
+            "digitization": digitization_pred.get("preds", None),
             "digitization_loss": digitization_pred.get("loss", None),
             "total_loss": total_loss,
         }

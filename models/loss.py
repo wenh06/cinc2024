@@ -109,7 +109,9 @@ def snr_loss(
     inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, eps: float = 1e-7, reduction: str = "mean"
 ) -> torch.Tensor:
     if mask is None:
-        mask = torch.ones_like(target).bool().to(inp.device)
+        mask = torch.ones_like(target)
+    mask = mask.bool().to(inp.device)
+    target = target.to(inp.device)
     if target.shape[-1] > inp.shape[-1]:
         # pad the input signal
         inp = F.pad(inp, (0, target.shape[-1] - inp.shape[-1]), mode="constant", value=0)
@@ -196,7 +198,9 @@ def mae_loss(
     inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, reduction: str = "mean"
 ) -> torch.Tensor:
     if mask is None:
-        mask = torch.ones_like(target).bool().to(inp.device)
+        mask = torch.ones_like(target)
+    mask = mask.bool().to(inp.device)
+    target = target.to(inp.device)
     if target.shape[-1] > inp.shape[-1]:
         # pad the input signal
         inp = F.pad(inp, (0, target.shape[-1] - inp.shape[-1]), mode="constant", value=0)
@@ -245,7 +249,9 @@ def rmse_loss(
     inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, reduction: str = "mean"
 ) -> torch.Tensor:
     if mask is None:
-        mask = torch.ones_like(target).bool().to(inp.device)
+        mask = torch.ones_like(target)
+    mask = mask.bool().to(inp.device)
+    target = target.to(inp.device)
     if target.shape[-1] > inp.shape[-1]:
         # pad the input signal
         inp = F.pad(inp, (0, target.shape[-1] - inp.shape[-1]), mode="constant", value=0)
