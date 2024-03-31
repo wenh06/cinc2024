@@ -133,7 +133,10 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         return self.backbone(x)
 
     def pipeline(self, x: _INPUT_IMAGE_TYPES) -> torch.Tensor:
-        """Forward pass of the model.
+        """Pipeline of the backbone.
+
+        This method accepts various types of input images
+        and returns the output feature map tensor (with batch dimension).
 
         Parameters
         ----------

@@ -8,7 +8,6 @@ import os
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch_ecg.cfg import CFG
@@ -92,15 +91,21 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         features = self.image_backbone(img)
         dx_pred = self.dx_head(features, labels)
         digitization_pred = self.digitization_head(features, labels)
-        loss = 0
+        total_loss = None
         if "loss" in dx_pred:
-            loss += dx_pred["loss"]
+            total_loss = dx_pred["loss"]
         if "loss" in digitization_pred:
-            loss += digitization_pred["loss"]
+            if total_loss is None:
+                total_loss = digitization_pred["loss"]
+            else:
+                total_loss += digitization_pred["loss"]
         return {
-            "dx": dx_pred,
-            "digitization": digitization_pred,
-            "loss": loss,
+            "dx": dx_pred["preds"],
+            "dx_logits": dx_pred["logits"],
+            "dx_loss": dx_pred.get("loss", None),
+            "digitization": digitization_pred["preds"],
+            "digitization_loss": digitization_pred.get("loss", None),
+            "total_loss": total_loss,
         }
 
     @add_docstring(ImageBackbone.get_input_tensors.__doc__)
@@ -113,11 +118,33 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         return ImageBackbone.list_backbones(architectures=architectures, source=source)
 
     @torch.no_grad()
-    def inference(self, img: Union[np.ndarray, torch.Tensor]) -> CINC2024Outputs:
-        raise NotImplementedError
+    def inference(self, img: _INPUT_IMAGE_TYPES) -> CINC2024Outputs:
+        """Inference on a single image or a batch of images.
+
+        Parameters
+        ----------
+        img : numpy.ndarray or torch.Tensor or PIL.Image.Image, or list
+            Input image.
+
+        Returns
+        -------
+        CINC2024Outputs
+            Predictions, including "dx" and "digitization".
+
+        """
+        original_mode = self.training
+        self.eval()
+        output = self.forward(self.image_backbone.get_input_tensors(img))
+        self.train(original_mode)
+        return CINC2024Outputs(
+            dx=output["dx"],
+            dx_logits=output["dx_logits"],
+            dx_classes=self.config.dx_head.classes,
+            digitization=output["digitization"],
+        )
 
     @add_docstring(inference.__doc__)
-    def inference_CINC2024(self, img: Union[np.ndarray, torch.Tensor]) -> CINC2024Outputs:
+    def inference_CINC2024(self, img: _INPUT_IMAGE_TYPES) -> CINC2024Outputs:
         """
         alias for `self.inference`
         """

@@ -83,7 +83,7 @@ class DxHead(nn.Module, SizeMixin, CitationMixin):
         logits = self.dx_head(img_features)
         preds = torch.argmax(logits, dim=1)
         output = {"preds": preds, "logits": logits}
-        if "dx" in labels:
+        if labels is not None and "dx" in labels:
             loss = self.dx_criterion(logits, labels["dx"])
             output["loss"] = loss
         return output
@@ -204,7 +204,7 @@ class DigitizationHead(nn.Module, SizeMixin, CitationMixin):
         """
         preds = self.digitization_head(img_features)
         output = {"preds": preds}
-        if "digitization" in labels:
+        if labels is not None and "digitization" in labels:
             loss = self.digitization_criterion(preds, labels["digitization"], labels.get("mask", None))
             output["loss"] = loss
         return output
