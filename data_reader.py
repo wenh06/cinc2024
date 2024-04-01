@@ -3,16 +3,19 @@
 
 import json
 import os
+import warnings
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import gdown
 import numpy as np
 import pandas as pd
 from PIL import Image
-from torch_ecg.cfg import CFG
+from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.databases.base import DataBaseInfo, PhysioNetDataBase
+from torch_ecg.utils.download import _unzip_file, http_get
 from torch_ecg.utils.misc import add_docstring, dict_to_str  # noqa: F401
 from tqdm.auto import tqdm
 
@@ -20,6 +23,7 @@ from add_image_filenames import find_images
 from cfg import BaseCfg
 from helper_code import cast_int_float_unknown, find_records
 from utils.ecg_image_generator.gen_ecg_image_from_data import run_single_file
+from utils.misc import url_is_reachable
 
 __all__ = [
     "CINC2024Reader",
@@ -98,6 +102,12 @@ class CINC2024Reader(PhysioNetDataBase):
         for cfg_file in _ECG_IMAGE_GENERATOR_CONFIG_DIR.glob("*.json")
         if cfg_file.name != "ecg-image-gen-default-config.json"
     ]
+    __synthetic_images_url__ = {
+        "full": None,
+        "full-alt": None,
+        "subset": None,
+        "subset-alt": None,
+    }
 
     def __init__(
         self,
@@ -187,21 +197,20 @@ class CINC2024Reader(PhysioNetDataBase):
         self._df_images["strat_fold"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "strat_fold"])
         self._df_images.set_index("image", inplace=True)
 
-        if self._subsample is not None:
-            size = min(
-                len(self._df_metadata),
-                max(1, int(round(self._subsample * len(self._df_metadata)))),
-            )
-            self.logger.debug(f"subsample `{size}` records from `{len(self._df_metadata)}`")
-            self._df_records = self._df_metadata.sample(n=size, random_state=self._random_state)
-            self._df_images = self._df_images[self._df_images["ecg_id"].isin(self._df_records.index)]
-        else:
-            self._df_records = self._df_metadata.copy()
-
+        self._df_records = self._df_metadata.copy()
         if self.fs == 100:
             self._df_records["path"] = self._df_records["filename_lr"].apply(lambda x: self.db_dir / x)
         else:
             self._df_records["path"] = self._df_records["filename_hr"].apply(lambda x: self.db_dir / x)
+        # keep only records that exist
+        self._df_records = self._df_records[self._df_records["path"].apply(lambda x: x.with_suffix(".dat").exists())]
+        if self._subsample is not None:
+            size = min(
+                len(self._df_records),
+                max(1, int(round(self._subsample * len(self._df_records)))),
+            )
+            self.logger.debug(f"subsample `{size}` records from `{len(self._df_records)}`")
+            self._df_records = self._df_records.sample(n=size, random_state=DEFAULTS.SEED, replace=False)
 
         self._all_records = self._df_records.index.tolist()
         self._all_subjects = self._df_records["patient_id"].unique().tolist()
@@ -541,19 +550,87 @@ class CINC2024Reader(PhysioNetDataBase):
             "val": self._df_records[self._df_records["strat_fold"] == 10].index.tolist(),
         }
 
+    def download_synthetic_images(self, set_name: str = "subset") -> None:
+        """Download the synthetic files generated offline from Google Drive."""
+        if url_is_reachable("https://drive.google.com/"):
+            source = "gdrive"
+            url = self.__synthetic_images_url__[set_name]
+        elif url_is_reachable("https://deep-psp.tech"):
+            source = "deep-psp"
+            url = self.__synthetic_images_url__[f"{set_name}-alt"]
+        else:
+            warnings.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
+            return
+        if url is None:
+            warnings.warn("The download URL is not available yet. The synthetic images will not be downloaded.")
+            return
+        if not os.access(self._synthetic_images_dir, os.W_OK):
+            warnings.warn("No write access. The synthetic images will not be downloaded.")
+            return
+        dl_file = str(self._synthetic_images_dir.parent / "ptb-xl-synthetic-images.zip")
+        if source == "gdrive":
+            gdown.download(url, dl_file, quiet=False)
+            _unzip_file(dl_file, self._synthetic_images_dir)
+        elif source == "deep-psp":
+            http_get(url, self._synthetic_images_dir, extract=True)
+
 
 if __name__ == "__main__":
-    # generate the synthetic images
-    # cli command: python data_reader.py db_dir [output_folder]
     import argparse
 
-    parser = argparse.ArgumentParser(description="Prepare synthetic images from the ECG time series data.")
-    parser.add_argument("db_dir", type=str, help="The database directory.")
+    parser = argparse.ArgumentParser(description="Process CINC2024 database.")
     parser.add_argument(
-        "-o", "--output_folder", type=str, help="The output directory to store the synthetic images.", default=None
+        "operations",
+        nargs=argparse.ONE_OR_MORE,
+        type=str,
+        choices=["download", "download_synthetic_images", "prepare_synthetic_images"],
+    )
+    parser.add_argument(
+        "-d",
+        "--db-dir",
+        type=str,
+        help="The directory to (store) the database.",
+        dest="db_dir",
+    )
+    parser.add_argument(
+        "-w",
+        "--working-dir",
+        type=str,
+        default=None,
+        help="The working directory to store the intermediate results.",
+        dest="working_dir",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-folder",
+        type=str,
+        help="The output directory to store the generated synthetic images, when `operations` contain `prepare_synthetic_images`.",
+        default=None,
+    )
+    parser.add_argument(
+        "--download-image-set",
+        type=str,
+        default="subset",
+        help="The image set to download",
     )
 
     args = parser.parse_args()
 
     dr = CINC2024Reader(db_dir=args.db_dir)
-    dr.prepare_synthetic_images(output_folder=args.output_folder)
+
+    operations = args.operations
+    if "download" in operations:
+        dr.download()
+
+    if "download_synthetic_images" in operations:
+        dr.download_synthetic_images()
+
+    if "prepare_synthetic_images" in operations:
+        dr.prepare_synthetic_images(output_folder=args.output_folder)
+
+    print("Done.")
+
+    # usage examples:
+    # python data_reader.py download -d /path/to/db_dir
+    # python data_reader.py download download_synthetic_images -d /path/to/db_dir
+    # python data_reader.py prepare_synthetic_images -d /path/to/db_dir [-o /path/to/output_folder]
