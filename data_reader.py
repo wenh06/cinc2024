@@ -225,11 +225,16 @@ class CINC2024Reader(PhysioNetDataBase):
         """Create the directory to store the synthetic images."""
         if self._synthetic_images_dir is not None and not os.access(self._synthetic_images_dir, os.W_OK):
             self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
-            self._synthetic_images_dir = None
+            # self._synthetic_images_dir = None
         if self._synthetic_images_dir is None:
-            if os.access(self.db_dir, os.W_OK):
-                self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
-            else:
+            # if os.access(self.db_dir, os.W_OK):
+            #     self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
+            # else:
+            #     self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
+            self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
+            if (len(get_record_list_recursive3(self._synthetic_images_dir, rec_patterns=".+\\.(png|jpg|jpeg)$")) == 0) and (
+                not os.access(self.db_dir, os.W_OK)
+            ):
                 self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
         self._synthetic_images_dir = Path(self._synthetic_images_dir).expanduser().resolve()
         os.makedirs(self._synthetic_images_dir, exist_ok=True)
