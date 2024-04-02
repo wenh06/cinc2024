@@ -18,11 +18,11 @@ from torch_ecg.utils.download import _unzip_file, http_get
 from torch_ecg.utils.misc import add_docstring, dict_to_str  # noqa: F401
 from tqdm.auto import tqdm
 
-from add_image_filenames import find_images
+from add_image_filenames import find_images  # noqa: F401
 from cfg import BaseCfg
 from helper_code import cast_int_float_unknown, find_records
 from utils.ecg_image_generator.gen_ecg_image_from_data import run_single_file
-from utils.misc import url_is_reachable
+from utils.misc import get_record_list_recursive3, url_is_reachable
 
 __all__ = [
     "CINC2024Reader",
@@ -178,8 +178,19 @@ class CINC2024Reader(PhysioNetDataBase):
         self._df_metadata["patient_id"] = self._df_metadata["patient_id"].astype(int)
         self._df_scp_statements = pd.read_csv(self.db_dir / self.__scp_statements_file__, index_col=0)
 
-        self._df_images = pd.DataFrame({"image": find_images(str(self._synthetic_images_dir), [".png", ".jpg", ".jpeg"])})
-        self._df_images["path"] = self._df_images["image"].apply(lambda x: self._synthetic_images_dir / x)
+        # self._df_images = pd.DataFrame({"image": find_images(str(self._synthetic_images_dir), [".png", ".jpg", ".jpeg"])})
+        # self._df_images["path"] = self._df_images["image"].apply(lambda x: self._synthetic_images_dir / x)
+        self._df_images = pd.DataFrame(
+            {
+                "path": get_record_list_recursive3(
+                    self._synthetic_images_dir,
+                    rec_patterns=".+\\.(png|jpg|jpeg)$",
+                    relative=False,
+                    with_suffix=True,
+                ),
+            }
+        )
+        self._df_images["path"] = self._df_images["path"].apply(lambda x: Path(x))
         self._df_images["image"] = self._df_images["path"].apply(lambda x: x.stem)
         self._df_images["image_header"] = self._df_images.apply(
             lambda row: row["path"].parent / f"""{row["image"].split("-")[0]}.{self.header_ext}""", axis=1
@@ -222,6 +233,7 @@ class CINC2024Reader(PhysioNetDataBase):
                 self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
         self._synthetic_images_dir = Path(self._synthetic_images_dir).expanduser().resolve()
         os.makedirs(self._synthetic_images_dir, exist_ok=True)
+        self.logger.info(f"Synthetic images directory set to: {self._synthetic_images_dir}")
 
     def load_image(self, img: Union[str, int], fmt: str = "np") -> Union[np.ndarray, Image.Image]:
         """Load the image of a record.

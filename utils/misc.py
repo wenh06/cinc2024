@@ -2,9 +2,12 @@
 Miscellaneous functions.
 """
 
+import os
+import re
+from copy import deepcopy
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -16,6 +19,7 @@ __all__ = [
     "predict_proba_ordered",
     "url_is_reachable",
     "load_submission_log",
+    "get_record_list_recursive3",
 ]
 
 
@@ -102,3 +106,68 @@ def load_submission_log() -> pd.DataFrame:
         "score", ascending=False
     )
     return df_sub_log
+
+
+def get_record_list_recursive3(
+    db_dir: Union[str, bytes, os.PathLike],
+    rec_patterns: Union[str, Dict[str, str]],
+    relative: bool = True,
+    with_suffix: bool = False,
+) -> Union[List[str], Dict[str, List[str]]]:
+    """Get the list of records in a recursive manner.
+
+    For example, there are two folders "patient1", "patient2" in `db_dir`,
+    and there are records "A0001", "A0002", ... in "patient1";
+    "B0001", "B0002", ... in "patient2",
+    then the output would be "patient1{sep}A0001", ..., "patient2{sep}B0001", ...,
+    sep is determined by the system.
+
+    Parameters
+    ----------
+    db_dir : `path-like`
+        The parent (root) path of to search for records.
+    rec_patterns : str or dict
+        Pattern of the record filenames, e.g. ``"A(?:\\d+).mat"``,
+        or patterns of several subsets, e.g. ``{"A": "A(?:\\d+).mat"}``
+    relative : bool, default True
+        Whether to return the relative path of the records.
+    with_suffix : bool, default False
+        Whether to include the suffix of the records.
+
+    Returns
+    -------
+    List[str] or dict
+        The list of records, in lexicographical order.
+
+    """
+    if isinstance(rec_patterns, str):
+        res = []
+    elif isinstance(rec_patterns, dict):
+        res = {k: [] for k in rec_patterns.keys()}
+    _db_dir = Path(db_dir).resolve()  # make absolute
+    roots = [_db_dir]
+    while len(roots) > 0:
+        new_roots = []
+        for r in roots:
+            tmp = os.listdir(r)
+            if isinstance(rec_patterns, str):
+                res += [r / item for item in filter(re.compile(rec_patterns).search, tmp)]
+            elif isinstance(rec_patterns, dict):
+                for k in rec_patterns.keys():
+                    res[k] += [r / item for item in filter(re.compile(rec_patterns[k]).search, tmp)]
+            new_roots += [r / item for item in tmp if (r / item).is_dir()]
+        roots = deepcopy(new_roots)
+    if isinstance(rec_patterns, str):
+        if with_suffix:
+            res = [str((item.relative_to(_db_dir) if relative else item)) for item in res]
+        else:
+            res = [str((item.relative_to(_db_dir) if relative else item).with_suffix("")) for item in res]
+        res = sorted(res)
+    elif isinstance(rec_patterns, dict):
+        for k in rec_patterns.keys():
+            if with_suffix:
+                res[k] = [str((item.relative_to(_db_dir) if relative else item)) for item in res[k]]
+            else:
+                res[k] = [str((item.relative_to(_db_dir) if relative else item).with_suffix("")) for item in res[k]]
+            res[k] = sorted(res[k])
+    return res
