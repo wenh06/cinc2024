@@ -12,14 +12,14 @@ from einops.layers.torch import Rearrange
 from torch_ecg.cfg import CFG
 from torch_ecg.models._nets import MLP
 from torch_ecg.utils.misc import CitationMixin
-from torch_ecg.utils.utils_nn import SizeMixin, compute_conv_output_shape
+from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin, compute_conv_output_shape
 
 from .loss import get_loss_func
 
 __all__ = ["DxHead", "DigitizationHead"]
 
 
-class DxHead(nn.Module, SizeMixin, CitationMixin):
+class DxHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
     """Head for making Dx classification (binary) predictions, including loss computation.
 
     The output features of the backbone model is fed into this head to make classification predictions.
@@ -97,7 +97,7 @@ class DxHead(nn.Module, SizeMixin, CitationMixin):
         return self.__inp_features
 
 
-class DigitizationHead(nn.Module, SizeMixin, CitationMixin):
+class DigitizationHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
     """Head for making digitization predictions, including loss computation.
 
     Fundamentally, this head is a sequence generation head,

@@ -9,8 +9,8 @@ torch==2.1.2
 torchvision==0.16.2
 transformers==4.39.1
 timm==0.9.16
+torch-ecg>=0.0.28
 opencv-python
-torch-ecg
 torchsummary
 tensorboardX
 tqdm

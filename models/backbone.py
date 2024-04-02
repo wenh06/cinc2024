@@ -16,12 +16,9 @@ import transformers
 from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import SizeMixin
 
+from cfg import INPUT_IMAGE_TYPES
+
 __all__ = ["ImageBackbone"]
-
-
-_INPUT_IMAGE_TYPES = Union[
-    torch.Tensor, List[torch.Tensor], np.ndarray, List[np.ndarray], PIL.Image.Image, List[PIL.Image.Image]
-]
 
 
 class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
@@ -132,7 +129,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
             return self.backbone(x).feature_maps[-1]
         return self.backbone(x)
 
-    def pipeline(self, x: _INPUT_IMAGE_TYPES) -> torch.Tensor:
+    def pipeline(self, x: INPUT_IMAGE_TYPES) -> torch.Tensor:
         """Pipeline of the backbone.
 
         This method accepts various types of input images
@@ -152,7 +149,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         x = self.get_input_tensors(x)
         return self.forward(x)
 
-    def get_input_tensors(self, x: _INPUT_IMAGE_TYPES) -> torch.Tensor:
+    def get_input_tensors(self, x: INPUT_IMAGE_TYPES) -> torch.Tensor:
         """Get input tensors for the model.
 
         Parameters
@@ -181,7 +178,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
             if x_ndim == 3:
                 x = self.preprocessor(x).to(self.device)
             elif x_ndim == 4:
-                x = torch.stack([self.preprocessor(img) for img in x])
+                x = torch.stack([self.preprocessor(img).to(self.device) for img in x])
             else:
                 raise ValueError(f"Input tensor has invalid shape: {x.shape}")
         elif self.source == "tv":

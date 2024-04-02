@@ -14,11 +14,11 @@ from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import CitationMixin, add_docstring
 from torch_ecg.utils.utils_nn import SizeMixin
 
-from cfg import ModelCfg
+from cfg import INPUT_IMAGE_TYPES, ModelCfg
 from outputs import CINC2024Outputs
 from utils.misc import url_is_reachable
 
-from .backbone import _INPUT_IMAGE_TYPES, ImageBackbone
+from .backbone import ImageBackbone
 from .heads import DigitizationHead, DxHead
 from .loss import get_loss_func
 
@@ -60,16 +60,32 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
             source=self.__config.backbone_source,
             pretrained=True,
         )
+        if self.config.backbone_freeze:
+            self.freeze_backbone(freeze=True)
         backbone_output_shape = self.image_backbone.compute_output_shape()
         if self.config.dx_head.include:
-            self.dx_head = DxHead(inp_features=backbone_output_shape[0], config=self.config.dx_head)
+            self.__config.dx_head.backbone_name = self.config.backbone_name
+            if self.config.dx_head.remote_checkpoints_name is not None:
+                self.dx_head = DxHead.from_remote(
+                    url=self.config.dx_head.remote_checkpoints[self.config.dx_head.remote_checkpoints_name],
+                    model_dir=self.config.checkpoints,
+                )
+            else:
+                self.dx_head = DxHead(inp_features=backbone_output_shape[0], config=self.config.dx_head)
         else:
             self.dx_head = None
         if self.config.digitization_head.include:
-            self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)
+            self.__config.digitization_head.backbone_name = self.config.backbone_name
+            if self.config.digitization_head.remote_checkpoints_name is not None:
+                self.digitization_head = DigitizationHead.from_remote(
+                    url=self.config.digitization_head.remote_checkpoints[self.config.digitization_head.remote_checkpoints_name],
+                    model_dir=self.config.checkpoints,
+                )
+            else:
+                self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)
         else:
             self.digitization_head = None
-        assert self.dx_head is not None or self.digitization_head is not None, "at least one head should be included"
+        assert self.dx_head is not None or self.digitization_head is not None, "At least one head should be included."
 
     def forward(
         self,
@@ -122,7 +138,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         }
 
     @add_docstring(ImageBackbone.get_input_tensors.__doc__)
-    def get_input_tensors(self, x: _INPUT_IMAGE_TYPES) -> torch.Tensor:
+    def get_input_tensors(self, x: INPUT_IMAGE_TYPES) -> torch.Tensor:
         return self.image_backbone.get_input_tensors(x)
 
     @add_docstring(ImageBackbone.list_backbones.__doc__)
@@ -130,8 +146,12 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
     def list_backbones(architectures: Optional[Union[str, Sequence[str]]] = None, source: Optional[str] = None) -> List[str]:
         return ImageBackbone.list_backbones(architectures=architectures, source=source)
 
+    @add_docstring(ImageBackbone.freeze_backbone.__doc__)
+    def freeze_backbone(self, freeze: bool = True) -> None:
+        self.image_backbone.freeze_backbone(freeze)
+
     @torch.no_grad()
-    def inference(self, img: _INPUT_IMAGE_TYPES) -> CINC2024Outputs:
+    def inference(self, img: INPUT_IMAGE_TYPES) -> CINC2024Outputs:
         """Inference on a single image or a batch of images.
 
         Parameters
@@ -157,7 +177,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         )
 
     @add_docstring(inference.__doc__)
-    def inference_CINC2024(self, img: _INPUT_IMAGE_TYPES) -> CINC2024Outputs:
+    def inference_CINC2024(self, img: INPUT_IMAGE_TYPES) -> CINC2024Outputs:
         """
         alias for `self.inference`
         """
