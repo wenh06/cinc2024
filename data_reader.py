@@ -219,6 +219,7 @@ class CINC2024Reader(PhysioNetDataBase):
                 self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
             else:
                 self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
+        self._synthetic_images_dir = Path(self._synthetic_images_dir).expanduser().resolve()
         os.makedirs(self._synthetic_images_dir, exist_ok=True)
 
     def load_image(self, img: Union[str, int], fmt: str = "np") -> Union[np.ndarray, Image.Image]:

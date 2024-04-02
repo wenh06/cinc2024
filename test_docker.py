@@ -28,7 +28,10 @@ else:
 
 tmp_data_dir = Path(os.environ.get("revenger_data_dir", _BASE_DIR / "tmp" / "CINC2024")).resolve()
 print(f"tmp_data_dir: {str(tmp_data_dir)}")
+# create the data directory if it does not exist
 tmp_data_dir.mkdir(parents=True, exist_ok=True)
+# list files and folders in the data directory
+print(os.listdir(tmp_data_dir))
 
 dr = CINC2024Reader(tmp_data_dir)
 # downloading is done outside the docker container
@@ -58,9 +61,12 @@ def test_dataset() -> None:
     ds_config.working_dir = tmp_model_dir / "working_dir"
     ds_config.working_dir.mkdir(parents=True, exist_ok=True)
 
+    echo_write_permission(tmp_data_dir)
+
     ds_train = CinC2024Dataset(ds_config, training=True, lazy=True)
     ds_val = CinC2024Dataset(ds_config, training=False, lazy=True)
 
+    print(f"{len(ds_train) = }, {len(ds_val) = }")
     assert len(ds_train) > 0
     assert len(ds_val) > 0
 
