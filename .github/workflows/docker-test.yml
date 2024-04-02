@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 env:
-  status: pre
+  status: alpha
   CINC2024_REVENGER_TEST: 1
   # revenger_data_dir: ${{ github.workspace }}/training_data
   # revenger_model_dir: ${{ github.workspace }}/models
@@ -46,7 +46,7 @@ jobs:
           -e revenger_data_dir=${{ env.revenger_data_dir }} \
           -v ${{ env.download_data_dir }}:${{ env.revenger_data_dir }} \
           deeppsp-cinc2024-docker-image:latest \
-          bash -c "python data_reader.py download --db-dir ${{ env.revenger_data_dir }}"
+          bash -c "python data_reader.py download download_synthetic_images --db-dir ${{ env.revenger_data_dir }}"
         docker ps -a
         docker stop $(docker ps -a -q)
 

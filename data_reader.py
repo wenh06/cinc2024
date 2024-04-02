@@ -105,8 +105,8 @@ class CINC2024Reader(PhysioNetDataBase):
     __synthetic_images_url__ = {
         "full": None,
         "full-alt": None,
-        "subset": None,
-        "subset-alt": None,
+        "subset": "https://drive.google.com/file/d/189IRsCU40bFBOmYnAQCOtxDf20512rTa",
+        "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset.zip",
     }
 
     def __init__(
