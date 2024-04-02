@@ -6,7 +6,10 @@ from pathlib import Path
 
 MODULE_DIR = Path(__file__).resolve().parents[1]
 
-import cv2
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 import numpy as np
 from PIL import Image
 from skimage import util
@@ -258,6 +261,9 @@ def get_creased(
     num_creases_horizontally=2,
     bbox=False,
 ):
+    if not cv2:
+        print("OpenCV is not installed or some libraries are missing. Skipping the creases and wrinkles generation.")
+        return input_file
     filename = input_file
 
     if ifWrinkles:

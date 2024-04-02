@@ -6,8 +6,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
 import wfdb
-from imgaug.augmentables.bbs import BoundingBox
 from scipy.io import loadmat
+
+try:
+    from imgaug.augmentables.bbs import BoundingBox
+except ImportError:
+    BoundingBox = None
 
 BIT_NAN_16 = -(2.0**15)
 
@@ -205,6 +209,9 @@ def standardize_leads(full_leads):
 
 def read_bounding_box_txt(filename):
     bbs = []
+    if BoundingBox is None:
+        print("imgaug is not installed, or some libraries are missing. Skipping bounding box reading.")
+        return bbs
 
     with open(filename, "r") as text_file:
         lines = text_file.readlines()

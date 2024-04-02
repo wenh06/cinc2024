@@ -5,8 +5,13 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 from helper_functions import read_bounding_box_txt, write_bounding_box_txt
-from imgaug import augmenters as iaa
-from imgaug.augmentables.bbs import BoundingBoxesOnImage
+
+try:
+    from imgaug import augmenters as iaa
+    from imgaug.augmentables.bbs import BoundingBoxesOnImage
+except ImportError:
+    iaa = None
+    BoundingBoxesOnImage = None
 from PIL import Image
 
 
@@ -26,6 +31,9 @@ def get_parser():
 def get_augment(
     input_file, output_directory, rotate=25, noise=25, crop=0.01, temperature=6500, bbox=False, store_text_bounding_box=False
 ):
+    if iaa is None:
+        print("imgaug is not installed, or some libraries are missing. Skipping augmentation.")
+        return os.path.splitext(os.path.split(input_file)[1])[0]
     filename = input_file
     image = Image.open(filename)
 

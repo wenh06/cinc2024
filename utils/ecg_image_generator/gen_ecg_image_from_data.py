@@ -14,6 +14,11 @@ from HandwrittenText.generate import get_handwritten
 from ImageAugmentation.augment import get_augment
 from scipy.stats import bernoulli
 
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 warnings.filterwarnings("ignore")
 
@@ -180,7 +185,7 @@ def run_single_file(args):
                 bbox=args.bbox,
             )
 
-        if wrinkles:
+        if wrinkles and cv2 is not None:
             ifWrinkles = True
             ifCreases = True
             crease_angle = args.crease_angle if (args.deterministic_angle) else random.choice(range(0, args.crease_angle + 1))
