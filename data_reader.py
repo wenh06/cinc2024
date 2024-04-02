@@ -585,7 +585,7 @@ class CINC2024Reader(PhysioNetDataBase):
         if url_is_reachable("https://drive.google.com/"):
             source = "gdrive"
             url = "https://drive.google.com/file/d/1ZsIPg-K9AUXq1LgI0DRLFLgviPfvx5P3"
-            dl_file = self.db_dir / "ptb-xl-subset.zip"
+            dl_file = str(self.db_dir / "ptb-xl-subset.zip")
             gdown.download(url, dl_file, quiet=False)
             _unzip_file(dl_file, self.db_dir)
         elif url_is_reachable("https://deep-psp.tech"):
