@@ -4,8 +4,10 @@ Configurations for models, training, etc., as well as some constants.
 
 import pathlib
 from copy import deepcopy
+from typing import List, Union
 
 import numpy as np
+import PIL
 import torch
 from torch_ecg.cfg import CFG
 from torch_ecg.model_configs import linear
@@ -14,10 +16,16 @@ __all__ = [
     "BaseCfg",
     "TrainCfg",
     "ModelCfg",
+    "INPUT_IMAGE_TYPES",
 ]
 
 
 _BASE_DIR = pathlib.Path(__file__).absolute().parent
+
+
+INPUT_IMAGE_TYPES = Union[
+    torch.Tensor, List[torch.Tensor], np.ndarray, List[np.ndarray], PIL.Image.Image, List[PIL.Image.Image]
+]
 
 
 ###############################################################################
@@ -31,6 +39,7 @@ BaseCfg.working_dir = None
 BaseCfg.project_dir = _BASE_DIR
 BaseCfg.log_dir = _BASE_DIR / "log"
 BaseCfg.model_dir = _BASE_DIR / "saved_models"
+BaseCfg.checkpoints = _BASE_DIR / "checkpoints"
 BaseCfg.log_dir.mkdir(exist_ok=True)
 BaseCfg.model_dir.mkdir(exist_ok=True)
 
@@ -48,7 +57,7 @@ BaseCfg.classes = [BaseCfg.normal_class, BaseCfg.abnormal_class]
 
 TrainCfg = deepcopy(BaseCfg)
 
-TrainCfg.checkpoints = _BASE_DIR / "checkpoints"
+TrainCfg.checkpoints = BaseCfg.checkpoints
 TrainCfg.checkpoints.mkdir(exist_ok=True)
 
 TrainCfg.train_ratio = 0.9
@@ -100,12 +109,12 @@ TrainCfg.predict_digitization = False  # TODO: implement digitization prediction
 ###############################################################################
 
 
-_BASE_MODEL_CONFIG = CFG()
-_BASE_MODEL_CONFIG.num_leads = BaseCfg.num_leads
-_BASE_MODEL_CONFIG.torch_dtype = BaseCfg.torch_dtype
+ModelCfg = CFG()
+ModelCfg.num_leads = BaseCfg.num_leads
+ModelCfg.torch_dtype = BaseCfg.torch_dtype
+ModelCfg.model_dir = BaseCfg.model_dir
+ModelCfg.checkpoints = BaseCfg.checkpoints
 
-
-ModelCfg = deepcopy(_BASE_MODEL_CONFIG)
 
 # a list of candidate backbones
 # microsoft/resnet-18  (46.8MB in memory consumption, including the classification head, pretrained on ImageNet-1k)
@@ -123,6 +132,7 @@ ModelCfg = deepcopy(_BASE_MODEL_CONFIG)
 # microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft  (787MB)
 ModelCfg.backbone_name = "facebook/convnextv2-large-22k-384"
 ModelCfg.backbone_source = "hf"
+ModelCfg.backbone_freeze = True
 
 ModelCfg.dx_head = deepcopy(linear)
 
@@ -139,6 +149,11 @@ ModelCfg.dx_head.classes = BaseCfg.classes
 ModelCfg.dx_head.num_classes = len(ModelCfg.dx_head.classes)
 ModelCfg.dx_head.criterion = "CrossEntropyLoss"
 ModelCfg.dx_head.label_smoothing = 0.1
+
+ModelCfg.dx_head.remote_checkpoints = {
+    # stores the checkpoints of the dx head
+}
+ModelCfg.dx_head.remote_checkpoints_name = None  # None for not loading from remote checkpoints
 
 ModelCfg.dx_head.include = TrainCfg.predict_dx
 
@@ -163,5 +178,10 @@ ModelCfg.digitization_head.criterion = CFG()
 ModelCfg.digitization_head.criterion.name = "snr_loss"
 ModelCfg.digitization_head.criterion.eps = 1e-7
 ModelCfg.digitization_head.criterion.reduction = "mean"
+
+ModelCfg.digitization_head.remote_checkpoints = {
+    # stores the checkpoints of the digitization head
+}
+ModelCfg.digitization_head.remote_checkpoints_name = None  # None for not loading from remote checkpoints
 
 ModelCfg.digitization_head.include = TrainCfg.predict_digitization

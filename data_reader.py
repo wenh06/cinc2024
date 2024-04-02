@@ -203,7 +203,9 @@ class CINC2024Reader(PhysioNetDataBase):
         else:
             self._df_records["path"] = self._df_records["filename_hr"].apply(lambda x: self.db_dir / x)
         # keep only records that exist
-        self._df_records = self._df_records[self._df_records["path"].apply(lambda x: x.with_suffix(".dat").exists())]
+        self._df_records = self._df_records[
+            self._df_records["path"].apply(lambda x: x.with_suffix(f".{self.data_ext}").exists())
+        ]
         if self._subsample is not None:
             size = min(
                 len(self._df_records),

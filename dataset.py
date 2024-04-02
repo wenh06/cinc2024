@@ -3,13 +3,14 @@
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, Union
 
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import ReprMixin
+from torch_ecg.utils.utils_nn import default_collate_fn  # noqa: F401
 from tqdm.auto import tqdm
 
 from cfg import TrainCfg
@@ -90,7 +91,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
             return len(self.fdr)
         return self.cache["images"].shape[0]
 
-    def __getitem__(self, index: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, index: Union[int, slice]) -> Dict[str, np.ndarray]:
         if self.cache is None:
             # self._load_all_data()
             return self.fdr[index]
@@ -158,7 +159,11 @@ class FastDataReader(ReprMixin, Dataset):
     def __len__(self) -> int:
         return len(self.images)
 
-    def __getitem__(self, index: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, index: Union[int, slice]) -> Dict[str, np.ndarray]:
+        if isinstance(index, slice):
+            # note that the images are of the same size
+            # return default_collate_fn([self[i] for i in range(*index.indices(len(self)))])
+            return collate_fn([self[i] for i in range(*index.indices(len(self)))])
         row = self.df_data.loc[self.images[index]]
         # load the image
         image = self.reader.load_image(row.name)  # numpy array, of shape (H, W, C)
@@ -166,9 +171,10 @@ class FastDataReader(ReprMixin, Dataset):
         if self.config.predict_dx:
             data["dx"] = row["dx"]  # int
         if self.config.predict_digitization:
-            # one has to load the signal
-            # and also a mask for it, since the ECG plot typically contains only 2.5s for each lead,
+            # one has to load the signal, pad or trim to self.config.max_len,
+            # and also create a mask for it, since the ECG plot typically contains only 2.5s for each lead,
             # except for a default lead (lead II)
+            # keys are "digitization" and "mask"
             raise NotImplementedError("data preparation for digitization prediction is not implemented yet")
 
         return data
@@ -177,3 +183,13 @@ class FastDataReader(ReprMixin, Dataset):
         return [
             "reader",
         ]
+
+
+def collate_fn(batch: List[Dict[str, np.ndarray]]) -> Dict[str, Union[torch.Tensor, List[np.ndarray]]]:
+    out_tensors = {}
+    for k in batch[0].keys():
+        if k == "image":
+            continue
+        out_tensors[k] = torch.from_numpy(np.concatenate([[b[k]] for b in batch], axis=0))
+    out_tensors["image"] = [b["image"] for b in batch]
+    return out_tensors
