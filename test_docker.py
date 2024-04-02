@@ -13,8 +13,8 @@ from torch.utils.data import DataLoader
 from torch_ecg.utils.misc import dict_to_str, str2bool  # noqa: F401
 
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
-from data_reader import CINC2024Reader, collate_fn
-from dataset import CinC2024Dataset
+from data_reader import CINC2024Reader
+from dataset import CinC2024Dataset, collate_fn
 from models import MultiHead_CINC2024
 from utils.misc import func_indicator
 
