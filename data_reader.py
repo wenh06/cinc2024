@@ -223,21 +223,37 @@ class CINC2024Reader(PhysioNetDataBase):
 
     def _create_synthetic_images_dir(self) -> None:
         """Create the directory to store the synthetic images."""
-        if self._synthetic_images_dir is not None and not os.access(self._synthetic_images_dir, os.W_OK):
-            self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
-            # self._synthetic_images_dir = None
+        if self._synthetic_images_dir is not None:
+            if self._synthetic_images_dir.exists():
+                if not os.access(self._synthetic_images_dir, os.W_OK):
+                    self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
+                # else: already exists and writable
+            else:
+                try:
+                    self._synthetic_images_dir.mkdir(parents=True, exist_ok=True)
+                except PermissionError:  # No write permission
+                    self.logger.warning(f"failed to create synthetic images directory `{self._synthetic_images_dir}`.")
+                    self._synthetic_images_dir = None
         if self._synthetic_images_dir is None:
-            # if os.access(self.db_dir, os.W_OK):
-            #     self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
-            # else:
-            #     self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
+            # by default, use the data directory
             self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
-            if (len(get_record_list_recursive3(self._synthetic_images_dir, rec_patterns=".+\\.(png|jpg|jpeg)$")) == 0) and (
-                not os.access(self.db_dir, os.W_OK)
-            ):
-                self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
+            if os.access(self.db_dir, os.W_OK):
+                self._synthetic_images_dir.mkdir(parents=True, exist_ok=True)
+            else:  # self.db_dir is not writable
+                if (
+                    self._synthetic_images_dir.exists()
+                    and len(get_record_list_recursive3(self._synthetic_images_dir, rec_patterns=".+\\.(png|jpg|jpeg)$")) > 0
+                ):
+                    # already exists and not empty, OK
+                    pass
+                elif not self._synthetic_images_dir.exists():
+                    # does not exist, and not writable, switch to working directory
+                    # note that at least one of db_dir and working_dir should be writable
+                    self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
+                else:  # exists but empty, raise warning
+                    self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
         self._synthetic_images_dir = Path(self._synthetic_images_dir).expanduser().resolve()
-        os.makedirs(self._synthetic_images_dir, exist_ok=True)
+        self._synthetic_images_dir.mkdir(parents=True, exist_ok=True)
         self.logger.info(f"Synthetic images directory set to: {self._synthetic_images_dir}")
 
     def load_image(self, img: Union[str, int], fmt: str = "np") -> Union[np.ndarray, Image.Image]:
