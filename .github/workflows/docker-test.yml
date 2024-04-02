@@ -9,10 +9,6 @@ on:
 env:
   status: alpha
   CINC2024_REVENGER_TEST: 1
-  # revenger_data_dir: ${{ github.workspace }}/training_data
-  # revenger_model_dir: ${{ github.workspace }}/models
-  # revenger_test_dir: ${{ github.workspace }}/test
-  # revenger_output_dir: ${{ github.workspace }}/output
   download_data_dir: ${{ github.workspace }}/download_data
   revenger_data_dir: /challenge/training_data
   revenger_model_dir: /challenge/models

@@ -197,10 +197,8 @@ def test_trainer() -> None:
 
 
 from evaluate_model import evaluate_model  # noqa: F401
-from run_model import run_model  # noqa: F401
-
-# from train_model import train_challenge_model
-from team_code import train_challenge_model  # noqa: F401
+from run_model import run as model_runner_func  # noqa: F401
+from team_code import train_digitization_model, train_dx_model  # noqa: F401
 
 
 @func_indicator("testing challenge entry")
@@ -212,7 +210,7 @@ def test_entry() -> None:
     # run the model training function (script)
     print("run model training function")
     data_folder = tmp_data_dir
-    train_challenge_model(str(data_folder), str(tmp_model_dir), verbose=2)
+    train_digitization_model(str(data_folder), str(tmp_model_dir), verbose=2)
 
     # run the model inference function (script)
     output_dir = tmp_output_dir
@@ -223,7 +221,7 @@ def test_entry() -> None:
 
     print("run model for the original data")
 
-    # run_model(
+    # model_runner_func(
     #     str(tmp_model_dir),
     #     str(data_folder),
     #     str(output_dir),
