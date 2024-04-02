@@ -164,20 +164,12 @@ class CINC2024Reader(PhysioNetDataBase):
             self._all_records = []
             self._all_subjects = []
             self._all_images = []
+            self._create_synthetic_images_dir()
             return
         self.db_dir = metadata_file.parent.resolve()
         assert (self.db_dir / self.__scp_statements_file__).exists(), f"scp_statements file not found in {self.db_dir}"
 
-        # create synthetic images directory
-        if self._synthetic_images_dir is not None and not os.access(self._synthetic_images_dir, os.W_OK):
-            self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
-            self._synthetic_images_dir = None
-        if self._synthetic_images_dir is None:
-            if os.access(self.db_dir, os.W_OK):
-                self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
-            else:
-                self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
-        os.makedirs(self._synthetic_images_dir, exist_ok=True)
+        self._create_synthetic_images_dir()
 
         # read metadata file and scp_statements file
         self._df_metadata = pd.read_csv(self.db_dir / self.__metadata_file__)
@@ -217,6 +209,18 @@ class CINC2024Reader(PhysioNetDataBase):
         self._all_records = self._df_records.index.tolist()
         self._all_subjects = self._df_records["patient_id"].unique().tolist()
         self._all_images = self._df_images.index.tolist()
+
+    def _create_synthetic_images_dir(self) -> None:
+        """Create the directory to store the synthetic images."""
+        if self._synthetic_images_dir is not None and not os.access(self._synthetic_images_dir, os.W_OK):
+            self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
+            self._synthetic_images_dir = None
+        if self._synthetic_images_dir is None:
+            if os.access(self.db_dir, os.W_OK):
+                self._synthetic_images_dir = self.db_dir / self.__synthetic_images_dir__
+            else:
+                self._synthetic_images_dir = self.working_dir / self.__synthetic_images_dir__
+        os.makedirs(self._synthetic_images_dir, exist_ok=True)
 
     def load_image(self, img: Union[str, int], fmt: str = "np") -> Union[np.ndarray, Image.Image]:
         """Load the image of a record.
