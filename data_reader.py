@@ -104,8 +104,8 @@ class CINC2024Reader(PhysioNetDataBase):
     __synthetic_images_url__ = {
         "full": None,
         "full-alt": None,
-        # "subset": "https://drive.google.com/file/d/189IRsCU40bFBOmYnAQCOtxDf20512rTa",
-        "subset": "https://drive.google.com/file/d/12R0EEa5RhT-iHuY2mqEfBXMvVzQ4Hg8k",
+        # "subset": "https://drive.google.com/u/0/uc?id=189IRsCU40bFBOmYnAQCOtxDf20512rTa",
+        "subset": "https://drive.google.com/u/0/uc?id=12R0EEa5RhT-iHuY2mqEfBXMvVzQ4Hg8k",
         "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset.zip",
     }
 
@@ -585,8 +585,8 @@ class CINC2024Reader(PhysioNetDataBase):
         """Download the subset of the database."""
         if url_is_reachable("https://drive.google.com/"):
             source = "gdrive"
-            # url = "https://drive.google.com/file/d/1ZsIPg-K9AUXq1LgI0DRLFLgviPfvx5P3"
-            url = "https://drive.google.com/file/d/1tTEsgq5HNvB-Qy9cSk_S1koeDHE7M-d2"
+            # url = "https://drive.google.com/u/0/uc?id=1ZsIPg-K9AUXq1LgI0DRLFLgviPfvx5P3"
+            url = "https://drive.google.com/u/0/uc?id=1tTEsgq5HNvB-Qy9cSk_S1koeDHE7M-d2"
             dl_file = str(self.db_dir / "ptb-xl-subset.zip")
             gdown.download(url, dl_file, quiet=False)
             _unzip_file(dl_file, self.db_dir)
