@@ -137,7 +137,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
         return self.__cache
 
     def extra_repr_keys(self) -> List[str]:
-        return ["training"]
+        return ["reader", "training"]
 
 
 class FastDataReader(ReprMixin, Dataset):

@@ -3,7 +3,6 @@
 
 import json
 import os
-import warnings
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
@@ -561,13 +560,13 @@ class CINC2024Reader(PhysioNetDataBase):
             source = "deep-psp"
             url = self.__synthetic_images_url__[f"{set_name}-alt"]
         else:
-            warnings.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
+            self.logger.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
             return
         if url is None:
-            warnings.warn("The download URL is not available yet. The synthetic images will not be downloaded.")
+            self.logger.warn("The download URL is not available yet. The synthetic images will not be downloaded.")
             return
         if not os.access(self._synthetic_images_dir, os.W_OK):
-            warnings.warn("No write access. The synthetic images will not be downloaded.")
+            self.logger.warn("No write access. The synthetic images will not be downloaded.")
             return
         dl_file = str(self._synthetic_images_dir.parent / "ptb-xl-synthetic-images.zip")
         if source == "gdrive":
@@ -575,6 +574,21 @@ class CINC2024Reader(PhysioNetDataBase):
             _unzip_file(dl_file, self._synthetic_images_dir)
         elif source == "deep-psp":
             http_get(url, self._synthetic_images_dir, extract=True)
+
+    def download_subset(self) -> None:
+        """Download the subset of the database."""
+        if url_is_reachable("https://drive.google.com/"):
+            source = "gdrive"
+            url = "https://drive.google.com/file/d/1ZsIPg-K9AUXq1LgI0DRLFLgviPfvx5P3"
+            dl_file = self.db_dir / "ptb-xl-subset.zip"
+            gdown.download(url, dl_file, quiet=False)
+            _unzip_file(dl_file, self.db_dir)
+        elif url_is_reachable("https://deep-psp.tech"):
+            source = "deep-psp"
+            url = "https://deep-psp.tech/Data/ptb-xl-subset.zip"
+            http_get(url, self.db_dir, extract=True)
+        else:
+            self.logger.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
 
 
 if __name__ == "__main__":
@@ -585,7 +599,7 @@ if __name__ == "__main__":
         "operations",
         nargs=argparse.ONE_OR_MORE,
         type=str,
-        choices=["download", "download_synthetic_images", "prepare_synthetic_images"],
+        choices=["download", "download_subset", "download_synthetic_images", "prepare_synthetic_images"],
     )
     parser.add_argument(
         "-d",
@@ -623,6 +637,9 @@ if __name__ == "__main__":
     operations = args.operations
     if "download" in operations:
         dr.download()
+
+    if "download_subset" in operations:
+        dr.download_subset()
 
     if "download_synthetic_images" in operations:
         dr.download_synthetic_images()
