@@ -250,6 +250,7 @@ def test_trainer() -> None:
         device=DEVICE,
         lazy=True,
     )
+    trainer._setup_dataloaders(ds_train, ds_test)
 
     best_model_state_dict = trainer.train()
 
