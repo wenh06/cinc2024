@@ -4,6 +4,7 @@
 import os
 import re
 import warnings
+from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
 import numpy as np
@@ -83,6 +84,9 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         else:
             raise ValueError(f"source: {source} not supported")
         self.__default_output_shape = None
+
+        # resolve issues related to backbone loading
+        self.__post_init()
 
     def train(self, mode: bool = True) -> nn.Module:
         """Set the model and preprocessor to corresponding mode.
@@ -303,3 +307,41 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
         if input_shape is None:
             self.__default_output_shape = list(output.shape[1:])
         return list(output.shape[1:])
+
+    def __post_init(self) -> None:
+        """Post initialization process.
+
+        Resolves known issues related to backbone loading.
+
+        Returns
+        -------
+        None
+
+        Known Issues
+        ------------
+        - `facebook/convnextv2` models from huggingface transformers package.
+          The last layer (layer norm) has keys "hidden_states_norms.stage4.weight" and "hidden_states_norms.stage4.bias",
+          but the model weights downloaded from huggingface model hub have keys "convnextv2.layernorm.weight" and
+          "convnextv2.layernorm.bias".
+
+        """
+        if self.source == "hf":
+            if re.search("facebook(\\/|\\-\\-)convnextv2", self.backbone_name_or_path):
+                if Path(self.backbone_name_or_path).exists():
+                    weight_file = list(Path(self.backbone_name_or_path).rglob("pytorch_model.bin"))[0]
+                else:
+                    weight_file = list(
+                        Path(f"""~/.cache/huggingface/hub/models--{self.backbone_name_or_path.replace("/", "--")}""")
+                        .expanduser()
+                        .rglob("pytorch_model.bin")
+                    )[0]
+                state_dict = torch.load(weight_file)
+                new_state_dict = {
+                    "stage4.weight": state_dict["convnextv2.layernorm.weight"],
+                    "stage4.bias": state_dict["convnextv2.layernorm.bias"],
+                }
+                self.backbone.hidden_states_norms.load_state_dict(new_state_dict)
+                print(
+                    "Loaded layer norm weights from the model weights for the last hidden_states_norms layer from "
+                    f"weights file: {str(weight_file)}"
+                )
