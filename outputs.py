@@ -24,6 +24,8 @@ class CINC2024Outputs:
         Logits of the Dx classification.
     dx_loss : Sequence[float]
         Loss for the Dx classification.
+    dx_classes : Sequence[str]
+        Class names for the Dx classification.
     digitization : Sequence[numpy.ndarray]
         Predicted digitization results.
     digitization_loss : Sequence[float]

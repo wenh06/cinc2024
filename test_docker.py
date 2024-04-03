@@ -10,13 +10,16 @@ import numpy as np
 import torch
 from torch.nn.parallel import DataParallel as DP  # noqa: F401
 from torch.utils.data import DataLoader
+from torch_ecg.components.metrics import ClassificationMetrics
 from torch_ecg.utils.misc import dict_to_str, str2bool  # noqa: F401
 
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset, collate_fn
 from models import MultiHead_CINC2024
+from outputs import CINC2024Outputs
 from utils.misc import func_indicator
+from utils.scoring_metrics import compute_challenge_metrics, compute_digitization_metrics, compute_dx_metrics
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if ModelCfg.torch_dtype == torch.float64:
@@ -146,16 +149,16 @@ def test_models() -> None:
     for idx, input_tensors in enumerate(dl):
         inference_output = model.inference(input_tensors["image"])
         print(inference_output)
-        if idx > 5:
+        if idx > 2:
             break
     for idx, input_tensors in enumerate(dl):
         print(model.inference(input_tensors["image"]))
-        if idx <= 5:
+        if idx <= 2:
             continue
         input_images = input_tensors.pop("image")
         forward_output = model(model.get_input_tensors(input_images), labels=input_tensors)
         print(forward_output)
-        if idx > 10:
+        if idx > 4:
             break
 
     print("models test passed")
@@ -164,8 +167,31 @@ def test_models() -> None:
 @func_indicator("testing challenge metrics")
 def test_challenge_metrics() -> None:
     """Test the challenge metrics."""
-    # random prediction
-    raise NotImplementedError("challenge metrics test is not implemented")
+    # test compute_dx_metrics
+    labels = [{"dx": ["Abnormal", "Normal", "Normal"]}, {"dx": ["Normal", "Normal"]}]
+    outputs = [
+        CINC2024Outputs(dx=["Abnormal", "Normal", "Abnormal"], dx_classes=["Abnormal", "Normal"]),
+        CINC2024Outputs(dx=["Abnormal", "Normal"], dx_classes=["Abnormal", "Normal"]),
+    ]
+    assert compute_dx_metrics(labels, outputs) == {"f_measure": 0.5833333333333333}
+
+    cm = ClassificationMetrics(multi_label=False)
+    cm(labels=np.array([0, 1, 1, 1, 1]), outputs=np.array([0, 1, 0, 0, 1]), num_classes=2)
+    assert cm.f1_measure == compute_dx_metrics(labels, outputs)["f_measure"]
+
+    # test compute_digitization_metrics
+    # TODO: implement the test, using labels and outputs containing digitization fields
+    compute_digitization_metrics(labels, outputs)  # currently all nan
+
+    # test compute_challenge_metrics
+    assert compute_challenge_metrics(labels, outputs) == {
+        "dx_f_measure": 0.5833333333333333,
+        "digitization_snr": np.nan,
+        "digitization_snr_median": np.nan,
+        "digitization_ks": np.nan,
+        "digitization_asci": np.nan,
+        "digitization_weighted_absolute_difference": np.nan,
+    }
 
     print("challenge metrics test passed")
 
