@@ -6,11 +6,13 @@ It is a multi-head model for CINC2024. The backbone is a pre-trained image model
 
 import os
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 import torch
 import torch.nn as nn
-from torch_ecg.cfg import CFG
+from torch_ecg.cfg import CFG, DEFAULTS
+from torch_ecg.utils.download import http_get
 from torch_ecg.utils.misc import CitationMixin, add_docstring
 from torch_ecg.utils.utils_nn import SizeMixin
 
@@ -186,3 +188,85 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
     @property
     def config(self) -> CFG:
         return self.__config
+
+    def save(self, path: Union[str, bytes, os.PathLike], train_config: CFG) -> None:
+        """Save the model to disk.
+
+        Parameters
+        ----------
+        path : `path-like`
+            Path to save the model.
+        train_config : CFG
+            Config for training the model,
+            used when one restores the model.
+
+        Returns
+        -------
+        None
+
+        """
+        if not self.config.backbone_freeze:
+            super().save(path, train_config)
+            return
+
+        # if the backbone is frozen, we need to save the heads only
+        path = Path(path)
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
+        to_save = {
+            "model_config": self.config,
+            "train_config": train_config,
+        }
+        if self.config.dx_head.include:
+            to_save["dx_head_state_dict"] = self.dx_head.state_dict()
+        if self.config.digitization_head.include:
+            to_save["digitization_head_state_dict"] = self.digitization_head.state_dict()
+        torch.save(to_save, path)
+
+    @classmethod
+    def from_remote_heads(
+        cls,
+        url: str,
+        model_dir: str,
+        filename: Optional[str] = None,
+        device: Optional[torch.device] = None,
+    ) -> "MultiHead_CINC2024":
+        """Load the model from remote heads.
+
+        Parameters
+        ----------
+        url : str
+            URL of the model.
+        model_dir : str
+            Directory to save the model.
+        filename : str, optional
+            Filename for downloading the model.
+        device : torch.device, optional
+            Device to load the model.
+
+        Returns
+        -------
+        MultiHead_CINC2024
+            The model with heads loaded from remote.
+
+        """
+        model_path = http_get(url, model_dir, extract=True, filename=filename)
+        if Path(model_path).is_dir():
+            candidates = list(Path(model_path).glob("*.pth")) + list(Path(model_path).glob("*.pt"))
+            assert len(candidates) == 1, "The directory should contain only one checkpoint file"
+            model_path = candidates[0]
+        _device = device or DEFAULTS.device
+        ckpt = torch.load(model_path, map_location=_device)
+        aux_config = ckpt.get("train_config", None) or ckpt.get("config", None)
+        assert aux_config is not None, "input checkpoint has no sufficient data to recover a model"
+        kwargs = dict(
+            config=ckpt["model_config"],
+        )
+        if "classes" in aux_config:
+            kwargs["classes"] = aux_config["classes"]
+        model = cls(**kwargs)
+        if model.config.dx_head.include:
+            model.dx_head.load_state_dict(ckpt["dx_head_state_dict"])
+        if model.config.digitization_head.include:
+            model.digitization_head.load_state_dict(ckpt["digitization_head_state_dict"])
+        return model

@@ -161,6 +161,17 @@ def test_models() -> None:
         if idx > 4:
             break
 
+    # test classmethod "from_remote_heads"
+    model = MultiHead_CINC2024.from_remote_heads(
+        url="https://www.dropbox.com/scl/fi/8osw4h8h2sjlto2rdrpuc/cinc2024-test-heads.pth.tar?rlkey=rh0jt8s0paqdqqlkrjqgvn05q&dl=1",
+        model_dir=tmp_model_dir,
+    )
+    model.to(DEVICE)
+    for idx, input_tensors in enumerate(dl):
+        print(model.inference(input_tensors["image"]))
+        if idx > 2:
+            break
+
     print("models test passed")
 
 
