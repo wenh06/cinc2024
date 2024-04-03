@@ -102,6 +102,8 @@ TrainCfg.log_step = 20
 TrainCfg.predict_dx = True
 TrainCfg.predict_digitization = False  # TODO: implement digitization prediction
 
+TrainCfg.monitor = "dx_f_measure"
+
 
 ###############################################################################
 # configurations for building deep learning models

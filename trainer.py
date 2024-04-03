@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import torch
-from config import ModelCfg, TrainCfg
 from torch import nn
 from torch.nn.parallel import DataParallel as DP
 from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
@@ -20,6 +19,7 @@ from torch_ecg.components.trainer import BaseTrainer
 from torch_ecg.utils.misc import str2bool
 from tqdm.auto import tqdm
 
+from cfg import ModelCfg, TrainCfg
 from dataset import CinC2024Dataset, collate_fn
 from models import MultiHead_CINC2024
 from utils.scoring_metrics import compute_challenge_metrics
@@ -267,7 +267,7 @@ class CINC2024Trainer(BaseTrainer):
                 torch.cuda.synchronize()
             all_outputs.append(self._model.inference(image))  # of type CINC2024Outputs
 
-        if self.val_train_loader is not None and self._criterion_key == "dx":
+        if self.val_train_loader is not None and self.train_config.predict_dx:
             log_head_num = 5
             head_scalar_preds = all_outputs[0].dx_prob[:log_head_num]
             head_preds_classes = all_outputs[0].dx[:log_head_num]
@@ -314,9 +314,7 @@ class CINC2024Trainer(BaseTrainer):
 
     @property
     def extra_required_train_config_fields(self) -> List[str]:
-        return [
-            "task",
-        ]
+        return ["predict_dx", "predict_digitization"]
 
     @property
     def save_prefix(self) -> str:
@@ -336,9 +334,10 @@ class CINC2024Trainer(BaseTrainer):
         suffix = f"{suffix}-{super().extra_log_suffix()}"
         return suffix
 
-    @property
-    def _criterion_key(self) -> str:
-        raise NotImplementedError
+    def _setup_criterion(self) -> None:
+        # since criterion is defined in the model,
+        # override this method to do nothing
+        pass
 
 
 def get_args(**kwargs: Any):

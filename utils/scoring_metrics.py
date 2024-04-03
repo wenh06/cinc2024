@@ -30,6 +30,16 @@ def compute_challenge_metrics(
         The computed challenge metrics for "dx" and "digitization" (at least one of them).
         nan values are returned for the metrics that are not computed due to missing outputs.
 
+    Examples
+    --------
+    >>> labels = [{"dx": ["Abnormal", "Normal", "Normal"]}, {"dx": ["Normal", "Normal"]}]
+    >>> outputs = [
+            CINC2024Outputs(dx=["Abnormal", "Normal", "Abnormal"], dx_classes=["Abnormal", "Normal"]),
+            CINC2024Outputs(dx=["Abnormal", "Normal"], dx_classes=["Abnormal", "Normal"])
+        ]
+    >>> compute_challenge_metrics(labels, outputs)
+    {'dx_f_measure': 0.5833333333333333}
+
     """
     metrics = {f"dx_{metric}": value for metric, value in compute_dx_metrics(labels, outputs).items()}
     metrics.update({f"digitization_{metric}": value for metric, value in compute_digitization_metrics(labels, outputs).items()})
