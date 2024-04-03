@@ -252,49 +252,58 @@ class CINC2024Trainer(BaseTrainer):
         all_outputs = []
         all_labels = []
 
-        for input_tensors in data_loader:
-            # input_tensors is assumed to be a dict of tensors, with the following items:
-            # "image" (required): the input image list
-            # "dx" (optional): the Dx classification labels
-            # "digitization" (optional): the signal reconstruction labels
-            # "mask" (optional): the mask for the signal reconstruction
-            image = self._model.get_input_tensors(input_tensors.pop("image"))
-            labels = {k: v.numpy() for k, v in input_tensors.items() if v is not None}
+        with tqdm(
+            total=len(data_loader.dataset),
+            desc="Evaluation",
+            unit="signals",
+            dynamic_ncols=True,
+            mininterval=1.0,
+            leave=False,
+        ) as pbar:
+            for input_tensors in data_loader:
+                # input_tensors is assumed to be a dict of tensors, with the following items:
+                # "image" (required): the input image list
+                # "dx" (optional): the Dx classification labels
+                # "digitization" (optional): the signal reconstruction labels
+                # "mask" (optional): the mask for the signal reconstruction
+                # image = self._model.get_input_tensors(input_tensors.pop("image"))
+                image = input_tensors.pop("image")
+                labels = {k: v.numpy() for k, v in input_tensors.items() if v is not None}
+                if "dx" in labels:
+                    # convert numeric labels to string labels
+                    labels["dx"] = np.array([self._model.config.dx_head.classes[i] for i in labels["dx"]])
 
-            all_labels.append(labels)
+                all_labels.append(labels)
 
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            all_outputs.append(self._model.inference(image))  # of type CINC2024Outputs
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                all_outputs.append(self._model.inference(image))  # of type CINC2024Outputs
+                pbar.update(len(image))
 
         if self.val_train_loader is not None and self.train_config.predict_dx:
             log_head_num = 5
             head_scalar_preds = all_outputs[0].dx_prob[:log_head_num]
             head_preds_classes = all_outputs[0].dx[:log_head_num]
-            head_labels = all_labels[0]["dx"][:log_head_num]
-            head_labels_classes = [
-                (
-                    np.array(all_outputs[0].dx_classes)[np.where(row)]
-                    if head_labels.ndim == 2
-                    else np.array(all_outputs[0].dx_classes)[row]
-                )
-                for row in head_labels
-            ]
+            head_labels_classes = all_labels[0]["dx"][:log_head_num]
             log_head_num = min(log_head_num, len(head_scalar_preds))
             for n in range(log_head_num):
                 msg = textwrap.dedent(
                     f"""
                 ----------------------------------------------
                 Dx scalar prediction:    {[round(item, 3) for item in head_scalar_preds[n].tolist()]}
-                Dx labels:               {head_labels[n].astype(int).tolist()}
-                Dx predicted classes:    {head_preds_classes[n].tolist()}
-                Dx label classes:        {head_labels_classes[n].tolist()}
+                Dx predicted classes:    {head_preds_classes[n]}
+                Dx label classes:        {head_labels_classes[n]}
                 ----------------------------------------------
                 """
                 )
                 self.log_manager.log_message(msg)
 
-        eval_res = compute_challenge_metrics(labels=all_labels, outputs=all_outputs)
+        metrics_keeps = []
+        if self.train_config.predict_dx:
+            metrics_keeps.append("dx")
+        if self.train_config.predict_digitization:
+            metrics_keeps.append("digitization")
+        eval_res = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)
 
         # in case possible memeory leakage?
         del all_labels
@@ -323,6 +332,8 @@ class CINC2024Trainer(BaseTrainer):
             prefix = f"{prefix}-dx"
         if self.model_config.digitization_head.include:
             prefix = f"{prefix}-digitization"
+        if self.model_config.backbone_freeze:
+            prefix = f"{prefix}-headonly"
         return prefix
 
     def extra_log_suffix(self) -> str:
@@ -331,6 +342,8 @@ class CINC2024Trainer(BaseTrainer):
             suffix = f"{suffix}-dx"
         if self.model_config.digitization_head.include:
             suffix = f"{suffix}-digitization"
+        if self.model_config.backbone_freeze:
+            suffix = f"{suffix}-headonly"
         suffix = f"{suffix}-{super().extra_log_suffix()}"
         return suffix
 
@@ -338,6 +351,31 @@ class CINC2024Trainer(BaseTrainer):
         # since criterion is defined in the model,
         # override this method to do nothing
         pass
+
+    def save_checkpoint(self, path: str) -> None:
+        """Save the current state of the trainer to a checkpoint.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the checkpoint
+
+        """
+        if not self.model_config.backbone_freeze:
+            super().save_checkpoint(path)
+            return
+        # if the backbone is frozen, save only the state_dict of the head(s)
+        checkpoint = {
+            "model_config": self.model_config,
+            "train_config": self.train_config,
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "epoch": self.epoch,
+        }
+        if self.model_config.dx_head.include:
+            checkpoint.update({"dx_head_state_dict": self._model.dx_head.state_dict()})
+        if self.model_config.digitization_head.include:
+            checkpoint.update({"digitization_head_state_dict": self._model.digitization_head.state_dict()})
+        torch.save(checkpoint, path)
 
 
 def get_args(**kwargs: Any):

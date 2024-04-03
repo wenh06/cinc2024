@@ -250,7 +250,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
             The model with heads loaded from remote.
 
         """
-        model_path = http_get(url, model_dir, extract=True, filename=filename)
+        model_path = http_get(url, model_dir, extract=False, filename=filename)
         if Path(model_path).is_dir():
             candidates = list(Path(model_path).glob("*.pth")) + list(Path(model_path).glob("*.pt"))
             assert len(candidates) == 1, "The directory should contain only one checkpoint file"

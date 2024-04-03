@@ -18,6 +18,7 @@ from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset, collate_fn
 from models import MultiHead_CINC2024
 from outputs import CINC2024Outputs
+from trainer import CINC2024Trainer
 from utils.misc import func_indicator
 from utils.scoring_metrics import compute_challenge_metrics, compute_digitization_metrics, compute_dx_metrics
 
@@ -140,7 +141,7 @@ def test_models() -> None:
     # ds_val._load_all_data()
     dl = DataLoader(
         dataset=ds_val,
-        batch_size=24,
+        batch_size=4,
         shuffle=True,
         pin_memory=True,
         drop_last=False,
@@ -149,16 +150,16 @@ def test_models() -> None:
     for idx, input_tensors in enumerate(dl):
         inference_output = model.inference(input_tensors["image"])
         print(inference_output)
-        if idx > 2:
+        if idx > 1:
             break
     for idx, input_tensors in enumerate(dl):
         print(model.inference(input_tensors["image"]))
-        if idx <= 2:
+        if idx <= 1:
             continue
         input_images = input_tensors.pop("image")
         forward_output = model(model.get_input_tensors(input_images), labels=input_tensors)
         print(forward_output)
-        if idx > 4:
+        if idx > 2:
             break
 
     # test classmethod "from_remote_heads"
@@ -222,13 +223,37 @@ def test_trainer() -> None:
     train_config.working_dir.mkdir(parents=True, exist_ok=True)
 
     train_config.n_epochs = 5
-    train_config.batch_size = 8  # 16G (Tesla T4)
+    train_config.batch_size = 4  # 16G (Tesla T4)
     # train_config.log_step = 20
     # # train_config.max_lr = 1.5e-3
     # train_config.early_stopping.patience = 20
 
-    print("trainer test is not implemented")
-    return
+    model_config = deepcopy(ModelCfg)
+    model = MultiHead_CINC2024(config=model_config)
+    if torch.cuda.device_count() > 1:
+        model = DP(model)
+        # model = DDP(model)
+    model = model.to(device=DEVICE)
+    if isinstance(model, DP):
+        print("model size:", model.module.module_size, model.module.module_size_)
+    else:
+        print("model size:", model.module_size, model.module_size_)
+
+    ds_train = CinC2024Dataset(train_config, training=True, lazy=True)
+    ds_test = CinC2024Dataset(train_config, training=False, lazy=True)
+    print(f"train size: {len(ds_train)}, test size: {len(ds_test)}")
+
+    trainer = CINC2024Trainer(
+        model=model,
+        model_config=model_config,
+        train_config=train_config,
+        device=DEVICE,
+        lazy=True,
+    )
+
+    best_model_state_dict = trainer.train()
+
+    print(f"""Number of saved models: {list((Path(__file__).parent / "saved_models").iterdir())}""")
 
     print("trainer test passed")
 
