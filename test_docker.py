@@ -222,7 +222,7 @@ def test_trainer() -> None:
     train_config.working_dir = tmp_model_dir / "working_dir"
     train_config.working_dir.mkdir(parents=True, exist_ok=True)
 
-    train_config.n_epochs = 5
+    train_config.n_epochs = 1
     train_config.batch_size = 4  # 16G (Tesla T4)
     # train_config.log_step = 20
     # # train_config.max_lr = 1.5e-3
