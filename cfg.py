@@ -67,7 +67,7 @@ TrainCfg.n_epochs = 80
 # TODO: automatic adjust batch size according to GPU capacity
 # https://stackoverflow.com/questions/45132809/how-to-select-batch-size-automatically-to-fit-gpu
 # GPU memory limit of the Challenge is 64GB
-TrainCfg.batch_size = 32
+TrainCfg.batch_size = 48  # 64, 128, 256
 
 # configs of optimizers and lr_schedulers
 TrainCfg.optimizer = "adamw_amsgrad"  # "sgd", "adam", "adamw"
@@ -75,13 +75,13 @@ TrainCfg.momentum = 0.949  # default values for corresponding PyTorch optimizers
 TrainCfg.betas = (0.9, 0.999)  # default values for corresponding PyTorch optimizers
 TrainCfg.decay = 1e-2  # default values for corresponding PyTorch optimizers
 
-TrainCfg.learning_rate = 2.5e-3  # 5e-4, 1e-3
+TrainCfg.learning_rate = 6.5e-3  # 5e-4, 1e-3
 TrainCfg.lr = TrainCfg.learning_rate
 
 TrainCfg.lr_scheduler = "one_cycle"  # "one_cycle", "plateau", "burn_in", "step", None
 TrainCfg.lr_step_size = 50
 TrainCfg.lr_gamma = 0.1
-TrainCfg.max_lr = 8e-3  # for "one_cycle" scheduler, to adjust via expriments
+TrainCfg.max_lr = 1.8e-2  # for "one_cycle" scheduler, to adjust via expriments
 
 # configs of callbacks, including early stopping, checkpoint, etc.
 TrainCfg.early_stopping = CFG()  # early stopping according to challenge metric
@@ -95,7 +95,7 @@ TrainCfg.keep_checkpoint_max = 10
 TrainCfg.flooding_level = 0.0  # flooding performed if positive,
 
 # configs of logging
-TrainCfg.log_step = 20
+TrainCfg.log_step = 10
 # TrainCfg.eval_every = 20
 
 
@@ -103,6 +103,8 @@ TrainCfg.predict_dx = True
 TrainCfg.predict_digitization = False  # TODO: implement digitization prediction
 
 TrainCfg.monitor = "dx_f_measure"
+
+TrainCfg.debug = True
 
 
 ###############################################################################
