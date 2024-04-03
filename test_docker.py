@@ -250,11 +250,15 @@ def test_trainer() -> None:
         device=DEVICE,
         lazy=True,
     )
-    trainer._setup_dataloaders(ds_train, ds_test)
+    # trainer._setup_dataloaders(ds_train, ds_test)
+    # switch the dataloaders to make the test faster
+    # the first dataloader is used for both training and evaluation
+    # the second dataloader is used for validation only
+    trainer._setup_dataloaders(ds_test, ds_train)
 
     best_model_state_dict = trainer.train()
 
-    print(f"""Number of saved models: {list((Path(__file__).parent / "saved_models").iterdir())}""")
+    print(f"""Saved models: {list((Path(__file__).parent / "saved_models").iterdir())}""")
 
     print("trainer test passed")
 
