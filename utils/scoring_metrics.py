@@ -1,4 +1,4 @@
-from typing import Dict, Sequence
+from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
 from torch_ecg.utils.utils_metrics import cls_to_bin  # noqa: F401
@@ -14,6 +14,7 @@ __all__ = [
 def compute_challenge_metrics(
     labels: Sequence[Dict[str, np.ndarray]],
     outputs: Sequence[CINC2024Outputs],
+    keeps: Optional[Union[str, Sequence[str]]] = None,
 ) -> Dict[str, float]:
     """Compute the challenge metrics.
 
@@ -41,8 +42,18 @@ def compute_challenge_metrics(
     {'dx_f_measure': 0.5833333333333333}
 
     """
-    metrics = {f"dx_{metric}": value for metric, value in compute_dx_metrics(labels, outputs).items()}
-    metrics.update({f"digitization_{metric}": value for metric, value in compute_digitization_metrics(labels, outputs).items()})
+    metrics = {}
+    if keeps is None:
+        keeps = ["dx", "digitization"]
+    elif isinstance(keeps, str):
+        keeps = [keeps]
+    keeps = [keep.lower() for keep in keeps]
+    if "dx" in keeps:
+        metrics.update({f"dx_{metric}": value for metric, value in compute_dx_metrics(labels, outputs).items()})
+    if "digitization" in keeps:
+        metrics.update(
+            {f"digitization_{metric}": value for metric, value in compute_digitization_metrics(labels, outputs).items()}
+        )
     return metrics
 
 
@@ -100,6 +111,13 @@ def compute_dx_metrics(
     # (both in the form of sequence of sequences of a single categorical value)
     # and convert them to binarized form internally,
     # so we don't need to convert them here
+
+    # raise error if "outputs" is not a subset of "labels"
+    if not set(np.unique(outputs).tolist()) <= set(np.unique(labels).tolist()):
+        raise ValueError(
+            "outputs should be a subset of labels, but got outputs: "
+            f"{np.unique(outputs).tolist()} and labels: {np.unique(labels).tolist()}"
+        )
     labels = labels.reshape(-1, 1)
     outputs = outputs.reshape(-1, 1)
     macro_f_measure, per_class_f_measure, classes = compute_f_measure(labels, outputs)
