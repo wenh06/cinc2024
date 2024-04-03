@@ -6,6 +6,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 __all__ = [
     "CINC2024Outputs",
@@ -22,6 +23,8 @@ class CINC2024Outputs:
         Predicted class names ("Normal", "Abnormal") of the Dx classification.
     dx_logits : Sequence[Sequence[float]]
         Logits of the Dx classification.
+    dx_prob : Sequence[Sequence[float]]
+        Probabilities of the Dx classification.
     dx_loss : Sequence[float]
         Loss for the Dx classification.
     dx_classes : Sequence[str]
@@ -37,6 +40,7 @@ class CINC2024Outputs:
 
     dx: Optional[Sequence[str]] = None
     dx_logits: Optional[Sequence[Sequence[float]]] = None
+    dx_prob: Optional[Sequence[Sequence[float]]] = None
     dx_loss: Optional[Sequence[float]] = None
     dx_classes: Optional[Sequence[str]] = None
     digitization: Optional[Sequence[np.ndarray]] = None
@@ -56,6 +60,11 @@ class CINC2024Outputs:
         if self.dx_logits is not None:
             if isinstance(self.dx_logits, torch.Tensor):
                 self.dx_logits = self.dx_logits.cpu().detach().numpy()
+        if self.dx_prob is not None:
+            if isinstance(self.dx_prob, torch.Tensor):
+                self.dx_prob = self.dx_prob.cpu().detach().numpy()
+        elif self.dx_logits is not None:
+            self.dx_prob = F.softmax(torch.from_numpy(self.dx_logits), dim=-1).cpu().detach().numpy()
         if self.dx_loss is not None:
             if isinstance(self.dx_loss, torch.Tensor):
                 self.dx_loss = self.dx_loss.cpu().detach().numpy()
