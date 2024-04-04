@@ -56,6 +56,8 @@ def echo_write_permission(folder: Union[str, Path]) -> None:
 
 
 echo_write_permission(tmp_data_dir)
+echo_write_permission(tmp_model_dir)
+echo_write_permission(tmp_output_dir)
 
 
 @func_indicator("testing dataset")
@@ -67,6 +69,8 @@ def test_dataset() -> None:
     ds_config.working_dir.mkdir(parents=True, exist_ok=True)
 
     echo_write_permission(tmp_data_dir)
+    echo_write_permission(tmp_model_dir)
+    echo_write_permission(ds_config.working_dir)
 
     ds_train = CinC2024Dataset(ds_config, training=True, lazy=True)
     ds_val = CinC2024Dataset(ds_config, training=False, lazy=True)
@@ -134,6 +138,10 @@ def test_dataset() -> None:
 @func_indicator("testing models")
 def test_models() -> None:
     """Test the models."""
+    echo_write_permission(tmp_data_dir)
+    echo_write_permission(tmp_model_dir)
+    echo_write_permission(tmp_output_dir)
+
     model = MultiHead_CINC2024()
     model.to(DEVICE)
     ds_config = deepcopy(TrainCfg)
@@ -214,6 +222,7 @@ def test_trainer() -> None:
     """Test the trainer."""
     echo_write_permission(tmp_data_dir)
     echo_write_permission(tmp_model_dir)
+    echo_write_permission(tmp_output_dir)
 
     train_config = deepcopy(TrainCfg)
     train_config.db_dir = tmp_data_dir

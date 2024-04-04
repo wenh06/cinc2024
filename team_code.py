@@ -175,7 +175,7 @@ def train_digitization_model(
     else:
         train_config.debug = False
 
-        train_config.n_epochs = 67
+        train_config.n_epochs = 37
         train_config.batch_size = 48  # 16G (Tesla T4)
         train_config.log_step = 100
         # train_config.max_lr = 1.5e-3

@@ -190,15 +190,20 @@ class CINC2024Reader(PhysioNetDataBase):
                 ),
             }
         )
-        self._df_images["path"] = self._df_images["path"].apply(lambda x: Path(x))
-        self._df_images["image"] = self._df_images["path"].apply(lambda x: x.stem)
-        self._df_images["image_header"] = self._df_images.apply(
-            lambda row: row["path"].parent / f"""{row["image"].split("-")[0]}.{self.header_ext}""", axis=1
-        )
-        self._df_images["ecg_id"] = self._df_images["image"].apply(lambda x: x[:5])
-        self._df_images["patient_id"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "patient_id"])
-        self._df_images["strat_fold"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "strat_fold"])
-        self._df_images.set_index("image", inplace=True)
+        if not self._df_images.empty:
+            self._df_images["path"] = self._df_images["path"].apply(lambda x: Path(x))
+            self._df_images["image"] = self._df_images["path"].apply(lambda x: x.stem)
+            self._df_images["image_header"] = self._df_images.apply(
+                lambda row: row["path"].parent / f"""{row["image"].split("-")[0]}.{self.header_ext}""", axis=1
+            )
+            self._df_images["ecg_id"] = self._df_images["image"].apply(lambda x: x[:5])
+            self._df_images["patient_id"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "patient_id"])
+            self._df_images["strat_fold"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "strat_fold"])
+            self._df_images.set_index("image", inplace=True)
+        else:
+            self._df_images = pd.DataFrame(columns=["path", "image", "image_header", "ecg_id", "patient_id", "strat_fold"])
+            self._df_images.set_index("image", inplace=True)
+            self.logger.warning(f"no synthetic images found in {self._synthetic_images_dir}")
 
         self._df_records = self._df_metadata.copy()
         if self.fs == 100:
@@ -216,6 +221,7 @@ class CINC2024Reader(PhysioNetDataBase):
             )
             self.logger.debug(f"subsample `{size}` records from `{len(self._df_records)}`")
             self._df_records = self._df_records.sample(n=size, random_state=DEFAULTS.SEED, replace=False)
+            self._df_images = self._df_images[self._df_images["ecg_id"].isin(self._df_records.index)]
 
         self._all_records = self._df_records.index.tolist()
         self._all_subjects = self._df_records["patient_id"].unique().tolist()
