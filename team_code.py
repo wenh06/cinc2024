@@ -35,6 +35,7 @@ from helper_code import (  # noqa: F401
 )
 from models import MultiHead_CINC2024
 from trainer import CINC2024Trainer
+from utils.misc import url_is_reachable
 
 ################################################################################
 # environment variables
@@ -77,7 +78,11 @@ REMOTE_HEADS_URL = (
     # "https://www.dropbox.com/scl/fi/8osw4h8h2sjlto2rdrpuc/cinc2024-test-heads.pth.tar?rlkey=rh0jt8s0paqdqqlkrjqgvn05q&dl=1"
     "https://www.dropbox.com/scl/fi/c38dgecawfy7rhg1gjjgq/"
     "hf-facebook-convnextv2-large-22k-384-dx-headonly4_04-04_07-32_epochloss_202.66414_metric_0.78.pth.tar"
-    "?rlkey=7za4y2o7ayarjuyyi4dawjrcq&dl=0"
+    "?rlkey=7za4y2o7ayarjuyyi4dawjrcq&dl=1"
+)
+REMOTE_HEADS_URL_ALT = (
+    "https://deep-psp.tech/Models/CinC2024/"
+    "hf-facebook-convnextv2-large-22k-384-dx-headonly4_04-04_07-32_epochloss_202.66414_metric_0.78.pth.tar"
 )
 
 ################################################################################
@@ -213,7 +218,8 @@ def train_digitization_model(
         # switch the dataloaders to make the test faster
         # the first dataloader is used for both training and evaluation
         # the second dataloader is used for validation only
-        trainer._setup_dataloaders(ds_test, ds_train)
+        # trainer._setup_dataloaders(ds_test, ds_train)
+        trainer._setup_dataloaders(ds_test, None)
     else:
         trainer._setup_dataloaders(ds_train, ds_test)
 
@@ -285,8 +291,12 @@ def load_digitization_model(model_folder: Union[str, bytes, os.PathLike], verbos
         The trained digitization model.
 
     """
+    if not url_is_reachable("https://www.dropbox.com/"):
+        remote_heads_url = REMOTE_HEADS_URL_ALT
+    else:
+        remote_heads_url = REMOTE_HEADS_URL
     model = MultiHead_CINC2024.from_remote_heads(
-        url=REMOTE_HEADS_URL,
+        url=remote_heads_url,
         model_dir=model_folder,
     )
     return model

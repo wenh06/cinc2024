@@ -17,10 +17,13 @@ from torch_ecg.utils.misc import dict_to_str, str2bool  # noqa: F401
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset, collate_fn
+from evaluate_model import run as model_evaluator_func
 from models import MultiHead_CINC2024
 from outputs import CINC2024Outputs
+from run_model import run as model_runner_func
+from team_code import REMOTE_HEADS_URL, REMOTE_HEADS_URL_ALT, train_digitization_model, train_dx_model
 from trainer import CINC2024Trainer
-from utils.misc import func_indicator
+from utils.misc import func_indicator, url_is_reachable
 from utils.scoring_metrics import compute_challenge_metrics, compute_digitization_metrics, compute_dx_metrics
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -172,12 +175,10 @@ def test_models() -> None:
             break
 
     # test classmethod "from_remote_heads"
-    remote_heads_url = (
-        # "https://www.dropbox.com/scl/fi/8osw4h8h2sjlto2rdrpuc/cinc2024-test-heads.pth.tar?rlkey=rh0jt8s0paqdqqlkrjqgvn05q&dl=1"
-        "https://www.dropbox.com/scl/fi/c38dgecawfy7rhg1gjjgq/"
-        "hf-facebook-convnextv2-large-22k-384-dx-headonly4_04-04_07-32_epochloss_202.66414_metric_0.78.pth.tar"
-        "?rlkey=7za4y2o7ayarjuyyi4dawjrcq&dl=0"
-    )
+    if not url_is_reachable("https://www.dropbox.com/"):
+        remote_heads_url = REMOTE_HEADS_URL_ALT
+    else:
+        remote_heads_url = REMOTE_HEADS_URL
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
         model_dir=tmp_model_dir,
@@ -277,11 +278,6 @@ def test_trainer() -> None:
     print(f"""Saved models: {list((Path(__file__).parent / "saved_models").iterdir())}""")
 
     print("trainer test passed")
-
-
-from evaluate_model import run as model_evaluator_func
-from run_model import run as model_runner_func
-from team_code import train_digitization_model, train_dx_model
 
 
 @func_indicator("testing challenge entry")
