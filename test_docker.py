@@ -172,8 +172,14 @@ def test_models() -> None:
             break
 
     # test classmethod "from_remote_heads"
+    remote_heads_url = (
+        # "https://www.dropbox.com/scl/fi/8osw4h8h2sjlto2rdrpuc/cinc2024-test-heads.pth.tar?rlkey=rh0jt8s0paqdqqlkrjqgvn05q&dl=1"
+        "https://www.dropbox.com/scl/fi/c38dgecawfy7rhg1gjjgq/"
+        "hf-facebook-convnextv2-large-22k-384-dx-headonly4_04-04_07-32_epochloss_202.66414_metric_0.78.pth.tar"
+        "?rlkey=7za4y2o7ayarjuyyi4dawjrcq&dl=0"
+    )
     model = MultiHead_CINC2024.from_remote_heads(
-        url="https://www.dropbox.com/scl/fi/8osw4h8h2sjlto2rdrpuc/cinc2024-test-heads.pth.tar?rlkey=rh0jt8s0paqdqqlkrjqgvn05q&dl=1",
+        url=remote_heads_url,
         model_dir=tmp_model_dir,
     )
     model.to(DEVICE)
