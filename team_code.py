@@ -144,14 +144,14 @@ def train_digitization_model(
     os.makedirs(model_folder, exist_ok=True)
 
     # Create the MODEL_DIR and SYNTHETIC_IMAGE_DIR subfolders
-    Path(model_folder / MODEL_DIR).mkdir(parents=True, exist_ok=True)
-    Path(model_folder / SYNTHETIC_IMAGE_DIR).mkdir(parents=True, exist_ok=True)
-    Path(model_folder / "working_dir").mkdir(parents=True, exist_ok=True)
+    (Path(model_folder) / MODEL_DIR).mkdir(parents=True, exist_ok=True)
+    (Path(model_folder) / SYNTHETIC_IMAGE_DIR).mkdir(parents=True, exist_ok=True)
+    (Path(model_folder) / "working_dir").mkdir(parents=True, exist_ok=True)
 
     reader_kwargs = {
         "db_dir": data_folder,
-        "working_dir": Path(model_folder / "working_dir"),
-        "synthetic_images_dir": Path(model_folder / SYNTHETIC_IMAGE_DIR),
+        "working_dir": (Path(model_folder) / "working_dir"),
+        "synthetic_images_dir": (Path(model_folder) / SYNTHETIC_IMAGE_DIR),
     }
 
     # Download the synthetic images
