@@ -191,6 +191,10 @@ def download_from_google_drive(url: str, output: Union[str, Path], quiet: bool =
     # remove trailing query string
     redirect_url = re.sub("/view\\?.*$", "", url)
     if re.match("^https://drive.google.com/file/d/", redirect_url) is not None:
-        redirect_url = re.sub("^https://drive.google.com/file/d/", "https://drive.google.com/u/0/uc?id=", redirect_url)
+        redirect_url = re.sub(
+            "^https://drive.google.com/file/d/",
+            "https://drive.google.com/u/0/uc?id=",
+            redirect_url,
+        )
         print(f"Redirecting to {redirect_url}")
     gdown.download(redirect_url, output, quiet=quiet)

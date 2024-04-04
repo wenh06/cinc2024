@@ -614,6 +614,9 @@ class CINC2024Reader(PhysioNetDataBase):
         elif source == "deep-psp":
             http_get(url, self._synthetic_images_dir, extract=True)
 
+        # reload the records
+        self._ls_rec()
+
     def download_subset(self) -> None:
         """Download the subset of the database."""
         if url_is_reachable("https://drive.google.com/"):
@@ -629,6 +632,9 @@ class CINC2024Reader(PhysioNetDataBase):
             http_get(url, self.db_dir, extract=True)
         else:
             self.logger.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
+
+        # reload the records
+        self._ls_rec()
 
 
 if __name__ == "__main__":

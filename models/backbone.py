@@ -337,11 +337,13 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
                     )[0]
                 state_dict = torch.load(weight_file)
                 new_state_dict = {
-                    "stage4.weight": state_dict["convnextv2.layernorm.weight"],
-                    "stage4.bias": state_dict["convnextv2.layernorm.bias"],
+                    "stage4.weight": state_dict["convnextv2.layernorm.weight"].detach().clone(),
+                    "stage4.bias": state_dict["convnextv2.layernorm.bias"].detach().clone(),
                 }
                 self.backbone.hidden_states_norms.load_state_dict(new_state_dict)
                 print(
                     "Loaded layer norm weights from the model weights for the last hidden_states_norms layer from "
                     f"weights file: {str(weight_file)}"
                 )
+                # remove `state_dict` to avoid potential memory leak
+                del state_dict
