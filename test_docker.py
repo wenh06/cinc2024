@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from torch.nn.parallel import DataParallel as DP  # noqa: F401
 from torch.utils.data import DataLoader
+from torch_ecg.cfg import CFG
 from torch_ecg.components.metrics import ClassificationMetrics
 from torch_ecg.utils.misc import dict_to_str, str2bool  # noqa: F401
 
@@ -263,9 +264,9 @@ def test_trainer() -> None:
     print("trainer test passed")
 
 
-from evaluate_model import evaluate_model  # noqa: F401
-from run_model import run as model_runner_func  # noqa: F401
-from team_code import train_digitization_model, train_dx_model  # noqa: F401
+from evaluate_model import run as model_evaluator_func
+from run_model import run as model_runner_func
+from team_code import train_digitization_model, train_dx_model
 
 
 @func_indicator("testing challenge entry")
@@ -278,46 +279,32 @@ def test_entry() -> None:
     print("run model training function")
     data_folder = tmp_data_dir
     train_digitization_model(str(data_folder), str(tmp_model_dir), verbose=2)
+    train_dx_model(str(data_folder), str(tmp_model_dir), verbose=2)
 
     # run the model inference function (script)
     output_dir = tmp_output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("entry test is not implemented")
-    return
-
     print("run model for the original data")
 
-    # model_runner_func(
-    #     str(tmp_model_dir),
-    #     str(data_folder),
-    #     str(output_dir),
-    #     allow_failures=False,
-    #     verbose=2,
-    # )
+    model_runner_args = CFG(
+        data_folder=str(data_folder),
+        model_folder=str(tmp_model_dir),
+        output_folder=str(output_dir),
+        allow_failures=False,
+        verbose=2,
+    )
+    model_runner_func(model_runner_args)
 
     print("evaluate model for the original data")
 
-    # (
-    #     challenge_score,
-    #     auroc_outcomes,
-    #     auprc_outcomes,
-    #     accuracy_outcomes,
-    #     f_measure_outcomes,
-    #     mse_cpcs,
-    #     mae_cpcs,
-    # ) = evaluate_model(str(data_folder), str(output_dir))
-    # eval_res = {
-    #     "challenge_score": challenge_score,
-    #     "auroc_outcomes": auroc_outcomes,
-    #     "auprc_outcomes": auprc_outcomes,
-    #     "accuracy_outcomes": accuracy_outcomes,
-    #     "f_measure_outcomes": f_measure_outcomes,
-    #     "mse_cpcs": mse_cpcs,
-    #     "mae_cpcs": mae_cpcs,
-    # }
-
-    # print(f"Evaluation results: {dict_to_str(eval_res)}")
+    model_evaluator_args = CFG(
+        label_folder=str(data_folder),
+        output_folder=str(output_dir),
+        extra_scores=True,
+        score_file=None,
+    )
+    model_evaluator_func(model_evaluator_args)  # metrics are printed
 
     print("entry test passed")
 
@@ -333,7 +320,8 @@ if __name__ == "__main__":
         #     "please set CINC2024_REVENGER_TEST to true (1, y, yes, true, etc.) to run the test"
         # )
         print("Test is skipped.")
-        print("Please set CINC2024_REVENGER_TEST to true (1, y, yes, true, etc.) to run the test")
+        print("Please set CINC2024_REVENGER_TEST to true (1, y, yes, true, etc.) to run the test:")
+        print("CINC2024_REVENGER_TEST=1 python test_docker.py")
         exit(0)
 
     print("#" * 80)
@@ -344,9 +332,9 @@ if __name__ == "__main__":
     print(f"tmp_output_dir: {str(tmp_output_dir)}")
     print("#" * 80)
 
-    # test_dataset()  # passed
+    test_dataset()  # passed
     # test_models()  # passed
-    test_challenge_metrics()
-    test_trainer()  # directly run test_entry
-    # test_entry()
+    test_challenge_metrics()  # passed
+    # test_trainer()  # directly run test_entry
+    test_entry()
     # set_entry_test_flag(False)

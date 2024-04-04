@@ -334,7 +334,7 @@ class CINC2024Trainer(BaseTrainer):
             prefix = f"{prefix}-digitization"
         if self.model_config.backbone_freeze:
             prefix = f"{prefix}-headonly"
-        return prefix
+        return prefix + "_"
 
     def extra_log_suffix(self) -> str:
         suffix = f"""{self.model_config.backbone_source}-{self.model_config.backbone_name.replace("/", "-")}"""
