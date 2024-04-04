@@ -287,7 +287,7 @@ def test_entry() -> None:
     echo_write_permission(tmp_model_dir)
 
     # run the model training function (script)
-    print("run model training function")
+    print("   Run model training function   ".center(80, "#"))
     data_folder = tmp_data_dir
     train_digitization_model(str(data_folder), str(tmp_model_dir), verbose=2)
     train_dx_model(str(data_folder), str(tmp_model_dir), verbose=2)
@@ -296,7 +296,7 @@ def test_entry() -> None:
     output_dir = tmp_output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("run model for the original data")
+    print("   Run model   ".center(80, "#"))
 
     model_runner_args = CFG(
         data_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
@@ -307,7 +307,7 @@ def test_entry() -> None:
     )
     model_runner_func(model_runner_args)
 
-    print("evaluate model for the original data")
+    print("   Evaluate model   ".center(80, "#"))
 
     model_evaluator_args = CFG(
         label_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
@@ -317,7 +317,7 @@ def test_entry() -> None:
     )
     model_evaluator_func(model_evaluator_args)  # metrics are printed
 
-    print("entry test passed")
+    print("Entry test passed")
 
 
 test_team_code = test_entry  # alias

@@ -104,9 +104,10 @@ class CINC2024Reader(PhysioNetDataBase):
     __synthetic_images_url__ = {
         "full": None,
         "full-alt": None,
-        "subset": "https://drive.google.com/u/0/uc?id=189IRsCU40bFBOmYnAQCOtxDf20512rTa",
+        # "subset": "https://drive.google.com/u/0/uc?id=189IRsCU40bFBOmYnAQCOtxDf20512rTa",
         # "subset": "https://drive.google.com/u/0/uc?id=12R0EEa5RhT-iHuY2mqEfBXMvVzQ4Hg8k",
-        "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset.zip",
+        "subset": "https://drive.google.com/u/0/uc?id=14XjuwvNX0uD8ePqHJAKEP3D3yuF-_jgL",
+        "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset-tiny.zip",
     }
 
     def __init__(
@@ -628,13 +629,14 @@ class CINC2024Reader(PhysioNetDataBase):
         if url_is_reachable("https://drive.google.com/"):
             source = "gdrive"
             # url = "https://drive.google.com/u/0/uc?id=1ZsIPg-K9AUXq1LgI0DRLFLgviPfvx5P3"
-            url = "https://drive.google.com/u/0/uc?id=1tTEsgq5HNvB-Qy9cSk_S1koeDHE7M-d2"
+            # url = "https://drive.google.com/u/0/uc?id=1tTEsgq5HNvB-Qy9cSk_S1koeDHE7M-d2"
+            url = "https://drive.google.com/u/0/uc?id=1jURTzDKhou47Zx_v1dMYQdvK4OJ20wWv"
             dl_file = str(self.db_dir / "ptb-xl-subset.zip")
             gdown.download(url, dl_file, quiet=False)
             _unzip_file(dl_file, self.db_dir)
         elif url_is_reachable("https://deep-psp.tech"):
             source = "deep-psp"
-            url = "https://deep-psp.tech/Data/ptb-xl-subset.zip"
+            url = "https://deep-psp.tech/Data/ptb-xl-subset-tiny.zip"
             http_get(url, self.db_dir, extract=True)
         else:
             self.logger.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
