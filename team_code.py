@@ -173,7 +173,8 @@ def train_digitization_model(
     # train_config.model_dir = model_folder
     train_config.working_dir = Path(model_folder) / "working_dir"
     if TEST_FLAG:
-        train_config.debug = True
+        # train_config.debug = True
+        train_config.debug = False
 
         train_config.n_epochs = 1
         train_config.batch_size = 4  # 16G (Tesla T4)
@@ -298,6 +299,7 @@ def load_digitization_model(model_folder: Union[str, bytes, os.PathLike], verbos
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
         model_dir=model_folder,
+        device=DEVICE,
     )
     return model
 

@@ -104,8 +104,8 @@ class CINC2024Reader(PhysioNetDataBase):
     __synthetic_images_url__ = {
         "full": None,
         "full-alt": None,
-        # "subset": "https://drive.google.com/u/0/uc?id=189IRsCU40bFBOmYnAQCOtxDf20512rTa",
-        "subset": "https://drive.google.com/u/0/uc?id=12R0EEa5RhT-iHuY2mqEfBXMvVzQ4Hg8k",
+        "subset": "https://drive.google.com/u/0/uc?id=189IRsCU40bFBOmYnAQCOtxDf20512rTa",
+        # "subset": "https://drive.google.com/u/0/uc?id=12R0EEa5RhT-iHuY2mqEfBXMvVzQ4Hg8k",
         "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset.zip",
     }
 

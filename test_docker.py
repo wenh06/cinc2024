@@ -21,7 +21,7 @@ from evaluate_model import run as model_evaluator_func
 from models import MultiHead_CINC2024
 from outputs import CINC2024Outputs
 from run_model import run as model_runner_func
-from team_code import REMOTE_HEADS_URL, REMOTE_HEADS_URL_ALT, train_digitization_model, train_dx_model
+from team_code import REMOTE_HEADS_URL, REMOTE_HEADS_URL_ALT, SYNTHETIC_IMAGE_DIR, train_digitization_model, train_dx_model
 from trainer import CINC2024Trainer
 from utils.misc import func_indicator, url_is_reachable
 from utils.scoring_metrics import compute_challenge_metrics, compute_digitization_metrics, compute_dx_metrics
@@ -182,8 +182,8 @@ def test_models() -> None:
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
         model_dir=tmp_model_dir,
+        device=DEVICE,
     )
-    model.to(DEVICE)
     for idx, input_tensors in enumerate(dl):
         print(model.inference(input_tensors["image"]))
         if idx > 2:
@@ -299,7 +299,7 @@ def test_entry() -> None:
     print("run model for the original data")
 
     model_runner_args = CFG(
-        data_folder=str(data_folder),
+        data_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
         model_folder=str(tmp_model_dir),
         output_folder=str(output_dir),
         allow_failures=False,
@@ -310,7 +310,7 @@ def test_entry() -> None:
     print("evaluate model for the original data")
 
     model_evaluator_args = CFG(
-        label_folder=str(data_folder),
+        label_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
         output_folder=str(output_dir),
         extra_scores=True,
         score_file=None,
