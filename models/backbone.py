@@ -17,7 +17,7 @@ import transformers
 from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import SizeMixin
 
-from cfg import INPUT_IMAGE_TYPES
+from const import INPUT_IMAGE_TYPES
 
 __all__ = ["ImageBackbone"]
 

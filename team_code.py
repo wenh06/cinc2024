@@ -21,6 +21,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
 from torch_ecg.utils.misc import str2bool
 
 from cfg import ModelCfg, TrainCfg
+from const import REMOTE_HEADS_URLS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset
 from helper_code import (  # noqa: F401
@@ -73,17 +74,6 @@ SYNTHETIC_IMAGE_DIR = "revenger_synthetic_image_dir"
 # microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft  (787MB)
 ModelCfg.backbone_name = "facebook/convnextv2-large-22k-384"
 ModelCfg.backbone_source = "hf"
-
-REMOTE_HEADS_URL = (
-    # "https://www.dropbox.com/scl/fi/8osw4h8h2sjlto2rdrpuc/cinc2024-test-heads.pth.tar?rlkey=rh0jt8s0paqdqqlkrjqgvn05q&dl=1"
-    "https://www.dropbox.com/scl/fi/c38dgecawfy7rhg1gjjgq/"
-    "hf-facebook-convnextv2-large-22k-384-dx-headonly4_04-04_07-32_epochloss_202.66414_metric_0.78.pth.tar"
-    "?rlkey=7za4y2o7ayarjuyyi4dawjrcq&dl=1"
-)
-REMOTE_HEADS_URL_ALT = (
-    "https://deep-psp.tech/Models/CinC2024/"
-    "hf-facebook-convnextv2-large-22k-384-dx-headonly4_04-04_07-32_epochloss_202.66414_metric_0.78.pth.tar"
-)
 
 ################################################################################
 
@@ -191,6 +181,7 @@ def train_digitization_model(
         train_config.early_stopping.patience = int(train_config.n_epochs * 0.45)
 
     model_config = deepcopy(ModelCfg)
+    # model_config.backbone_name = "facebook/convnextv2-atto-1k-224"
 
     model = MultiHead_CINC2024(config=model_config)
     if torch.cuda.device_count() > 1:
@@ -292,10 +283,10 @@ def load_digitization_model(model_folder: Union[str, bytes, os.PathLike], verbos
         The trained digitization model.
 
     """
-    if not url_is_reachable("https://www.dropbox.com/"):
-        remote_heads_url = REMOTE_HEADS_URL_ALT
+    if url_is_reachable("https://www.dropbox.com/"):
+        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["dropbox"]
     else:
-        remote_heads_url = REMOTE_HEADS_URL
+        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["deep-psp"]
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
         model_dir=model_folder,

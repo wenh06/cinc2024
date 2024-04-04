@@ -15,13 +15,14 @@ from torch_ecg.components.metrics import ClassificationMetrics
 from torch_ecg.utils.misc import dict_to_str, str2bool  # noqa: F401
 
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
+from const import REMOTE_HEADS_URLS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset, collate_fn
 from evaluate_model import run as model_evaluator_func
 from models import MultiHead_CINC2024
 from outputs import CINC2024Outputs
 from run_model import run as model_runner_func
-from team_code import REMOTE_HEADS_URL, REMOTE_HEADS_URL_ALT, SYNTHETIC_IMAGE_DIR, train_digitization_model, train_dx_model
+from team_code import SYNTHETIC_IMAGE_DIR, train_digitization_model, train_dx_model
 from trainer import CINC2024Trainer
 from utils.misc import func_indicator, url_is_reachable
 from utils.scoring_metrics import compute_challenge_metrics, compute_digitization_metrics, compute_dx_metrics
@@ -175,10 +176,10 @@ def test_models() -> None:
             break
 
     # test classmethod "from_remote_heads"
-    if not url_is_reachable("https://www.dropbox.com/"):
-        remote_heads_url = REMOTE_HEADS_URL_ALT
+    if url_is_reachable("https://www.dropbox.com/"):
+        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["dropbox"]
     else:
-        remote_heads_url = REMOTE_HEADS_URL
+        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["deep-psp"]
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
         model_dir=tmp_model_dir,

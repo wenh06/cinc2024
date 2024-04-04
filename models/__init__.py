@@ -16,7 +16,8 @@ from torch_ecg.utils.download import http_get
 from torch_ecg.utils.misc import CitationMixin, add_docstring
 from torch_ecg.utils.utils_nn import SizeMixin
 
-from cfg import INPUT_IMAGE_TYPES, ModelCfg
+from cfg import ModelCfg
+from const import INPUT_IMAGE_TYPES
 from outputs import CINC2024Outputs
 from utils.misc import url_is_reachable
 

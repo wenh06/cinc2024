@@ -4,10 +4,8 @@ Configurations for models, training, etc., as well as some constants.
 
 import pathlib
 from copy import deepcopy
-from typing import List, Union
 
 import numpy as np
-import PIL
 import torch
 from torch_ecg.cfg import CFG
 from torch_ecg.model_configs import linear
@@ -16,16 +14,10 @@ __all__ = [
     "BaseCfg",
     "TrainCfg",
     "ModelCfg",
-    "INPUT_IMAGE_TYPES",
 ]
 
 
 _BASE_DIR = pathlib.Path(__file__).absolute().parent
-
-
-INPUT_IMAGE_TYPES = Union[
-    torch.Tensor, List[torch.Tensor], np.ndarray, List[np.ndarray], PIL.Image.Image, List[PIL.Image.Image]
-]
 
 
 ###############################################################################
