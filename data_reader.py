@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
@@ -128,7 +129,7 @@ class CINC2024Reader(PhysioNetDataBase):
         ), "neither db_dir nor working_dir is writable"
 
         self.src_datetime_fmt = "%Y-%m-%d %H:%M:%S"
-        self.dst_datetime_fmt = "%d/%m/%Y %H:%M:%S"
+        self.dst_datetime_fmt = "%H:%M:%S %d/%m/%Y"
         self.gen_img_default_fs = 100
         self.gen_img_pattern = "[\\d]{5}_[lh]r-[\\d]+.png"
 
@@ -231,7 +232,7 @@ class CINC2024Reader(PhysioNetDataBase):
     def _create_synthetic_images_dir(self) -> None:
         """Create the directory to store the synthetic images."""
         if self._synthetic_images_dir is not None:
-            if self._synthetic_images_dir.exists():
+            if Path(self._synthetic_images_dir).exists():
                 if not os.access(self._synthetic_images_dir, os.W_OK):
                     self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
                 # else: already exists and writable
@@ -624,6 +625,10 @@ class CINC2024Reader(PhysioNetDataBase):
         # reload the records
         self._ls_rec()
 
+        # fix the datetime format of the header files if necessary
+        self.logger.info("Fixing the datetime format of the header files in the synthetic images directory.")
+        self.fix_datetime_format(self._synthetic_images_dir)
+
     def download_subset(self) -> None:
         """Download the subset of the database."""
         if url_is_reachable("https://drive.google.com/"):
@@ -643,6 +648,38 @@ class CINC2024Reader(PhysioNetDataBase):
 
         # reload the records
         self._ls_rec()
+
+    @staticmethod
+    def fix_datetime_format(folder: Union[str, bytes, os.PathLike]) -> None:
+        """Fix the datetime format of the header files in the folder.
+
+        In the first time of synthetic image generation, the datetime format of the header files is incorrect.
+        It was mistakenly set as "%d/%m/%Y %H:%M:%S" instead of the correct form "%H:%M:%S %d/%m/%Y".
+
+        Parameters
+        ----------
+        folder : `path-like`
+            The folder containing the header files.
+
+        Returns
+        -------
+        None
+
+        """
+        folder = Path(folder)
+        wrong_pattern = "\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}$"
+        header_files = list(folder.rglob("*.hea"))
+        for header_file in tqdm(header_files, desc="Fixing datetime format", dynamic_ncols=True, mininterval=1.0):
+            lines = header_file.read_text().splitlines()
+            # check the first line, where the recording date is located
+            correction_flag = False
+            if re.search(wrong_pattern, lines[0]):
+                wrong_datetime_str = re.findall(wrong_pattern, lines[0])[0]
+                correct_datetime_str = datetime.strptime(wrong_datetime_str, "%d/%m/%Y %H:%M:%S").strftime("%H:%M:%S %d/%m/%Y")
+                lines[0] = lines[0].replace(wrong_datetime_str, correct_datetime_str)
+                correction_flag = True
+            if correction_flag:
+                header_file.write_text("\n".join(lines))
 
 
 if __name__ == "__main__":
