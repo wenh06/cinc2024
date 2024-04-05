@@ -30,8 +30,15 @@ REMOTE_HEADS_URLS = {
         ),
     },
     "hf--facebook/convnextv2-atto-1k-224": {
-        "dropbox": None,
-        "deep-psp": None,
+        "dropbox": (
+            "https://www.dropbox.com/scl/fi/u62mdypjculkgrkm4skj2/"
+            "hf-facebook-convnextv2-atto-1k-224-dx-headonly__15_04-05_07-06_epochloss_224.66350_metric_0.76.pth.tar"
+            "?rlkey=iotmbhnnzwicf14b5cpjiymda&dl=1"
+        ),
+        "deep-psp": (
+            "https://deep-psp.tech:9999/edit/Download/Models/CinC2024/"
+            "hf-facebook-convnextv2-atto-1k-224-dx-headonly__15_04-05_07-06_epochloss_224.66350_metric_0.76.pth.tar"
+        ),
     },
     "hf--facebook/convnextv2-nano-22k-384": {
         "dropbox": None,

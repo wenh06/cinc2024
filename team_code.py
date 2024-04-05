@@ -174,11 +174,11 @@ def train_digitization_model(
     else:
         train_config.debug = False
 
-        train_config.n_epochs = 37
+        train_config.n_epochs = 25
         train_config.batch_size = 48  # 16G (Tesla T4)
         train_config.log_step = 100
         # train_config.max_lr = 1.5e-3
-        train_config.early_stopping.patience = int(train_config.n_epochs * 0.45)
+        train_config.early_stopping.patience = train_config.n_epochs // 3
 
     model_config = deepcopy(ModelCfg)
     # model_config.backbone_name = "facebook/convnextv2-atto-1k-224"

@@ -250,6 +250,10 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         MultiHead_CINC2024
             The model with heads loaded from remote.
 
+        TODO
+        ----
+        Skip downloading if the model is already downloaded.
+
         """
         model_path = http_get(url, model_dir, extract=False, filename=filename)
         if Path(model_path).is_dir():

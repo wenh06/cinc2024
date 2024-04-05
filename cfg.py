@@ -55,7 +55,7 @@ TrainCfg.checkpoints.mkdir(exist_ok=True)
 TrainCfg.train_ratio = 0.9
 
 # configs of training epochs, batch, etc.
-TrainCfg.n_epochs = 27
+TrainCfg.n_epochs = 25
 # TODO: automatic adjust batch size according to GPU capacity
 # https://stackoverflow.com/questions/45132809/how-to-select-batch-size-automatically-to-fit-gpu
 # GPU memory limit of the Challenge is 64GB
@@ -78,7 +78,7 @@ TrainCfg.max_lr = 6.7e-3  # for "one_cycle" scheduler, to adjust via expriments
 # configs of callbacks, including early stopping, checkpoint, etc.
 TrainCfg.early_stopping = CFG()  # early stopping according to challenge metric
 TrainCfg.early_stopping.min_delta = 0.001  # should be non-negative
-TrainCfg.early_stopping.patience = TrainCfg.n_epochs // 2
+TrainCfg.early_stopping.patience = TrainCfg.n_epochs // 3
 TrainCfg.keep_checkpoint_max = 10
 
 # configs of loss function
