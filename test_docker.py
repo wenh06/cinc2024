@@ -176,13 +176,14 @@ def test_models() -> None:
             break
 
     # test classmethod "from_remote_heads"
+    key = f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"
     if url_is_reachable("https://www.dropbox.com/"):
-        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["dropbox"]
+        remote_heads_url = REMOTE_HEADS_URLS[key]["dropbox"]
     else:
-        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["deep-psp"]
+        remote_heads_url = REMOTE_HEADS_URLS[key]["deep-psp"]
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
-        model_dir=tmp_model_dir,
+        model_dir=(tmp_model_dir / key.replace("/", "--")),
         device=DEVICE,
     )
     for idx, input_tensors in enumerate(dl):

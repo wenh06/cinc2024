@@ -283,13 +283,15 @@ def load_digitization_model(model_folder: Union[str, bytes, os.PathLike], verbos
         The trained digitization model.
 
     """
+    key = f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"
     if url_is_reachable("https://www.dropbox.com/"):
-        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["dropbox"]
+        remote_heads_url = REMOTE_HEADS_URLS[key]["dropbox"]
     else:
-        remote_heads_url = REMOTE_HEADS_URLS[f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"]["deep-psp"]
+        remote_heads_url = REMOTE_HEADS_URLS[key]["deep-psp"]
+    model_dir = Path(model_folder).resolve() / MODEL_DIR / key.replace("/", "--")
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
-        model_dir=model_folder,
+        model_dir=model_dir,
         device=DEVICE,
     )
     return model
