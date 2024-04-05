@@ -343,18 +343,34 @@ def run_digitization_model(
         The digitized signal.
 
     """
-    # Load the dimensions of the signal.
-    # header_file = get_header_file(record)
-    # header = load_text(header_file)
-
-    # num_samples = get_num_samples(header)
-    # num_signals = get_num_signals(header)
-
     input_images = load_image(record)  # a list of PIL.Image.Image
     # convert to RGB (it's possible that the images are RGBA format)
     input_images = [img.convert("RGB") for img in input_images]
     output = digitization_model.inference(input_images)  # of type CINC2024Outputs
-    return output.digitization
+
+    if output.digitization is not None:
+        return output.digitization
+
+    use_workaround = True
+
+    if use_workaround:
+        # workaround for Dx prediction only by returning a random signal (or nan values),
+        # to avoid the FileNotFoundError in the evaluation script.
+        # The following code block comes from the official baseline.
+
+        # Load the dimensions of the signal.
+        header_file = get_header_file(record)
+        header = load_text(header_file)
+
+        num_samples = get_num_samples(header)
+        num_signals = get_num_signals(header)
+
+        signal = np.random.default_rng().uniform(low=-1000, high=1000, size=(num_samples, num_signals))
+        signal = np.asarray(signal, dtype=np.int16)
+        return signal
+
+    else:
+        return None
 
 
 # Run your trained dx classification model. This function is *required*. You should edit this function to add your code, but do
