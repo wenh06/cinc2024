@@ -1,5 +1,6 @@
 """Constants for the project."""
 
+import os
 from pathlib import Path
 from typing import List, Union
 
@@ -20,11 +21,25 @@ INPUT_IMAGE_TYPES = Union[
 ]
 
 
-MODEL_CACHE_DIR = str(Path("~/.cache/revenger_model_dir_cinc2024").expanduser().resolve())
+MODEL_CACHE_DIR = str(
+    Path(
+        # "~/.cache/revenger_model_dir_cinc2024"
+        os.environ.get("MODEL_CACHE_DIR", "~/.cache/revenger_model_dir_cinc2024")
+    )
+    .expanduser()
+    .resolve()
+)
 Path(MODEL_CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
 
-DATA_CACHE_DIR = str(Path("~/.cache/revenger_data_dir_cinc2024").expanduser().resolve())
+DATA_CACHE_DIR = str(
+    Path(
+        # "~/.cache/revenger_data_dir_cinc2024"
+        os.environ.get("DATA_CACHE_DIR", "~/.cache/revenger_data_dir_cinc2024")
+    )
+    .expanduser()
+    .resolve()
+)
 Path(DATA_CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
 

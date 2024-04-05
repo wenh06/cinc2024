@@ -12,6 +12,9 @@ FROM pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
 # which might stuck the docker build process
 ENV DEBIAN_FRONTEND=noninteractive
 
+# ENV MODEL_CACHE_DIR=/root/.cache/revenger_model_dir_cinc2024
+# ENV DATA_CACHE_DIR=/root/.cache/revenger_data_dir_cinc2024
+
 
 # check distribution of the base image
 RUN cat /etc/issue
@@ -85,7 +88,8 @@ COPY ./ /challenge
 
 # Download synthetic image data and pretrained models
 RUN python post_docker_build.py
-# check if the data is downloaded
+# check if the data and model are downloaded
+# TODO: pass the path as environment variables
 RUN du -sh ~/.cache/revenger_model_dir_cinc2024
 RUN du -sh ~/.cache/revenger_data_dir_cinc2024
 
