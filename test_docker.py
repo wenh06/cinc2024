@@ -16,14 +16,14 @@ from torch_ecg.components.metrics import ClassificationMetrics
 from torch_ecg.utils.misc import dict_to_str, str2bool  # noqa: F401
 
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
-from const import REMOTE_HEADS_URLS
+from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset, collate_fn
 from evaluate_model import run as model_evaluator_func
 from models import MultiHead_CINC2024
 from outputs import CINC2024Outputs
 from run_model import run as model_runner_func
-from team_code import SYNTHETIC_IMAGE_DIR, train_digitization_model, train_dx_model
+from team_code import train_digitization_model, train_dx_model
 from trainer import CINC2024Trainer
 from utils.misc import func_indicator, url_is_reachable
 from utils.scoring_metrics import compute_challenge_metrics, compute_digitization_metrics, compute_dx_metrics
@@ -34,6 +34,9 @@ if ModelCfg.torch_dtype == torch.float64:
     DTYPE = np.float64
 else:
     DTYPE = np.float32
+
+
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 
 tmp_data_dir = Path(os.environ.get("revenger_data_dir", _BASE_DIR / "tmp" / "CINC2024")).resolve()
@@ -235,9 +238,11 @@ def test_trainer() -> None:
     echo_write_permission(tmp_output_dir)
 
     train_config = deepcopy(TrainCfg)
-    train_config.db_dir = tmp_data_dir
+    # train_config.db_dir = tmp_data_dir
     # train_config.model_dir = model_folder
     # train_config.final_model_filename = "final_model.pth.tar"
+    train_config.db_dir = Path(DATA_CACHE_DIR)
+    train_config.synthetic_images_dir = Path(DATA_CACHE_DIR) / "synthetic_images"
     train_config.debug = True
     train_config.working_dir = tmp_model_dir / "working_dir"
     train_config.working_dir.mkdir(parents=True, exist_ok=True)
@@ -302,7 +307,8 @@ def test_entry() -> None:
     print("   Run model   ".center(80, "#"))
 
     model_runner_args = CFG(
-        data_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
+        # data_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
+        data_folder=str(Path(DATA_CACHE_DIR) / "synthetic_images"),
         model_folder=str(tmp_model_dir),
         output_folder=str(output_dir),
         allow_failures=False,
@@ -314,15 +320,15 @@ def test_entry() -> None:
 
     # workaround for Dx prediction only:
     # copy the .dat files from the synthetic image folder to the output folder
-    for src_file in (tmp_model_dir / SYNTHETIC_IMAGE_DIR).rglob("*.dat"):
-        dst_file = output_dir / src_file.relative_to(tmp_model_dir / SYNTHETIC_IMAGE_DIR)
+    for src_file in (Path(DATA_CACHE_DIR) / "synthetic_images").rglob("*.dat"):
+        dst_file = output_dir / src_file.relative_to(Path(DATA_CACHE_DIR) / "synthetic_images")
         if not dst_file.exists():
             dst_file.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src_file, dst_file)
             print(f"copied {src_file} ---> {dst_file}")
 
     model_evaluator_args = CFG(
-        label_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
+        label_folder=str(Path(DATA_CACHE_DIR) / "synthetic_images"),
         output_folder=str(output_dir),
         extra_scores=True,
         score_file=None,

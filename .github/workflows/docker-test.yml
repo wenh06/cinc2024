@@ -29,13 +29,15 @@ jobs:
         submodules: recursive
     - name: Clear unnecessary system components
       run: |
-        echo "Free space:"
+        echo "Free space before cleanup:"
         df -h
         sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
         sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
         sudo rm -rf /opt/ghc
         sudo rm -rf /usr/local/share/boost
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        echo "Free space after cleanup:"
+        df -h
     - name: Build the Docker image
       run: docker build . --file ${{ env.docker_main_filename }} --tag deeppsp-cinc2024-docker-image:latest
 
