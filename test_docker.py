@@ -2,6 +2,7 @@
 """
 
 import os
+import shutil
 from copy import deepcopy
 from pathlib import Path
 from typing import Union
@@ -310,6 +311,15 @@ def test_entry() -> None:
     model_runner_func(model_runner_args)
 
     print("   Evaluate model   ".center(80, "#"))
+
+    # workaround for Dx prediction only:
+    # copy the .dat files from the synthetic image folder to the output folder
+    for src_file in (tmp_model_dir / SYNTHETIC_IMAGE_DIR).rglob("*.dat"):
+        dst_file = output_dir / src_file.relative_to(tmp_model_dir / SYNTHETIC_IMAGE_DIR)
+        if not dst_file.exists():
+            dst_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_file, dst_file)
+            print(f"copied {src_file} ---> {dst_file}")
 
     model_evaluator_args = CFG(
         label_folder=str(tmp_model_dir / SYNTHETIC_IMAGE_DIR),
