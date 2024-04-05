@@ -61,7 +61,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
         self.config.db_dir = Path(self.config.db_dir).expanduser().resolve()
 
         # updates reader_kwargs with the config
-        for kw in ["fs", "working_dir"]:
+        for kw in ["fs", "working_dir", "synthetic_images_dir"]:
             if kw not in reader_kwargs and hasattr(self.config, kw):
                 reader_kwargs[kw] = getattr(self.config, kw)
 

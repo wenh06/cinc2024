@@ -41,6 +41,8 @@ from utils.misc import url_is_reachable
 ################################################################################
 # environment variables
 
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
+
 try:
     TEST_FLAG = os.environ.get("CINC2024_REVENGER_TEST", False)
     TEST_FLAG = str2bool(TEST_FLAG)
@@ -157,6 +159,7 @@ def train_digitization_model(
     train_config = deepcopy(TrainCfg)
     # train_config.db_dir = data_folder
     train_config.db_dir = Path(DATA_CACHE_DIR)
+    train_config.synthetic_images_dir = Path(DATA_CACHE_DIR) / "synthetic_images"
     # train_config.model_dir = model_folder
     train_config.working_dir = Path(model_folder) / "working_dir"
     if TEST_FLAG:
