@@ -4,10 +4,10 @@ from pathlib import Path
 import transformers
 
 from cfg import ModelCfg
-from const import MODEL_CACHE_DIR, REMOTE_HEADS_URLS
+from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS
 from data_reader import CINC2024Reader
 from models import MultiHead_CINC2024
-
+from utils.misc import url_is_reachable
 
 os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
