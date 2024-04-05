@@ -123,7 +123,7 @@ def train_digitization_model(
 
     """
     print("\n" + "*" * 100)
-    msg = "   CinC2023 challenge training entry starts   ".center(100, "#")
+    msg = "   CinC2024 challenge training entry starts   ".center(100, "#")
     print(msg)
     print("*" * 100 + "\n")
 
@@ -231,7 +231,7 @@ def train_digitization_model(
         print(f"""Saved models: {list((Path(__file__).parent / "saved_models").iterdir())}""")
 
     print("\n" + "*" * 100)
-    msg = "   CinC2023 challenge training entry ends   ".center(100, "#")
+    msg = "   CinC2024 challenge training entry ends   ".center(100, "#")
     print(msg)
 
 
