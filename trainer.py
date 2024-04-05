@@ -20,9 +20,12 @@ from torch_ecg.utils.misc import str2bool
 from tqdm.auto import tqdm
 
 from cfg import ModelCfg, TrainCfg
+from const import MODEL_CACHE_DIR
 from dataset import CinC2024Dataset, collate_fn
 from models import MultiHead_CINC2024
 from utils.scoring_metrics import compute_challenge_metrics
+
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 __all__ = [
     "CINC2024Trainer",
