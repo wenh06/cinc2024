@@ -234,6 +234,8 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
     ) -> "MultiHead_CINC2024":
         """Load the model from remote heads.
 
+        Downloading is skipped if the model is already downloaded.
+
         Parameters
         ----------
         url : str
@@ -250,16 +252,27 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         MultiHead_CINC2024
             The model with heads loaded from remote.
 
-        TODO
-        ----
-        Skip downloading if the model is already downloaded.
-
         """
-        model_path = http_get(url, model_dir, extract=False, filename=filename)
-        if Path(model_path).is_dir():
-            candidates = list(Path(model_path).glob("*.pth")) + list(Path(model_path).glob("*.pt"))
-            assert len(candidates) == 1, "The directory should contain only one checkpoint file"
-            model_path = candidates[0]
+        # skip downloading if the model is already downloaded
+        if Path(model_dir).resolve().exists():
+            candidates = (
+                list(Path(model_dir).glob("*.pt"))
+                + list(Path(model_dir).glob("*.pth"))
+                + list(Path(model_dir).glob("*.pth.tar"))
+            )
+            if len(candidates) == 1:
+                print(f"Loading model from local cache: {candidates[0]}")
+                model_path = candidates[0].resolve()
+        else:
+            model_path = http_get(url, model_dir, extract=False, filename=filename)
+            if Path(model_path).is_dir():
+                candidates = (
+                    list(Path(model_path).glob("*.pt"))
+                    + list(Path(model_path).glob("*.pth"))
+                    + list(Path(model_path).glob("*.pth.tar"))
+                )
+                assert len(candidates) == 1, "The directory should contain only one checkpoint file"
+                model_path = candidates[0].resolve()
         _device = device or DEFAULTS.device
         ckpt = torch.load(model_path, map_location=_device)
         aux_config = ckpt.get("train_config", None) or ckpt.get("config", None)
