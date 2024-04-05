@@ -21,6 +21,7 @@ from tqdm.auto import tqdm
 
 from add_image_filenames import find_images  # noqa: F401
 from cfg import BaseCfg
+from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
 from utils.ecg_image_generator.gen_ecg_image_from_data import run_single_file
 from utils.misc import get_record_list_recursive3, url_is_reachable
@@ -117,6 +118,8 @@ class CINC2024Reader(PhysioNetDataBase):
         verbose: int = 2,
         **kwargs: Any,
     ) -> None:
+        if db_dir is None:
+            db_dir = Path(DATA_CACHE_DIR)
         super().__init__(db_name="ptb-xl", db_dir=db_dir, working_dir=working_dir, fs=fs, verbose=verbose, **kwargs)
         self.data_ext = "dat"
         self.header_ext = "hea"

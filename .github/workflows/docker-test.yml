@@ -57,7 +57,8 @@ jobs:
 
     - name: Run the Docker image
       # NOTE: mount env.download_data_dir to env.revenger_data_dir
-      # and set it read-only as in the CinC2024 challenge settings
+      # and set it read-only as in the CinC2024 challenge settings.
+      # Also, the docker image is run without any internet access.
       if: ${{ env.status != 'pre' }}
       run: |
         docker run \
@@ -67,6 +68,7 @@ jobs:
           -e revenger_test_dir=${{ env.revenger_test_dir }} \
           -e revenger_output_dir=${{ env.revenger_output_dir }} \
           -v ${{ env.download_data_dir }}:${{ env.revenger_data_dir }}:ro \
+          --network none \
           deeppsp-cinc2024-docker-image:latest \
           bash -c "bash test_run_challenge.sh"
         docker ps -a

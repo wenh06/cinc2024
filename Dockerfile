@@ -83,6 +83,13 @@ RUN pip list
 COPY ./ /challenge
 
 
+# Download synthetic image data and pretrained models
+RUN python post_docker_build.py
+# check if the data is downloaded
+RUN du -sh ~/revenger_data_dir_cinc2024
+RUN du -sh ~/revenger_model_dir_cinc2024
+
+
 # NOTE: also run test_local.py to test locally
 # since GitHub Actions does not have GPU,
 # one need to run test_local.py to avoid errors related to devices

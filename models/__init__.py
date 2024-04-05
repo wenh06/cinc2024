@@ -17,7 +17,7 @@ from torch_ecg.utils.misc import CitationMixin, add_docstring
 from torch_ecg.utils.utils_nn import SizeMixin
 
 from cfg import ModelCfg
-from const import INPUT_IMAGE_TYPES
+from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
 from outputs import CINC2024Outputs
 from utils.misc import url_is_reachable
 
@@ -37,6 +37,7 @@ __all__ = [
 if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable("https://huggingface.co")):
     # workaround for using huggingface hub in China
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 
 class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):

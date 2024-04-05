@@ -1,5 +1,6 @@
 """Constants for the project."""
 
+from pathlib import Path
 from typing import List, Union
 
 import numpy as np
@@ -8,6 +9,8 @@ import torch
 
 __all__ = [
     "INPUT_IMAGE_TYPES",
+    "MODEL_CACHE_DIR",
+    "DATA_CACHE_DIR",
     "REMOTE_HEADS_URLS",
 ]
 
@@ -15,6 +18,14 @@ __all__ = [
 INPUT_IMAGE_TYPES = Union[
     torch.Tensor, List[torch.Tensor], np.ndarray, List[np.ndarray], PIL.Image.Image, List[PIL.Image.Image]
 ]
+
+
+MODEL_CACHE_DIR = str(Path("~/revenger_model_dir_cinc2024").expanduser().resolve())
+Path(MODEL_CACHE_DIR).mkdir(parents=True, exist_ok=True)
+
+
+DATA_CACHE_DIR = str(Path("~/revenger_data_dir_cinc2024").expanduser().resolve())
+Path(DATA_CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
 
 REMOTE_HEADS_URLS = {

@@ -21,7 +21,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
 from torch_ecg.utils.misc import str2bool
 
 from cfg import ModelCfg, TrainCfg
-from const import REMOTE_HEADS_URLS
+from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset
 from helper_code import (  # noqa: F401
@@ -47,8 +47,8 @@ try:
 except Exception:
     TEST_FLAG = False
 
-MODEL_DIR = "revenger_model_dir"
-SYNTHETIC_IMAGE_DIR = "revenger_synthetic_image_dir"
+# MODEL_DIR = "revenger_model_dir"
+# SYNTHETIC_IMAGE_DIR = "revenger_synthetic_image_dir"
 # MODEL_DIR and SYNTHETIC_IMAGE_DIR are subfolders of model_folder passed to the functions
 
 ################################################################################
@@ -140,26 +140,23 @@ def train_digitization_model(
 
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
-
-    # Create the MODEL_DIR and SYNTHETIC_IMAGE_DIR subfolders
-    (Path(model_folder) / MODEL_DIR).mkdir(parents=True, exist_ok=True)
-    (Path(model_folder) / SYNTHETIC_IMAGE_DIR).mkdir(parents=True, exist_ok=True)
     (Path(model_folder) / "working_dir").mkdir(parents=True, exist_ok=True)
 
     reader_kwargs = {
-        "db_dir": data_folder,
+        "db_dir": Path(DATA_CACHE_DIR),
         "working_dir": (Path(model_folder) / "working_dir"),
-        "synthetic_images_dir": (Path(model_folder) / SYNTHETIC_IMAGE_DIR),
+        "synthetic_images_dir": Path(DATA_CACHE_DIR) / "synthetic_images",
     }
 
     # Download the synthetic images
-    dr = CINC2024Reader(**reader_kwargs)
-    dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
-    del dr
+    # dr = CINC2024Reader(**reader_kwargs)
+    # dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
+    # del dr
 
     # Train the model
     train_config = deepcopy(TrainCfg)
-    train_config.db_dir = data_folder
+    # train_config.db_dir = data_folder
+    train_config.db_dir = Path(DATA_CACHE_DIR)
     # train_config.model_dir = model_folder
     train_config.working_dir = Path(model_folder) / "working_dir"
     if TEST_FLAG:
@@ -288,7 +285,8 @@ def load_digitization_model(model_folder: Union[str, bytes, os.PathLike], verbos
         remote_heads_url = REMOTE_HEADS_URLS[key]["dropbox"]
     else:
         remote_heads_url = REMOTE_HEADS_URLS[key]["deep-psp"]
-    model_dir = Path(model_folder).resolve() / MODEL_DIR / key.replace("/", "--")
+    # model_dir = Path(model_folder).resolve() / MODEL_DIR / key.replace("/", "--")
+    model_dir = Path(MODEL_CACHE_DIR) / key.replace("/", "--")
     model = MultiHead_CINC2024.from_remote_heads(
         url=remote_heads_url,
         model_dir=model_dir,
