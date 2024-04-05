@@ -17,7 +17,9 @@ import transformers
 from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import SizeMixin
 
-from const import INPUT_IMAGE_TYPES
+from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
+
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 __all__ = ["ImageBackbone"]
 
@@ -67,9 +69,15 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
             # preprocessor accepts batched images or single image,
             # in the format of numpy array or torch tensor or PIL image (single image)
             # or a list of single images (all 3 formats)
-            self.preprocessor = transformers.AutoImageProcessor.from_pretrained(backbone_name_or_path)
+            self.preprocessor = transformers.AutoImageProcessor.from_pretrained(
+                backbone_name_or_path,
+                cache_dir=MODEL_CACHE_DIR,
+            )
             self.augmentor = None
-            self.backbone = transformers.AutoBackbone.from_pretrained(backbone_name_or_path)
+            self.backbone = transformers.AutoBackbone.from_pretrained(
+                backbone_name_or_path,
+                cache_dir=MODEL_CACHE_DIR,
+            )
         elif self.source == "timm":
             warnings.warn("backbone source 'timm' is not fully tested. Use it with caution.")
             self.backbone = timm.create_model(backbone_name_or_path, pretrained=pretrained)
@@ -331,7 +339,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
                     weight_file = list(Path(self.backbone_name_or_path).rglob("pytorch_model.bin"))[0]
                 else:
                     weight_file = list(
-                        Path(f"""~/.cache/huggingface/hub/models--{self.backbone_name_or_path.replace("/", "--")}""")
+                        (Path(MODEL_CACHE_DIR) / Path(f"""models--{self.backbone_name_or_path.replace("/", "--")}"""))
                         .expanduser()
                         .rglob("pytorch_model.bin")
                     )[0]
