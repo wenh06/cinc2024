@@ -36,16 +36,30 @@ REMOTE_HEADS_URLS = {
             "?rlkey=iotmbhnnzwicf14b5cpjiymda&dl=1"
         ),
         "deep-psp": (
-            "https://deep-psp.tech:9999/edit/Download/Models/CinC2024/"
+            "https://deep-psp.tech/Models/CinC2024/"
             "hf-facebook-convnextv2-atto-1k-224-dx-headonly__15_04-05_07-06_epochloss_224.66350_metric_0.76.pth.tar"
         ),
     },
     "hf--facebook/convnextv2-nano-22k-384": {
-        "dropbox": None,
-        "deep-psp": None,
+        "dropbox": (
+            "https://www.dropbox.com/scl/fi/0z4gcs4acyd39mjzkcuj2/"
+            "hf-facebook-convnextv2-nano-22k-384-dx-headonly__3_04-05_15-49_epochloss_296.05308_metric_0.79.pth.tar"
+            "?rlkey=afir38rv2s4fghfb4l24jzjg4&dl=1"
+        ),
+        "deep-psp": (
+            "https://deep-psp.tech/Models/CinC2024/"
+            "hf-facebook-convnextv2-nano-22k-384-dx-headonly__3_04-05_15-49_epochloss_296.05308_metric_0.79.pth.tar"
+        ),
     },
     "hf--microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft": {
-        "dropbox": None,
-        "deep-psp": None,
+        "dropbox": (
+            "https://www.dropbox.com/scl/fi/876002r87cm756mvaweca/"
+            "hf-microsoft-swinv2-base-patch4-window12to24-192to384-22kto1k-ft-dx-headonly__1_04-05_11-30_epochloss_395.73687_metric_0.75.pth.tar"
+            "?rlkey=pvc4vekswnmuldj3syopck9r8&dl=1"
+        ),
+        "deep-psp": (
+            "https://deep-psp.tech/Models/CinC2024/"
+            "hf-microsoft-swinv2-base-patch4-window12to24-192to384-22kto1k-ft-dx-headonly__1_04-05_11-30_epochloss_395.73687_metric_0.75.pth.tar"
+        ),
     },
 }
