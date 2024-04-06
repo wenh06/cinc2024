@@ -30,12 +30,15 @@ from helper_code import (  # noqa: F401
     get_header_file,
     get_num_samples,
     get_num_signals,
+    get_sampling_frequency,
+    get_signal_names,
     load_dx,
     load_image,
     load_text,
 )
 from models import MultiHead_CINC2024
 from trainer import CINC2024Trainer
+from utils.ecg_simulator import evolve_ecg, evolve_standard_12_lead_ecg  # noqa: F401
 from utils.misc import url_is_reachable
 
 ################################################################################
@@ -363,10 +366,26 @@ def run_digitization_model(
         header_file = get_header_file(record)
         header = load_text(header_file)
 
-        num_samples = get_num_samples(header)
-        num_signals = get_num_signals(header)
+        num_samples = get_num_samples(header)  # length of the signal
+        num_signals = get_num_signals(header)  # channels of the signal
+        signal_names = get_signal_names(header)  # names of the signals (lead names)
+        signal_names = [sn.upper() for sn in signal_names]
+        signal_fs = get_sampling_frequency(header)  # sampling frequency of the signal
+        signal_duration = num_samples / signal_fs  # duration of the signal
 
-        signal = np.random.default_rng().uniform(low=-1000, high=1000, size=(num_samples, num_signals))
+        standard_lead_names = ["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+        if set(signal_names).issubset(standard_lead_names):
+            indices_mapping = [standard_lead_names.index(sn) for sn in signal_names]
+        else:
+            indices_mapping = np.arange(num_signals, dtype=int).tolist()
+
+        bpm = np.clip(np.random.default_rng().normal(80, 23), 50, 120)
+        start_idx = np.random.default_rng().integers(low=int(2.5 * signal_fs), high=int(5.5 * signal_fs))
+        signal = evolve_standard_12_lead_ecg(
+            signal_duration + 8, fs=signal_fs, bpm=bpm, remove_baseline=0.8, return_phase=False, return_format="lead_last"
+        )["ecg"][start_idx : start_idx + num_samples]
+        signal = signal[:, indices_mapping]
+
         signal = np.asarray(signal, dtype=np.int16)
         return signal
 
