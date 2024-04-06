@@ -73,12 +73,15 @@ from scipy.ndimage import median_filter
 
 from .utils_stats import modulo
 
+__all__ = ["evolve_ecg", "evolve_standard_12_lead_ecg", "generate_rr_interval"]
+
+
 ALL_WAVES = ["p", "q", "r", "s", "t"]
 
 DIM_STATE = 2
 
-DEFAULT_PARAMS = {
-    "bpm_std": 5,
+DEFAULT_SINGLE_LEAD_PARAMS = {
+    "bpm_std": 0.1,  # ratio
     "lf_hf": 0.5,
     "alpha": {"p": 0.16 * 1000, "q": -0.1 * 1000, "r": 1.5 * 1000, "s": -0.2 * 1000, "t": 0.5 * 1000},
     "b": {"p": 0.15, "q": 0.06, "r": 0.08, "s": 0.08, "t": 0.35},
@@ -87,17 +90,34 @@ DEFAULT_PARAMS = {
     "eta": 0,
 }
 
+DEFAULT_12_LEAD_PARAMS = {
+    "bpm_std": 0.1,  # ratio
+    "lf_hf": 0.5,
+    "alpha": {
+        # ordering: lead I, II, V1, V2, V3, V4, V5, V6
+        # NOTE: lead III, aVR, aVL, aVF can be derived from lead I, II
+        "p": 1000 * np.array([0.09, 0.16, 0.07, 0.03, 0.04, 0.06, 0.06, 0.06]),
+        "q": 1000 * np.array([-0.05, -0.1, 0.02, 0.02, -0.02, -0.03, -0.05, -0.08]),
+        "r": 1000 * np.array([0.9, 1.5, 0.25, 0.4, 0.75, 1.2, 1.3, 1.4]),
+        "s": 1000 * np.array([-0.11, -0.2, -1.3, -1.7, -0.8, -0.2, -0.02, -0.02]),
+        "t": 1000 * np.array([0.3, 0.5, 0.3, 0.85, 0.6, 0.4, 0.3, 0.35]),
+    },
+    "b": {"p": 0.15, "q": 0.06, "r": 0.08, "s": 0.08, "t": 0.35},
+    "theta": {"p": -0.22 * 2 * np.pi, "q": -0.05 * 2 * np.pi, "r": 0, "s": 0.05 * 2 * np.pi, "t": 0.36 * 2 * np.pi},
+    "omega": 2 * np.pi / 1,
+    "eta": 0,
+}
+
+
 DEFAULT_NOISE_RATIO = {
-    "alpha": {w: 0.02 for w in ALL_WAVES},
-    "b": {w: 0.01 for w in ALL_WAVES},
-    "theta": {w: 0.01 for w in ALL_WAVES},
-    "eta": 0.01,
-    "omega": 0.01,
+    "alpha": {w: 0.023 for w in ALL_WAVES},
+    "b": {w: 0.015 for w in ALL_WAVES},
+    "theta": {w: 0.015 for w in ALL_WAVES},
+    "eta": 0.015,
+    "omega": 0.015,
 }
 
 DEFAULT_INIT_VALS = np.array([0, 0], dtype=float)
-
-__all__ = ["evolve_ecg", "generate_rr_interval"]
 
 
 def evolve_ecg(
@@ -107,11 +127,12 @@ def evolve_ecg(
     params: Optional[dict] = None,
     init_vals: Optional[np.ndarray] = None,
     noise_ratio: Optional[dict] = None,
-    return_phase: bool = False,
     remove_baseline: float = 0.66,
+    return_phase: bool = False,
+    return_format: str = "channel_first",
     verbose: int = 0,
 ) -> Dict[str, np.ndarray]:
-    """Evolve the ecg model using the state transition function with duration t
+    """Evolve single-lead ecg model using the state transition function with duration t.
 
     Parameters
     ----------
@@ -121,7 +142,7 @@ def evolve_ecg(
         Sampling frequency of the ecg data.
     params : dict, optional
         Parameters of the ecg model, consisting of
-        - "bpm_std": the standard deviation of the bpm
+        - "bpm_std": the standard deviation of the bpm divided by the bpm
         - "lf_hf": the ratio of lf energy to hf energy
         - "alpha": the parameters of the Gaussian function for each wave
         - "b": the parameters of the Gaussian function for each wave
@@ -132,10 +153,14 @@ def evolve_ecg(
         Initial values to start evolving, of shape ``(DIM_STATE,)``.
     noise_ratio : dict, optional
         Noise ratio of each state parameters.
-    return_phase : bool, default False
-        Whether to return the phase of the evolved ecg data.
     remove_baseline : float, default 0.66
         Proportion of the baseline to be removed.
+    return_phase : bool, default False
+        Whether to return the phase of the evolved ecg data.
+    return_format : {"channel_first", "channel_last", "lead_first", "lead_last", "flat"}, default "channel_first"
+        The format of the returned ecg data,
+        either "channel_first" (alias "lead_first") or "channel_last" (alias "lead_last") for multi-lead ECG,
+        or "flat" for single-lead ECG.
     verbose : int, default 1
         Verbosity level.
 
@@ -147,7 +172,15 @@ def evolve_ecg(
         - "rr_intervals": rr intervals of the evolved ecg data
         - "r_peak_indices": indices of r peaks of the evolved ecg data
 
-        "ecg" is of shape ``(len_pts, DIM_STATE)`` if return_phase is True, otherwise ``(len_pts,)``.
+        If `params["alpha"]` indicates single lead ECG,
+        then "ecg" is of shape ``(len_pts, DIM_STATE)`` if return_phase is True, otherwise ``(len_pts,)``.
+        If `params["alpha"]` indicates multi-lead ECG,
+        then "ecg" is of shape ``(len_pts, DIM_STATE)`` if return_phase is True, otherwise ``(len_pts, nb_leads)``.
+
+    References
+    ----------
+    [1] Sameni R, Shamsollahi M B, Jutten C, et al. A nonlinear Bayesian filtering framework for ECG denoising[J]. IEEE Transactions on Biomedical Engineering, 2007, 54(12): 2172-2185.
+    [2] Clifford G D, Shoeb A, McSharry P E, et al. Model-based filtering, compression and classification of the ECG[J]. International Journal of Bioelectromagnetism, 2005, 7(1): 158-161.
 
     """
     assert t > 0, "please provide a positive time duration"
@@ -155,15 +188,35 @@ def evolve_ecg(
     assert 30 <= bpm <= 300, "bpm should be in the range of [30, 300]"
     assert 0 <= remove_baseline <= 1, "proportion of the baseline to be removed should be in the range of [0, 1]"
     if params is None:
-        params = DEFAULT_PARAMS.copy()
+        params = DEFAULT_SINGLE_LEAD_PARAMS.copy()
     else:
-        params = {k: v for k, v in DEFAULT_PARAMS.items() if k not in params} | params
+        params = {k: v for k, v in DEFAULT_SINGLE_LEAD_PARAMS.items() if k not in params} | params
     if init_vals is None:
         init_vals = DEFAULT_INIT_VALS.copy()
     if noise_ratio is None:
         noise_ratio = DEFAULT_NOISE_RATIO.copy()
     else:
         noise_ratio = {k: v for k, v in DEFAULT_NOISE_RATIO.items() if k not in noise_ratio} | noise_ratio
+    if verbose >= 1:
+        print(f"{params =}")
+        print(f"{init_vals =}")
+        print(f"{noise_ratio =}")
+
+    # if "alpha" is an array for all waves, then they must have the same length
+    if isinstance(params["alpha"][ALL_WAVES[0]], (list, tuple, np.ndarray)):
+        nb_leads = len(params["alpha"][ALL_WAVES[0]])
+        assert all(
+            len(params["alpha"][w]) == nb_leads for w in ALL_WAVES
+        ), f"all waves should have the same length (={nb_leads}) for alpha"
+        # convert to numpy array if necessary
+        for w in ALL_WAVES:
+            params["alpha"][w] = np.array(params["alpha"][w], dtype=float)
+    else:
+        nb_leads = 1
+    if nb_leads > 1 and len(init_vals) == DIM_STATE:
+        init_vals = np.array([init_vals[0]] + [init_vals[1]] * nb_leads, dtype=float)
+    else:
+        init_vals = np.array(init_vals, dtype=float)
 
     spacing = 1 / fs
     # len_pts = int(t / params["delta"]) + 1
@@ -190,17 +243,28 @@ def evolve_ecg(
 
     noise_info = {"alpha": {}, "b": {}, "theta": {}, "eta": [], "omega": []}
     for k in ["alpha", "b", "theta"]:
-        noise_info[k] = {w: np.random.normal(0, abs(noise_ratio[k][w] * params[k][w]), nb_beats) for w in ALL_WAVES}
-    noise_info["omega"] = np.random.normal(0, abs(noise_ratio["eta"] * params["omega"]), nb_beats)
-    noise_info["eta"] = np.random.normal(0, abs(noise_ratio["eta"] * params["alpha"]["r"]), len_pts)
+        noise_info[k] = {
+            w: (
+                np.random.normal(0, np.abs(noise_ratio[k][w] * params[k][w]), nb_beats)
+                if isinstance(params[k][w], (Real, np.generic))
+                else np.random.normal(0, np.abs(noise_ratio[k][w] * params[k][w]), (nb_beats, len(params[k][w])))
+            )
+            for w in ALL_WAVES
+        }
+    noise_info["omega"] = np.random.normal(0, np.abs(noise_ratio["eta"] * params["omega"]), nb_beats)
+    if isinstance(params["alpha"]["r"], (Real, np.generic)):
+        noise_info["eta"] = np.random.normal(0, np.abs(noise_ratio["eta"] * params["alpha"]["r"]), len_pts)
+    else:
+        noise_info["eta"] = np.random.normal(0, np.abs(noise_ratio["eta"] * params["alpha"]["r"]), (len_pts, nb_leads))
 
-    if verbose >= 1:
+    if verbose >= 2:
         print(f"{noise_info =}")
 
     # start evolving
-    init_theta, init_z = np.array(init_vals).flatten()
-    synthetic_ecg = [[init_theta, init_z]]
-    theta, z = synthetic_ecg[0]
+    init_theta = init_vals[0]
+    init_z = init_vals[1:]
+    synthetic_ecg = [[init_theta] + init_z.tolist()]
+    theta, z = init_theta, init_z
     beat_no = 0
     idx = 0
     current_beat_idx = 0
@@ -213,11 +277,13 @@ def evolve_ecg(
         for k in ["alpha", "b", "theta"]:
             current_params[k] = {w: params[k][w] + noise_info[k][w][beat_no] for w in ALL_WAVES}
 
-        theta, z = _state_transition_func(
+        new_state = _state_transition_func(
             fs=fs,
-            state_vec=np.array([[theta], [z]]),
+            state_vec=np.array([[theta] + z.tolist()]),
             state_params=current_params,
-        ).T.tolist()[0]
+        )
+        theta = new_state[0]
+        z = new_state[1:]
 
         idx += 1
         current_beat_idx += 1
@@ -229,13 +295,26 @@ def evolve_ecg(
                 )
             current_beat_idx = 0
             beat_no += 1
-        synthetic_ecg.append([theta, z])
+        synthetic_ecg.append([theta] + z.tolist())
 
     synthetic_ecg = np.array(synthetic_ecg, dtype=float)
     if remove_baseline:
-        synthetic_ecg[:, 1] = remove_base_line(synthetic_ecg[:, 1], fs, proportion=remove_baseline)
+        synthetic_ecg[:, 1:] = remove_base_line(synthetic_ecg[:, 1:], fs, proportion=remove_baseline)
     if not return_phase:
-        synthetic_ecg = synthetic_ecg[:, 1]
+        synthetic_ecg = synthetic_ecg[:, 1:]
+
+    if return_format in ["channel_first", "lead_first"]:
+        synthetic_ecg = synthetic_ecg.T
+    elif return_format in ["flat"]:
+        assert nb_leads == 1, "only single lead ECG can be flattened"
+        synthetic_ecg = synthetic_ecg.flatten()
+    elif return_format in ["channel_last", "lead_last"]:
+        pass
+    else:
+        raise ValueError(
+            "return_format should be one of {'channel_first', 'channel_last', 'lead_first', 'lead_last', 'flat'} "
+            f"but got {return_format}"
+        )
 
     ret = {
         "ecg": synthetic_ecg,
@@ -245,7 +324,106 @@ def evolve_ecg(
     return ret
 
 
-def _state_transition_func(fs: int, state_vec: np.ndarray, state_params: Optional[dict] = None) -> np.ndarray:
+def evolve_standard_12_lead_ecg(
+    t: float,
+    fs: int,
+    bpm: Real,
+    params: Optional[dict] = None,
+    init_vals: Optional[np.ndarray] = None,
+    noise_ratio: Optional[dict] = None,
+    remove_baseline: float = 0.66,
+    return_phase: bool = False,
+    return_format: str = "channel_first",
+    verbose: int = 0,
+) -> Dict[str, np.ndarray]:
+    """Evolve single-lead ecg model using the state transition function with duration t.
+
+    Parameters
+    ----------
+    t : float
+        Time duration to evolve.
+    fs : int
+        Sampling frequency of the ecg data.
+    params : dict, optional
+        Parameters of the ecg model, consisting of
+        - "bpm_std": the standard deviation of the bpm derived by the bpm
+        - "lf_hf": the ratio of lf energy to hf energy
+        - "alpha": the parameters of the Gaussian function for each wave
+        - "b": the parameters of the Gaussian function for each wave
+        - "theta": the parameters of the Gaussian function for each wave
+        - "omega": the angular frequency
+        - "eta": the noise of the ecg data
+    init_vals : `array_like`, optional
+        Initial values to start evolving, of shape ``(DIM_STATE,)``.
+    noise_ratio : dict, optional
+        Noise ratio of each state parameters.
+    remove_baseline : float, default 0.66
+        Proportion of the baseline to be removed.
+    return_phase : bool, default False
+        Whether to return the phase of the evolved ecg data.
+    return_format : {"channel_first", "channel_last", "lead_first", "lead_last", "flat"}, default "channel_first"
+        The format of the returned ecg data,
+        either "channel_first" (alias "lead_first") or "channel_last" (alias "lead_last") for multi-lead ECG,
+        or "flat" for single-lead ECG.
+    verbose : int, default 1
+        Verbosity level.
+
+    Returns
+    -------
+    dict
+        The evolved ecg data, consisting of
+        - "ecg": the evolved ecg data
+        - "rr_intervals": rr intervals of the evolved ecg data
+        - "r_peak_indices": indices of r peaks of the evolved ecg data
+
+        "ecg" is of shape ``(len_pts, 13)`` if return_phase is True, otherwise ``(len_pts, 12)``.
+
+    .. note::
+
+        params["alpha"] should be a dictionary of arrays which are amplitude of each wave for each lead.
+        The arrays should have shape ``(8,)``, where the amplitudes are for leads I, II, V1, V2, V3, V4, V5, V6.
+        Values for leads III, aVR, aVL, aVF will be derived from leads I, II.
+
+    References
+    ----------
+    [1] Sameni R, Shamsollahi M B, Jutten C, et al. A nonlinear Bayesian filtering framework for ECG denoising[J]. IEEE Transactions on Biomedical Engineering, 2007, 54(12): 2172-2185.
+    [2] Clifford G D, Shoeb A, McSharry P E, et al. Model-based filtering, compression and classification of the ECG[J]. International Journal of Bioelectromagnetism, 2005, 7(1): 158-161.
+    [3] https://ecglibrary.com/norm.php
+    [4] https://www.bem.fi/book/15/15.htm
+
+    """
+    if params is None:
+        params = DEFAULT_12_LEAD_PARAMS.copy()
+    else:
+        params = {k: v for k, v in DEFAULT_12_LEAD_PARAMS.items() if k not in params} | params
+    simulated_ecg = evolve_ecg(
+        t=t,
+        fs=fs,
+        bpm=bpm,
+        params=params,
+        init_vals=init_vals,
+        noise_ratio=noise_ratio,
+        remove_baseline=remove_baseline,
+        return_phase=True,
+        return_format="lead_last",
+        verbose=verbose,
+    )
+    # relation mat: by Einthoven’s Law and Goldberger’s Law
+    # ref. https://www.bem.fi/book/15/15.htm
+    relation_mat = np.array([[-1, -0.5, 1, -0.5], [1, -0.5, -0.5, 1]])  # shape (2, 4)
+    # derive leads III, aVR, aVL, aVF from leads I, II
+    derived_leads = np.matmul(simulated_ecg["ecg"][:, 1:3], relation_mat)  # shape (len_pts, 4)
+    simulated_ecg["ecg"] = np.concatenate([simulated_ecg["ecg"][:, :3], derived_leads, simulated_ecg["ecg"][:, 3:]], axis=1)
+    if not return_phase:
+        simulated_ecg["ecg"] = simulated_ecg["ecg"][:, 1:]
+    if return_format in ["channel_first", "lead_first"]:
+        simulated_ecg["ecg"] = simulated_ecg["ecg"].T
+    return simulated_ecg
+
+
+def _state_transition_func(
+    fs: int, state_vec: np.ndarray, state_params: Optional[dict] = None, nb_leads: int = 1
+) -> np.ndarray:
     """The state transition function, given by Gaussian functions in EKF2 model,
     ordering of the state variables in state_vec: theta, z.
 
@@ -254,33 +432,36 @@ def _state_transition_func(fs: int, state_vec: np.ndarray, state_params: Optiona
     fs : int
         Sampling frequency of the ecg data.
     state_vec : `array_like`
-        Vector of current state, of shape ``(DIM_STATE, 1)``.
+        Vector of current state, of shape ``(DIM_STATE,)`` if single lead,
+        otherwise ``(nb_leads + 1,)``.
     state_params : dict, optional
         Parameters for the state transition function.
+    nb_leads : int, default 1
+        Number of leads.
 
     Returns
     -------
     numpy.ndarray
-        The evolved state vector, of shape ``(DIM_STATE, 1)``.
+        The evolved state vector, of shape ``(DIM_STATE,)`` if single lead,
+        otherwise ``(nb_leads + 1,)``.
 
     """
     spacing = 1 / fs
-    try:
-        state_vec = np.array(state_vec, dtype=float).reshape((DIM_STATE, 1))
-    except ValueError:
-        raise ValueError("please check the sizes of the input state vector")
+    theta = state_vec.ravel()[0]
+    z = state_vec.ravel()[1:]
 
-    theta, z = state_vec.T.tolist()[0]
     new_theta = theta + spacing * state_params["omega"]
     delta_theta = {w: modulo(theta - state_params["theta"][w], 2 * np.pi, -np.pi) for w in ALL_WAVES}
-    summands = [
-        (state_params["alpha"][w] * delta_theta[w] / pow(state_params["b"][w], 2))
-        * np.exp(-pow(delta_theta[w], 2) / (2 * pow(state_params["b"][w], 2)))
-        for w in ALL_WAVES
-    ]
-    new_z = z + state_params["eta"] - state_params["omega"] * spacing * sum(summands)
+    summands = np.array(
+        [
+            (state_params["alpha"][w] * delta_theta[w] / pow(state_params["b"][w], 2))
+            * np.exp(-pow(delta_theta[w], 2) / (2 * pow(state_params["b"][w], 2)))
+            for w in ALL_WAVES
+        ]
+    )  # of shape (nb_waves,) or (nb_waves, nb_leads)
+    new_z = z + state_params["eta"] - state_params["omega"] * spacing * np.sum(summands, axis=0)
 
-    return np.array([[new_theta], [new_z]], dtype=float)
+    return np.concatenate([[new_theta], new_z])
 
 
 def generate_rr_interval(
@@ -303,7 +484,7 @@ def generate_rr_interval(
     bpm_mean : numbers.Real
         Mean bpm of the rr intervals to be generated
     bpm_std : numbers.Real
-        Standard deviation of the rr intervals to be generated
+        Standard deviation of the rr intervals to be generated / bpm_mean
     lf_hf : float, default 0.5
         lf energey / hf energy,
         normal range: 2.2 ± 3.4 (mean ± std)
@@ -323,6 +504,7 @@ def generate_rr_interval(
 
     """
     expected_rr_mean = 60 / bpm_mean
+    bpm_std = bpm_mean * bpm_std
     expected_rr_std = 60 * bpm_std / (bpm_mean * bpm_mean)
 
     lf = lf_hf * np.random.normal(loc=lf_freq, scale=lf_std, size=nb_beats)  # lf power spectum
@@ -348,7 +530,7 @@ def remove_base_line(curve: np.ndarray, fs: int, proportion: float = 0.66) -> np
     Parameters
     ----------
     curve : numpy.ndarray
-        The ecg curve to remove baseline.
+        The ecg curve to remove baseline, of shape ``(len_pts, nb_leads)``.
     fs : int
         Sampling frequency of the ecg data.
     proportion : float, default 0.66
@@ -365,6 +547,6 @@ def remove_base_line(curve: np.ndarray, fs: int, proportion: float = 0.66) -> np
     wind_1 = wind_1 if wind_1 % 2 == 1 else wind_1 + 1  # window size must be odd
     wind_2 = int(0.6 * fs)  # 600 ms window
     wind_2 = wind_2 if wind_2 % 2 == 1 else wind_2 + 1
-    baseline = median_filter(curve, size=wind_1, mode="nearest")
-    baseline = median_filter(baseline, size=wind_2, mode="nearest")
+    baseline = median_filter(curve, size=wind_1, mode="nearest", axes=0)
+    baseline = median_filter(baseline, size=wind_2, mode="nearest", axes=0)
     return curve - baseline * proportion
