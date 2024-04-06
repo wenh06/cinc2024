@@ -8,24 +8,7 @@ This folder (module) contains the models for the CINC 2024 Challenge. The models
 
 - **Digitization head**: This part is responsible for recovering the digitized ECG signal from the input image. The digitization head is trained (fine-tuned) on the CINC 2024 dataset.
 
-## Possible solutions for the digitization task
-
-- **End-to-end model**: A single model that takes the input image and produces the digitized ECG signal directly.
-
-- **Several-stage solution**: A multi-stage solution that consists of several models, possibly including:
-
-  - **OCR model**: Recognizes the ECG signal names and its locations in the input image, as well as other metadata.
-
-  - **Object detection model**: Detects the area (bounding box) of the ECG signal in the input image.
-    This bounding box, together with the location of the ECG signal names, can be used to crop each channel of the ECG signal.
-
-  - **Edge sharpening algorithm**: Enhances and extracts the grid lines and the ECG signal from the cropped patches of the input image.
-
-The end-to-end model is simpler in terms of implementation, but it may be harder to train and optimize.
-Its effectiveness can not be guaranteed.
-
-The several-stage solution may be easier to train and optimize.
-But it requires more effort to design and implement the models and algorithms. (Actually a system of models and algorithms.)
+The two heads share the same image backbone and trained in an end-to-end manner.
 
 ## Pre-trained image backbone
 
@@ -108,3 +91,9 @@ This is done by the following steps:
   or to test whether two samples came from the same distribution (two-sample KS test).
 
 - ASCI loss: Adaptive signed correlation index loss. It is a measure to quantify the morphological similarity between signals.
+
+## Total loss
+
+The total loss is currently the sum of the classification loss and the digitization loss.
+
+TODO: make a more balanced total loss (e.g. by scaling the two losses).
