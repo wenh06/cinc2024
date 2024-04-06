@@ -381,10 +381,15 @@ def run_digitization_model(
 
         bpm = np.clip(np.random.default_rng().normal(80, 23), 50, 120)
         start_idx = np.random.default_rng().integers(low=int(2.5 * signal_fs), high=int(5.5 * signal_fs))
-        signal = evolve_standard_12_lead_ecg(
-            signal_duration + 8, fs=signal_fs, bpm=bpm, remove_baseline=0.8, return_phase=False, return_format="lead_last"
-        )["ecg"][start_idx : start_idx + num_samples]
-        signal = signal[:, indices_mapping]
+        try:
+            signal = evolve_standard_12_lead_ecg(
+                signal_duration + 8, fs=signal_fs, bpm=bpm, remove_baseline=0.8, return_phase=False, return_format="lead_last"
+            )["ecg"][start_idx : start_idx + num_samples]
+            signal = signal[:, indices_mapping]
+        except Exception:
+            print("Failed to generate the signal. Return random signal.")
+            # official baseline uses random signal
+            signal = np.random.default_rng().uniform(low=-1000, high=1000, size=(num_samples, num_signals))
 
         signal = np.asarray(signal, dtype=np.int16)
         return signal
