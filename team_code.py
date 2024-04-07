@@ -77,9 +77,12 @@ except Exception:
 # microsoft/swinv2-small-patch4-window16-256  (199 MB, pretrained on ImageNet-1k)
 # microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft  (352 MB)
 # microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft  (787MB)
+# NOTE: DO NOT change the backbone_name and backbone_source here
+# change them in cfg.py
+# as one has to run post_docker_build.py to cache the pretrained models
+# in which ModelCfg is imported from cfg.py, not from this script
 # ModelCfg.backbone_name = "facebook/convnextv2-large-22k-384"
-ModelCfg.backbone_name = "facebook/convnextv2-nano-22k-384"
-ModelCfg.backbone_source = "hf"
+# ModelCfg.backbone_source = "hf"
 
 ################################################################################
 
