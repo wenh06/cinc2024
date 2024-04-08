@@ -3,6 +3,7 @@ Unofficial Phase:
     f_measure: 0.626
     snr: -18.103
     submission ID: 1091
+    submission time: 4/5/2024 17:06:05 ET
     digitization_workaround: random
     backbone: facebook/convnextv2-large-22k-384
     train:
@@ -19,6 +20,7 @@ Unofficial Phase:
     f_measure: 0.626
     snr: -13.203
     submission ID: 1102
+    submission time: 4/5/2024 17:06:05 ET
     digitization_workaround: simulator
     backbone: facebook/convnextv2-large-22k-384
     train:
@@ -35,6 +37,7 @@ Unofficial Phase:
     f_measure: null
     snr: null
     submission ID: null
+    submission time: null
     digitization_workaround: simulator
     backbone: facebook/convnextv2-nano-22k-384
     train:
@@ -46,6 +49,23 @@ Unofficial Phase:
       early_stopping_patience: 8
       augmentations: null
     hash: eadc65e
+
+  submission 4:
+    f_measure: null
+    snr: null
+    submission ID: null
+    submission time: null
+    digitization_workaround: simulator
+    backbone: microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft
+    train:
+      n_epochs: 25
+      batch_size: 32
+      lr_scheduler: one_cycle
+      lr: 0.0013
+      max_lr: 0.0067
+      early_stopping_patience: 8
+      augmentations: null
+    hash: null
 
 Official Phase:
   submission 1: null
