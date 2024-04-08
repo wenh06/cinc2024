@@ -1,5 +1,51 @@
 Unofficial Phase:
-  submission 1: null
+  submission 1:
+    f_measure: 0.626
+    snr: -18.103
+    submission ID: 1091
+    digitization_workaround: random
+    backbone: facebook/convnextv2-large-22k-384
+    train:
+      n_epochs: 65
+      batch_size: 48
+      lr_scheduler: one_cycle
+      lr: 0.0065
+      max_lr: 0.018
+      early_stopping_patience: 35
+      augmentations: null
+    hash: 9d568f7
+
+  submission 2:
+    f_measure: 0.626
+    snr: -13.203
+    submission ID: 1102
+    digitization_workaround: simulator
+    backbone: facebook/convnextv2-large-22k-384
+    train:
+      n_epochs: 65
+      batch_size: 48
+      lr_scheduler: one_cycle
+      lr: 0.0065
+      max_lr: 0.018
+      early_stopping_patience: 35
+      augmentations: null
+    hash: 6a7cead
+
+  submission 3:
+    f_measure: null
+    snr: null
+    submission ID: null
+    digitization_workaround: simulator
+    backbone: facebook/convnextv2-nano-22k-384
+    train:
+      n_epochs: 25
+      batch_size: 32
+      lr_scheduler: one_cycle
+      lr: 0.0013
+      max_lr: 0.0067
+      early_stopping_patience: 8
+      augmentations: null
+    hash: eadc65e
 
 Official Phase:
   submission 1: null
