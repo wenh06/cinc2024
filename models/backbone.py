@@ -341,6 +341,7 @@ class ImageBackbone(nn.Module, SizeMixin, CitationMixin):
                     weight_file = list(
                         (Path(MODEL_CACHE_DIR) / Path(f"""models--{self.backbone_name_or_path.replace("/", "--")}"""))
                         .expanduser()
+                        .resolve()
                         .rglob("pytorch_model.bin")
                     )[0]
                 state_dict = torch.load(weight_file)

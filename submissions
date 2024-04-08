@@ -65,6 +65,23 @@ Unofficial Phase:
       max_lr: 0.0067
       early_stopping_patience: 8
       augmentations: null
+    hash: 4db9018
+
+  submission 5:
+    f_measure: null
+    snr: null
+    submission ID: null
+    submission time: null
+    digitization_workaround: simulator
+    backbone: facebook/convnextv2-atto-1k-224
+    train:
+      n_epochs: 65
+      batch_size: 48
+      lr_scheduler: one_cycle
+      lr: 0.0013
+      max_lr: 0.0067
+      early_stopping_patience: 35
+      augmentations: null
     hash: null
 
 Official Phase:
