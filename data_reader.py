@@ -2,6 +2,7 @@
 """
 
 import json
+import multiprocessing as mp
 import os
 import re
 from ast import literal_eval
@@ -16,7 +17,7 @@ from PIL import Image
 from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.databases.base import DataBaseInfo, PhysioNetDataBase
 from torch_ecg.utils.download import _unzip_file, http_get
-from torch_ecg.utils.misc import add_docstring, dict_to_str  # noqa: F401
+from torch_ecg.utils.misc import add_docstring, dict_to_str, remove_parameters_returns_from_docstring  # noqa: F401
 from tqdm.auto import tqdm
 
 from add_image_filenames import find_images  # noqa: F401
@@ -65,6 +66,31 @@ _CINC2024_INFO = DataBaseInfo(
         "https://doi.org/10.48550/ARXIV.2307.01946",
     ],
 )
+
+_prepare_synthetic_images_docstring = """Prepare synthetic images from the ECG time series data.
+
+        This function is modified from the functions
+
+        - prepare_ptbxl_data.run
+        - add_image_filenames.run
+        - ecg_image_generator.gen_ecg_image_from_data.run_single_file
+
+        Parameters
+        ----------
+        output_folder : `path-like`, optional
+            The output directory to store the synthetic images.
+            If not specified, the synthetic images will be stored in the default directory.
+        fs : {100, 500}, default 100
+            The sampling frequency of the ECG time series data to be used.
+            If not specified (``None``), the default (self.fs or 500) sampling frequency will be used.
+        force_recompute : bool, default False
+            Whether to force recompute the synthetic images regardless of the existence of the output directory.
+        parallel : bool, default False
+            Whether to use multiprocessing to generate the synthetic images.
+        kwargs : dict, optional
+            Extra key word arguments passed to the image generator.
+
+        """
 
 
 _ECG_IMAGE_GENERATOR_CONFIG_DIR = Path(__file__).resolve().parent / "utils/ecg_image_generator/Configs"
@@ -408,6 +434,7 @@ class CINC2024Reader(PhysioNetDataBase):
                 rec_or_img = self._all_records[rec_or_img]
             return self.load_metadata(rec_or_img)["header"]
 
+    @add_docstring(remove_parameters_returns_from_docstring(_prepare_synthetic_images_docstring, parameters=["parallel"]))
     def _prepare_synthetic_images(
         self,
         output_folder: Optional[Union[str, bytes, os.PathLike]] = None,
@@ -415,28 +442,6 @@ class CINC2024Reader(PhysioNetDataBase):
         force_recompute: bool = False,
         **kwargs: Any,
     ) -> None:
-        """Prepare synthetic images from the ECG time series data.
-
-        This function is modified from the functions
-
-        - prepare_ptbxl_data.run
-        - add_image_filenames.run
-        - ecg_image_generator.gen_ecg_image_from_data.run_single_file
-
-        Parameters
-        ----------
-        output_folder : `path-like`, optional
-            The output directory to store the synthetic images.
-            If not specified, the synthetic images will be stored in the default directory.
-        fs : {100, 500}, default 100
-            The sampling frequency of the ECG time series data to be used.
-            If not specified (``None``), the default (self.fs or 500) sampling frequency will be used.
-        force_recompute : bool, default False
-            Whether to force recompute the synthetic images regardless of the existence of the output directory.
-        kwargs : dict, optional
-            Extra key word arguments passed to the image generator.
-
-        """
         if output_folder is None:
             output_folder = self._synthetic_images_dir
         output_folder = Path(output_folder)
@@ -511,11 +516,11 @@ class CINC2024Reader(PhysioNetDataBase):
                         continue
 
                 input_header_file = (input_dir / record_basename).with_suffix(f".{self.header_ext}")
-                inpout_signal_files = (input_dir / record_basename).with_suffix(f".{self.data_ext}")
+                input_signal_files = (input_dir / record_basename).with_suffix(f".{self.data_ext}")
                 output_header_file = (output_dir / record_basename).with_suffix(f".{self.header_ext}")
 
                 # generate the synthetic images
-                ecg_img_gen_config.input_file = str(inpout_signal_files)
+                ecg_img_gen_config.input_file = str(input_signal_files)
                 ecg_img_gen_config.header_file = str(input_header_file)
                 ecg_img_gen_config.output_directory = str(output_dir)
                 ecg_img_gen_config.start_index = -1
@@ -563,16 +568,58 @@ class CINC2024Reader(PhysioNetDataBase):
 
                 output_header_file.write_text(output_header)
 
-    @add_docstring(_prepare_synthetic_images.__doc__)
+    @add_docstring(_prepare_synthetic_images_docstring)
     def prepare_synthetic_images(
         self,
         output_folder: Optional[Union[str, bytes, os.PathLike]] = None,
         fs: int = 100,
         force_recompute: bool = False,
+        parallel: bool = False,
         **kwargs: Any,
     ) -> None:
         try:
-            self._prepare_synthetic_images(output_folder=output_folder, fs=fs, force_recompute=force_recompute, **kwargs)
+            if parallel:
+                if output_folder is None:
+                    output_folder = self._synthetic_images_dir
+                output_folder = Path(output_folder)
+                output_folder.mkdir(parents=True, exist_ok=True)
+                if fs is None:
+                    if self.fs in [100, 500]:
+                        fs = self.fs
+                    else:
+                        self.logger.warning(f"invalid fs `{fs}`, use default fs {self.gen_img_default_fs} instead.")
+                        fs = self.gen_img_default_fs
+                input_folder = self.db_dir / self.__500Hz_dir__ if fs == 500 else self.db_dir / self.__100Hz_dir__
+
+                ecg_img_gen_config = CFG(self.__gen_img_default_config__.copy())
+                ecg_img_gen_config.update(kwargs)
+
+                records = find_records(str(input_folder))
+                args_list = []
+                for record in records:
+                    record_dir, record_basename = os.path.split(record)
+                    ecg_id = record_basename.split("_")[0]
+                    row = self._df_metadata.loc[ecg_id]
+                    args_list.append(
+                        {
+                            "input_folder": input_folder,
+                            "output_folder": output_folder,
+                            "record": record,
+                            "row": row,
+                            "src_datetime_fmt": self.src_datetime_fmt,
+                            "dst_datetime_fmt": self.dst_datetime_fmt,
+                            "header_ext": self.header_ext,
+                            "data_ext": self.data_ext,
+                            "force_recompute": force_recompute,
+                            "ecg_img_gen_config": ecg_img_gen_config,
+                        }
+                    )
+                pool = mp.Pool(processes=max(1, mp.cpu_count() - 3))
+                # use tqdm to show progress
+                for _ in tqdm(pool.imap_unordered(_generate_synthetic_image, args_list), total=len(args_list)):
+                    pass
+            else:
+                self._prepare_synthetic_images(output_folder=output_folder, fs=fs, force_recompute=force_recompute, **kwargs)
         except KeyboardInterrupt:
             self.logger.info("Cancelled by user.")
 
@@ -681,6 +728,111 @@ class CINC2024Reader(PhysioNetDataBase):
                 correction_flag = True
             if correction_flag:
                 header_file.write_text("\n".join(lines))
+
+
+def _generate_synthetic_image(args: Dict[str, Any]) -> None:
+    """Generate the synthetic images from the ECG time series data.
+
+    This function is used for multiprocessing.
+
+    """
+    input_folder = Path(args["input_folder"])
+    output_folder = Path(args["output_folder"])
+    record = args["record"]  # str
+    row = args["row"]  # pd.Series
+    src_datetime_fmt = args["src_datetime_fmt"]  # str
+    dst_datetime_fmt = args["dst_datetime_fmt"]  # str
+    header_ext = args["header_ext"]  # str
+    data_ext = args["data_ext"]  # str
+    force_recompute = args["force_recompute"]  # bool
+    ecg_img_gen_config = args["ecg_img_gen_config"]  # CFG
+    ecg_img_gen_config["link"] = ""  # set to empty to avoid internet errors
+
+    # Extract the demographics data.
+    record_dir, record_basename = os.path.split(record)
+    ecg_id = record_basename.split("_")[0]
+    # row = self._df_metadata.loc[ecg_id]
+
+    recording_date_string = row["recording_date"]
+    recording_date = datetime.strptime(recording_date_string, src_datetime_fmt)
+    recording_date_string = recording_date.strftime(dst_datetime_fmt)
+
+    age = row["age"]
+    age = cast_int_float_unknown(age)
+
+    sex = row["sex"]
+    if sex == 0:
+        sex = "Male"
+    elif sex == 1:
+        sex = "Female"
+    else:
+        sex = "Unknown"
+
+    height = row["height"]
+    height = cast_int_float_unknown(height)
+
+    weight = row["weight"]
+    weight = cast_int_float_unknown(weight)
+
+    # Extract the diagnostic superclasses.
+    scp_codes = row["scp_codes"]
+    if "NORM" in scp_codes:
+        dx = "Normal"
+    else:
+        dx = "Abnormal"
+
+    input_dir = input_folder / record_dir
+    output_dir = output_folder / record_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # skip if output_dir contains images and not force_recompute
+    if not force_recompute:
+        existing_images = find_images(str(output_dir), [".png", ".jpg", ".jpeg"])
+        existing_images = [img for img in existing_images if img.startswith(record_basename)]
+        if len(existing_images) > 0:
+            return
+
+    input_header_file = (input_dir / record_basename).with_suffix(f".{header_ext}")
+    input_signal_files = (input_dir / record_basename).with_suffix(f".{data_ext}")
+    output_header_file = (output_dir / record_basename).with_suffix(f".{header_ext}")
+
+    # generate the synthetic images
+    ecg_img_gen_config.input_file = str(input_signal_files)
+    ecg_img_gen_config.header_file = str(input_header_file)
+    ecg_img_gen_config.output_directory = str(output_dir)
+    ecg_img_gen_config.start_index = -1
+
+    run_single_file(ecg_img_gen_config)
+
+    record_images = []
+    for image in find_images(str(output_dir), [".png", ".jpg", ".jpeg"]):
+        if image.startswith(record_basename):
+            record_images.append(image)
+
+    # generate new header file
+    input_header = input_header_file.read_text()
+    lines = input_header.splitlines()
+    record_line = " ".join(lines[0].strip().split(" ")[:4]) + "\n"
+    signal_lines = "\n".join(ln.strip() for ln in lines[1:] if ln.strip() and not ln.startswith("#")) + "\n"
+    comment_lines = (
+        "\n".join(
+            ln.strip()
+            for ln in lines[1:]
+            if ln.startswith("#")
+            and not any((ln.startswith(x) for x in ("#Age:", "#Sex:", "#Height:", "#Weight:", "#Dx:", "#Image:")))
+        )
+        + "\n"
+    )
+
+    record_line = record_line.strip() + f" {recording_date_string}\n"
+    signal_lines = signal_lines.strip() + "\n"
+    comment_lines = comment_lines.strip() + f"#Age: {age}\n#Sex: {sex}\n#Height: {height}\n#Weight: {weight}\n#Dx: {dx}\n"
+    record_image_string = ", ".join(record_images)
+    comment_lines += f"#Image: {record_image_string}\n"
+
+    output_header = record_line + signal_lines + comment_lines
+
+    output_header_file.write_text(output_header)
 
 
 if __name__ == "__main__":
