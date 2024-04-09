@@ -4,7 +4,7 @@ imgaug==0.4.0
 imutils==0.5.4
 numpy==1.24.3
 keras==2.13.1
-opencv_python==4.6.0.66
+opencv-python==4.6.0.66
 pandas==1.4.1
 Pillow==9.5.0
 requests==2.21.0
@@ -18,3 +18,4 @@ validators==0.18.2
 wfdb==3.4.1
 matplotlib
 html5lib==1.1
+torch-ecg>=0.0.28

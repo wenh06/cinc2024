@@ -2,6 +2,8 @@ import argparse
 import os
 import pickle
 import random
+import shutil
+import warnings
 from collections import namedtuple
 from pathlib import Path
 from sys import platform
@@ -17,6 +19,10 @@ import tensorflow as tf
 import validators
 from bs4 import BeautifulSoup, Comment
 from PIL import Image
+from torch_ecg.utils.download import http_get
+
+CACHE_DIR = MODULE_DIR / ".cache"
+CACHE_DIR.mkdir(exist_ok=True)
 
 
 def get_parser():
@@ -45,6 +51,27 @@ def get_parser():
     parser.add_argument("--save", dest="save", type=str, default=None)
 
     return parser
+
+
+en_core_sci_sm_model_dir = None
+en_core_sci_sm_model = None
+
+(CACHE_DIR / "en_core_sci_sm").mkdir(exist_ok=True)
+if len(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))) == 1:
+    en_core_sci_sm_model_dir = str(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))[0].parent)
+    en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
+
+
+def download_en_core_sci_sm():
+    global en_core_sci_sm_model_dir
+    global en_core_sci_sm_model
+    if en_core_sci_sm_model_dir is not None:
+        return
+    url = "https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_sm-0.5.4.tar.gz"
+    model_dir = http_get(url, dst_dir=CACHE_DIR / "en_core_sci_sm", extract=True)
+    # locate the model directory
+    en_core_sci_sm_model_dir = str(list(Path(model_dir).rglob("config.cfg"))[0].parent)
+    en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
 
 
 # Sample random from a multivariate normal
@@ -174,9 +201,18 @@ def get_handwritten(
     save=None,
     bbox=False,
 ):
+    global en_core_sci_sm_model
+    if en_core_sci_sm_model is None:
+        warnings.warn("No spacy model named 'en_core_sci_sm', skipping handwritting text generation")
+        if Path(input_file).parent.expanduser().resolve() != Path(output_dir).expanduser().resolve():
+            shutil.copy(input_file, output_dir)
+        outfile = os.path.join(output_dir, Path(input_file).name)
+        return outfile
+
     # Use 'Agg' mode to prevent accumulation of figures
     matplotlib.use("Agg")
     filename = input_file
+    nlp = en_core_sci_sm_model
 
     # Extract n medical terms
     if validators.url(link):
@@ -194,19 +230,17 @@ def get_handwritten(
             if text.parent.name not in ["script", "meta", "link", "style"] and not isinstance(text, Comment) and text != "\n":
                 medicalText = medicalText + text.strip()
         # Extract medical terms using space biomedical library
-        nlp = spacy.load("en_core_sci_sm")
         doc = nlp(medicalText)
     else:
         # Extract medical terms from .txt files
         if link == "":
-            link = "HandwrittenText/Biomedical.txt"
+            link = MODULE_DIR / "HandwrittenText/Biomedical.txt"
         with open(link, "r") as f:
             # Extract lines from the file
             text = ""
             for line in f.readlines():
                 text = text + " " + line
             # Extract medical terms using biomedical library
-        nlp = spacy.load("en_core_sci_sm")
         doc = nlp(text)
         # Choose n random words from the extracted list
     words = random.choices(doc.ents, k=num_words)

@@ -31,7 +31,7 @@
     "random_add_header": 0,
     "random_bw": 0,
     "deterministic_lead": true,
-    "store_text_bounding_box": false,
+    "store_text_bounding_box": true,
     "store_config": false,
     "deterministic_offset": false,
     "deterministic_num_words": false,
@@ -47,5 +47,5 @@
     "hw_text": true,
     "wrinkles": true,
     "augment": true,
-    "bbox": false
+    "bbox": true
 }
