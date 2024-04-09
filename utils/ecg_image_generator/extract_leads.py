@@ -45,13 +45,17 @@ def get_paper_ecg(
     papersize="",
     add_lead_names=True,
     pad_inches=1,
-    template_file=os.path.join(MODULE_DIR / "TemplateFiles", "TextFile1.txt"),
-    font_type=os.path.join(MODULE_DIR / "Fonts", "Times_New_Roman.ttf"),
+    template_file=None,
+    font_type=None,
     standard_colours=5,
     full_mode="II",
     bbox=False,
     columns=-1,
 ):
+    if template_file is None:
+        template_file = str((MODULE_DIR / "TemplateFiles/TextFile1.txt").resolve())
+    if font_type is None:
+        font_type = str((MODULE_DIR / "Fonts/Times_New_Roman.ttf").resolve())
 
     # Extract a reduced-lead set from each pair of full-lead header and recording files.
     full_header_file = header_file

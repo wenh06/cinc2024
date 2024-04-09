@@ -191,7 +191,7 @@ def get_handwritten(
     x_offset=0,
     y_offset=0,
     handwriting_size_factor=0.2,
-    model_path=os.path.join(os.path.join("HandwrittenText", "pretrained"), "model-29"),
+    model_path=None,
     text=None,
     style=None,
     bias=1.0,
@@ -208,6 +208,9 @@ def get_handwritten(
             shutil.copy(input_file, output_dir)
         outfile = os.path.join(output_dir, Path(input_file).name)
         return outfile
+
+    if model_path is None:
+        model_path = str((MODULE_DIR / "HandwrittenText/pretrained/model-29").resolve())
 
     # Use 'Agg' mode to prevent accumulation of figures
     matplotlib.use("Agg")
@@ -246,8 +249,9 @@ def get_handwritten(
     words = random.choices(doc.ents, k=num_words)
 
     # Load the pretrained RNN model for handwritten text generation
-    with open(os.path.join(os.path.join("HandwrittenText", "data"), "translation.pkl"), "rb") as file:
-        translation = pickle.load(file)
+    # with open(os.path.join(os.path.join("HandwrittenText", "data"), "translation.pkl"), "rb") as file:
+    #     translation = pickle.load(file)
+    translation = pickle.loads((MODULE_DIR / "HandwrittenText/data/translation.pkl").read_bytes())
     rev_translation = {v: k for k, v in translation.items()}
     charset = [rev_translation[i] for i in range(len(rev_translation))]
     charset[0] = ""
@@ -269,8 +273,9 @@ def get_handwritten(
             style = None
             if style is not None:
                 style = None
-                with open(os.path.join(os.path.join("HandwrittenText", "data"), "styles.pkl"), "rb") as file:
-                    styles = pickle.load(file)
+                # with open(os.path.join(os.path.join("HandwrittenText", "data"), "styles.pkl"), "rb") as file:
+                #     styles = pickle.load(file)
+                styles = pickle.loads((MODULE_DIR / "HandwrittenText/data/styles.pkl").read_bytes())
                 if style > len(styles[0]):
                     raise ValueError("Requested style is not in style list")
                 style = [styles[0][style], styles[1][style]]
