@@ -58,14 +58,22 @@ RUN ln -s /usr/bin/python3 /usr/bin/python && ln -s /usr/bin/pip3 /usr/bin/pip
 # list packages installed in the base image
 RUN pip list
 
+# torch and related packages (torchvision, torchaudio, etc.) are already installed in the base image
+
+
+# change PyPI source to Tsinghua mirror if the system time zone is in China (+08:00 CST)
+RUN if [[ $(date +'%:z %Z') == "+08:00 CST" ]]; \
+    then pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
+    else echo "System time zone is not in China, skip changing PyPI source.  " && echo $(date +'%:z %Z'); \
+    fi
+
+
 # alternative pypi sources
 # http://mirrors.aliyun.com/pypi/simple/
 # http://pypi.douban.com/simple/
 # RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 RUN python -m pip install --upgrade pip setuptools wheel
-
-# torch and related packages (torchvision, torchaudio, etc.) are already installed in the base image
 
 RUN pip install torch-ecg
 
