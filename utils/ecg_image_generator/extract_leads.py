@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
+from constants import MODULE_DIR, format_4_by_3, lead_bounding_box_dir_name, save_img_ext, text_bounding_box_dir_name
 from ecg_plot import ecg_plot
 from helper_functions import (
     create_signal_dictionary,
@@ -20,10 +21,6 @@ from helper_functions import (
     standardize_leads,
     write_wfdb_file,
 )
-
-MODULE_DIR = Path(__file__).resolve().parent
-
-format_4_by_3 = [["I", "II", "III"], ["aVR", "aVL", "aVF", "AVR", "AVL", "AVF"], ["V1", "V2", "V3"], ["V4", "V5", "V6"]]
 
 
 # Run script.
@@ -102,7 +99,7 @@ def get_paper_ecg(
         columns = 4
         full_mode = "None"
 
-    template_name = "custom_template.png"
+    template_name = f"custom_template{save_img_ext}"
 
     if recording.shape[0] > recording.shape[1]:
         recording = np.transpose(recording)
@@ -316,15 +313,15 @@ def get_paper_ecg(
         json_dict["x_grid"] = x_grid
         json_dict["y_grid"] = y_grid
         if store_text_bbox:
-            json_dict["text_bounding_box_file"] = os.path.join(output_directory, "text_bounding_box", rec_tail + ".txt")
+            json_dict["text_bounding_box_file"] = os.path.join(output_directory, text_bounding_box_dir_name, rec_tail + ".txt")
         else:
             json_dict["text_bounding_box_file"] = ""
         if bbox:
-            json_dict["lead_bounding_box_file"] = os.path.join(output_directory, "lead_bounding_box", rec_tail + ".txt")
+            json_dict["lead_bounding_box_file"] = os.path.join(output_directory, lead_bounding_box_dir_name, rec_tail + ".txt")
         else:
             json_dict["lead_bounding_box_file"] = ""
 
-        outfile = os.path.join(output_directory, rec_tail + ".png")
+        outfile = os.path.join(output_directory, rec_tail + save_img_ext)
 
         json_object = json.dumps(json_dict, indent=4)
 

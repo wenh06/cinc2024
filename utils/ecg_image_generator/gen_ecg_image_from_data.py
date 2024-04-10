@@ -7,11 +7,6 @@ import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from CreasesWrinkles.creases import get_creased
-from extract_leads import get_paper_ecg
-from HandwrittenText.generate import get_handwritten
-from ImageAugmentation.augment import get_augment
 from scipy.stats import bernoulli
 
 try:
@@ -19,10 +14,14 @@ try:
 except ImportError:
     cv2 = None
 
+from constants import MODULE_DIR
+from CreasesWrinkles.creases import get_creased
+from extract_leads import get_paper_ecg
+from HandwrittenText.generate import get_handwritten
+from ImageAugmentation.augment import get_augment
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 warnings.filterwarnings("ignore")
-
-MODULE_DIR = Path(__file__).resolve().parent
 
 
 def get_parser():

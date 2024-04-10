@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from constants import lead_bounding_box_dir_name, save_img_ext, text_bounding_box_dir_name
 from matplotlib.ticker import AutoMinorLocator
 from PIL import Image
 from TemplateFiles.generate_template import generate_template
@@ -395,7 +396,7 @@ def ecg_plot(
     if print_txt:
         x_offset = 0.05
         y_offset = int(y_max)
-        template_name = "custom_template.png"
+        template_name = f"custom_template{save_img_ext}"
         printed_text, attributes, flag = generate_template(full_header_file)
 
         if flag:
@@ -419,14 +420,14 @@ def ecg_plot(
     ax.text(2, 0.5, "25mm/s", fontsize=lead_fontsize)
     ax.text(4, 0.5, "10mm/mV", fontsize=lead_fontsize)
 
-    plt.savefig(os.path.join(output_dir, tail + ".png"), dpi=resolution)
+    plt.savefig(os.path.join(output_dir, tail + save_img_ext), dpi=resolution)
     plt.close(fig)
     plt.clf()
     plt.cla()
 
     if pad_inches != 0:
 
-        ecg_image = Image.open(os.path.join(output_dir, tail + ".png"))
+        ecg_image = Image.open(os.path.join(output_dir, tail + save_img_ext))
 
         right = pad_inches * resolution
         left = pad_inches * resolution
@@ -438,7 +439,7 @@ def ecg_plot(
         result_image = Image.new(ecg_image.mode, (new_width, new_height), (255, 255, 255))
         result_image.paste(ecg_image, (left, top))
 
-        result_image.save(os.path.join(output_dir, tail + ".png"))
+        result_image.save(os.path.join(output_dir, tail + save_img_ext))
 
         plt.close("all")
         plt.close(fig)
@@ -446,10 +447,10 @@ def ecg_plot(
         plt.cla()
 
     if store_text_bbox:
-        if not os.path.exists(os.path.join(output_dir, "text_bounding_box")):
-            os.mkdir(os.path.join(output_dir, "text_bounding_box"))
+        if not os.path.exists(os.path.join(output_dir, text_bounding_box_dir_name)):
+            os.mkdir(os.path.join(output_dir, text_bounding_box_dir_name))
 
-        with open(os.path.join(output_dir, "text_bounding_box", tail + ".txt"), "w") as f:
+        with open(os.path.join(output_dir, text_bounding_box_dir_name, tail + ".txt"), "w") as f:
             for i, l in enumerate(text_bbox):
                 if pad_inches != 0:
                     l[0] += left
@@ -464,9 +465,9 @@ def ecg_plot(
                 f.write("\n")
 
     if bbox:
-        if not os.path.exists(os.path.join(output_dir, "lead_bounding_box")):
-            os.mkdir(os.path.join(output_dir, "lead_bounding_box"))
-        with open(os.path.join(output_dir, "lead_bounding_box", tail + ".txt"), "w") as f:
+        if not os.path.exists(os.path.join(output_dir, lead_bounding_box_dir_name)):
+            os.mkdir(os.path.join(output_dir, lead_bounding_box_dir_name))
+        with open(os.path.join(output_dir, lead_bounding_box_dir_name, tail + ".txt"), "w") as f:
             for i, l in enumerate(lead_bbox):
                 if pad_inches != 0:
                     l[0] += left

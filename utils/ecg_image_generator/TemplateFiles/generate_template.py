@@ -1,10 +1,8 @@
 import os
 from datetime import date
-from pathlib import Path
-
-MODULE_DIR = Path(__file__).resolve().parents[1]
 
 import wfdb
+from constants import MODULE_DIR
 
 test_date1 = date(1940, 1, 1)
 

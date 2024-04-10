@@ -8,8 +8,6 @@ from collections import namedtuple
 from pathlib import Path
 from sys import platform
 
-MODULE_DIR = Path(__file__).resolve().parents[1]
-
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,11 +16,9 @@ import spacy
 import tensorflow as tf
 import validators
 from bs4 import BeautifulSoup, Comment
+from constants import CACHE_DIR, MODULE_DIR, save_img_ext
 from PIL import Image
 from torch_ecg.utils.download import http_get
-
-CACHE_DIR = MODULE_DIR / ".cache"
-CACHE_DIR.mkdir(exist_ok=True)
 
 
 def get_parser():
@@ -293,7 +289,7 @@ def get_handwritten(
             ax[i].set_axis_off()
             i = i + 1
             # Save the plot as HandwrittenText.png
-        fig.savefig("HandwrittenText.png", dpi=1200)
+        fig.savefig(f"HandwrittenText{save_img_ext}", dpi=1200)
         img_path = filename
         file_head, file_tail = os.path.splitext(filename)
         boxed_file = file_head + "-boxed" + file_tail
@@ -303,7 +299,7 @@ def get_handwritten(
         # Convert from RGBA to RGB
         img_ecg = img_ecg.convert("RGB")
         # Load the generated handwritten text image
-        img_handwritten = Image.open("HandwrittenText.png")
+        img_handwritten = Image.open(f"HandwrittenText{save_img_ext}")
         # Convert the generated handwritten text image to RGB
         img_handwritten = img_handwritten.convert("RGB")
         # Resize the handwritten text image
@@ -345,6 +341,6 @@ def get_handwritten(
         plt.clf()
         plt.cla()
 
-        os.remove("HandwrittenText.png")
+        os.remove(f"HandwrittenText{save_img_ext}")
         outfile = os.path.join(output_dir, tail)
         return outfile
