@@ -2,15 +2,13 @@ import argparse
 import heapq
 import os
 import random
-from pathlib import Path
-
-MODULE_DIR = Path(__file__).resolve().parents[1]
 
 try:
     import cv2
 except ImportError:
     cv2 = None
 import numpy as np
+from constants import MODULE_DIR
 from PIL import Image
 from skimage import util
 

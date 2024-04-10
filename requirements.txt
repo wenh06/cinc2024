@@ -29,6 +29,7 @@ requests
 accelerate
 nitime
 PyYAML
+bib-lookup
 diff-binom-confint
 # from ecg-image-kit/codes/ecg-image-generator
 validators

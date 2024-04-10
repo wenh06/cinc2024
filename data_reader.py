@@ -13,7 +13,8 @@ from typing import Any, Dict, List, Optional, Union
 import gdown
 import numpy as np
 import pandas as pd
-from PIL import Image
+from bib_lookup.utils import is_notebook
+from PIL import Image, ImageDraw
 from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.databases.base import DataBaseInfo, PhysioNetDataBase
 from torch_ecg.utils.download import _unzip_file, http_get
@@ -24,6 +25,7 @@ from add_image_filenames import find_images  # noqa: F401
 from cfg import BaseCfg
 from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
+from utils.ecg_image_generator import constants as ecg_img_gen_constants
 from utils.ecg_image_generator.gen_ecg_image_from_data import run_single_file
 from utils.misc import get_record_list_recursive3, url_is_reachable
 
@@ -228,9 +230,19 @@ class CINC2024Reader(PhysioNetDataBase):
             self._df_images["ecg_id"] = self._df_images["image"].apply(lambda x: x[:5])
             self._df_images["patient_id"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "patient_id"])
             self._df_images["strat_fold"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "strat_fold"])
+            self._df_images["lead_bbox"] = self._df_images["path"].apply(
+                lambda x: x.parent / ecg_img_gen_constants.lead_bounding_box_dir_name / f"{x.stem}.txt"
+            )
+            self._df_images["lead_bbox"] = self._df_images["lead_bbox"].apply(lambda x: x if x.exists() else None)
+            self._df_images["text_bbox"] = self._df_images["path"].apply(
+                lambda x: x.parent / ecg_img_gen_constants.text_bounding_box_dir_name / f"{x.stem}.txt"
+            )
+            self._df_images["text_bbox"] = self._df_images["text_bbox"].apply(lambda x: x if x.exists() else None)
             self._df_images.set_index("image", inplace=True)
         else:
-            self._df_images = pd.DataFrame(columns=["path", "image", "image_header", "ecg_id", "patient_id", "strat_fold"])
+            self._df_images = pd.DataFrame(
+                columns=["path", "image", "image_header", "ecg_id", "patient_id", "strat_fold", "lead_bbox", "text_bbox"]
+            )
             self._df_images.set_index("image", inplace=True)
             self.logger.warning(f"no synthetic images found in {self._synthetic_images_dir}")
 
@@ -327,6 +339,63 @@ class CINC2024Reader(PhysioNetDataBase):
             return img
         else:
             raise ValueError(f"Invalid return format `{fmt}`")
+
+    def view_image(
+        self, img: Union[str, int], with_lead_bbox: bool = True, with_text_bbox: bool = True
+    ) -> Optional[Image.Image]:
+        """View the image of a record.
+
+        Parameters
+        ----------
+        img : str or int
+            The image name or the index of the image.
+        with_lead_bbox : bool, default True
+            Whether to show the bounding boxes of the waveforms.
+        with_text_bbox : bool, default True
+            Whether to show the bounding boxes of the text.
+
+        Returns
+        -------
+        PIL.Image
+            The image of an ECG record, of shape ``(H, W, C)`` if in notebook.
+            Otherwise, the image will be shown in a new window instead of returning,
+            typically using the default image viewer of the operating system.
+
+        """
+        if isinstance(img, int):
+            img = self._all_images[img]
+        ecg_image = self.load_image(img, fmt="pil")
+        if with_lead_bbox:
+            # lead_bbox has the format [x1, y1, x2, y2, is_full], where is_full takes 0 or 1
+            lead_bbox_file = self._df_images.loc[img, "lead_bbox"]
+            if lead_bbox_file is not None:
+                lead_bbox = np.loadtxt(lead_bbox_file, delimiter=",", dtype=int)
+                # plot the bounding boxes in the image
+                draw = ImageDraw.Draw(ecg_image)
+                for x1, y1, x2, y2, is_full in lead_bbox:
+                    # map to the PIL coordinate system
+                    x1, y1, x2, y2 = x1, ecg_image.height - y2, x2, ecg_image.height - y1
+                    draw.rectangle([x1, y1, x2, y2], outline="red", width=2)
+            else:
+                self.logger.warning(f"no lead bounding box found for image `{img}`.")
+        if with_text_bbox:
+            # text_bbox has the format [x1, y1, x2, y2, lead_name], where lead_name is the name of the lead
+            text_bbox_file = self._df_images.loc[img, "text_bbox"]
+            if text_bbox_file is not None:
+                text_bbox = pd.read_csv(text_bbox_file, header=None, names=["x1", "y1", "x2", "y2", "lead_name"])
+                # plot the bounding boxes in the image
+                draw = ImageDraw.Draw(ecg_image)
+                for idx, row in text_bbox.iterrows():
+                    # map to the PIL coordinate system
+                    x1, y1, x2, y2 = row[["x1", "y1", "x2", "y2"]].values.astype(int)
+                    x1, y1, x2, y2 = x1, ecg_image.height - y2, x2, ecg_image.height - y1
+                    draw.rectangle([x1, y1, x2, y2], outline="blue", width=2)
+            else:
+                self.logger.warning(f"no text bounding box found for image `{img}`.")
+        # if is jupyter notebook, show the image inline
+        if is_notebook():
+            return ecg_image
+        ecg_image.show()
 
     def load_metadata(self, rec: Union[str, int], items: Optional[Union[str, List[str]]] = None) -> Dict[str, Any]:
         """Load the metadata of a record.
@@ -579,6 +648,16 @@ class CINC2024Reader(PhysioNetDataBase):
     ) -> None:
         try:
             if parallel:
+                if kwargs.get("hw_text", self.__gen_img_default_config__["hw_text"]) is True:
+                    from utils.ecg_image_generator.HandwrittenText.generate import en_core_sci_sm_model
+
+                    if en_core_sci_sm_model is None:
+                        self.logger.warning(
+                            "The spaCy model en_core_sci_sm is not cached locally. Call the function download_en_core_sci_sm "
+                            "from utils.ecg_image_generator.HandwrittenText.generate to download the model. "
+                            "Otherwise, it would be downloaded multiple times in parallel."
+                        )
+                        return
                 if output_folder is None:
                     output_folder = self._synthetic_images_dir
                 output_folder = Path(output_folder)

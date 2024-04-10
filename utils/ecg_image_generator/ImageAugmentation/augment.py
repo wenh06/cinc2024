@@ -4,7 +4,6 @@ import random
 
 import matplotlib.pyplot as plt
 import numpy as np
-from helper_functions import read_bounding_box_txt, write_bounding_box_txt
 
 try:
     from imgaug import augmenters as iaa
@@ -12,6 +11,8 @@ try:
 except ImportError:
     iaa = None
     BoundingBoxesOnImage = None
+from constants import lead_bounding_box_dir_name, text_bounding_box_dir_name
+from helper_functions import read_bounding_box_txt, write_bounding_box_txt
 from PIL import Image
 
 
@@ -45,7 +46,7 @@ def get_augment(
     if bbox:
         head, tail = os.path.split(filename)
         f, extn = os.path.splitext(tail)
-        txt_file = os.path.join(head, "lead_bounding_box", f + ".txt")
+        txt_file = os.path.join(head, lead_bounding_box_dir_name, f + ".txt")
         lead_bbs = read_bounding_box_txt(txt_file)
         lead_bbs = BoundingBoxesOnImage(lead_bbs, shape=image.shape)
 
@@ -53,7 +54,7 @@ def get_augment(
 
         head, tail = os.path.split(filename)
         f, extn = os.path.splitext(tail)
-        txt_file = os.path.join(head, "text_bounding_box", f + ".txt")
+        txt_file = os.path.join(head, text_bounding_box_dir_name, f + ".txt")
         leadNames_bbs = read_bounding_box_txt(txt_file)
         leadNames_bbs = BoundingBoxesOnImage(leadNames_bbs, shape=image.shape)
 
@@ -88,13 +89,13 @@ def get_augment(
     if bbox:
         head, tail = os.path.split(filename)
         f, extn = os.path.splitext(tail)
-        txt_file = os.path.join(head, "lead_bounding_box", f + ".txt")
+        txt_file = os.path.join(head, lead_bounding_box_dir_name, f + ".txt")
         write_bounding_box_txt(augmented_lead_bbs, txt_file)
 
     if store_text_bounding_box:
         head, tail = os.path.split(filename)
         f, extn = os.path.splitext(tail)
-        txt_file = os.path.join(head, "text_bounding_box", f + ".txt")
+        txt_file = os.path.join(head, text_bounding_box_dir_name, f + ".txt")
         write_bounding_box_txt(augmented_leadName_bbs, txt_file)
 
     return f
