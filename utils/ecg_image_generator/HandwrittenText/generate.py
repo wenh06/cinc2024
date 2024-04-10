@@ -16,7 +16,7 @@ import spacy
 import tensorflow as tf
 import validators
 from bs4 import BeautifulSoup, Comment
-from constants import CACHE_DIR, MODULE_DIR, save_img_ext
+from constants import CACHE_DIR, MODULE_DIR, en_core_sci_sm_url, save_img_ext
 from PIL import Image
 from torch_ecg.utils.download import http_get
 
@@ -52,7 +52,7 @@ def get_parser():
 en_core_sci_sm_model_dir = None
 en_core_sci_sm_model = None
 
-(CACHE_DIR / "en_core_sci_sm").mkdir(exist_ok=True)
+(CACHE_DIR / "en_core_sci_sm").mkdir(exist_ok=True, parents=True)
 if len(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))) == 1:
     en_core_sci_sm_model_dir = str(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))[0].parent)
     en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
@@ -63,8 +63,7 @@ def download_en_core_sci_sm():
     global en_core_sci_sm_model
     if en_core_sci_sm_model_dir is not None:
         return
-    url = "https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_sm-0.5.4.tar.gz"
-    model_dir = http_get(url, dst_dir=CACHE_DIR / "en_core_sci_sm", extract=True)
+    model_dir = http_get(en_core_sci_sm_url, dst_dir=CACHE_DIR / "en_core_sci_sm", extract=True)
     # locate the model directory
     en_core_sci_sm_model_dir = str(list(Path(model_dir).rglob("config.cfg"))[0].parent)
     en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
