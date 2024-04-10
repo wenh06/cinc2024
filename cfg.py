@@ -42,6 +42,8 @@ BaseCfg.normal_class = "Normal"
 BaseCfg.abnormal_class = "Abnormal"
 BaseCfg.classes = [BaseCfg.normal_class, BaseCfg.abnormal_class]
 
+BaseCfg.lead_names = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+
 
 ###############################################################################
 # training configurations for machine learning and deep learning
@@ -93,6 +95,7 @@ TrainCfg.log_step = 10
 
 TrainCfg.predict_dx = True
 TrainCfg.predict_digitization = False  # TODO: implement digitization prediction
+TrainCfg.predict_bbox = False  # TODO: implement bounding box prediction
 
 TrainCfg.monitor = "dx_f_measure"
 
@@ -182,3 +185,15 @@ ModelCfg.digitization_head.remote_checkpoints = {
 ModelCfg.digitization_head.remote_checkpoints_name = None  # None for not loading from remote checkpoints
 
 ModelCfg.digitization_head.include = TrainCfg.predict_digitization
+
+
+# model config for object detection
+ModelCfg.object_detection = CFG()
+ModelCfg.object_detection.model_name = "facebook/detr-resnet-50"
+ModelCfg.object_detection.source = "hf"
+
+ModelCfg.object_detection.class_names = BaseCfg.lead_names + ["waveform"]
+ModelCfg.object_detection.num_classes = len(ModelCfg.object_detection.label_names)
+ModelCfg.object_detection.num_queries = 100
+ModelCfg.object_detection.label2id = {label: i for i, label in enumerate(ModelCfg.object_detection.label_names)}
+ModelCfg.object_detection.bbox_thr = 0.5

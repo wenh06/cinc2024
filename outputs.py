@@ -2,7 +2,7 @@
 """
 
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -35,6 +35,10 @@ class CINC2024Outputs:
         Loss for the digitization.
     total_loss : Sequence[float]
         Total loss, sum of the `dx_loss` and `digitization_loss`.
+    bbox : Sequence[Dict[str, Union[float, int, str]]]
+        Bounding boxes of the detected objects,
+        keys are "xmin", "ymin, "xmax, "ymax", "class", "score".
+    bbox_loss : Sequence[float], optional
 
     """
 
@@ -46,6 +50,8 @@ class CINC2024Outputs:
     digitization: Optional[Sequence[np.ndarray]] = None
     digitization_loss: Optional[Sequence[float]] = None
     total_loss: Optional[Sequence[float]] = None
+    bbox: Optional[Sequence[Dict[str, Union[float, int, str]]]] = None
+    bbox_loss: Optional[Sequence[float]] = None
 
     def __post_init__(self):
         assert any(
@@ -84,3 +90,10 @@ class CINC2024Outputs:
                 self.total_loss = self.dx_loss
             elif self.digitization_loss is not None:
                 self.total_loss = self.digitization_loss
+
+        # TODO: further process the bbox:
+        # the bounding boxes include the lead names boxes and the waveform boxes
+        # one should assign the lead names to the detected waveform bounding boxes
+        # based on spatial relations of the waveform boxes and the lead names boxes
+        if self.bbox is not None:
+            pass

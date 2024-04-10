@@ -167,7 +167,8 @@ class FastDataReader(ReprMixin, Dataset):
         row = self.df_data.loc[self.images[index]]
         # load the image
         image = self.reader.load_image(row.name)  # numpy array, of shape (H, W, C)
-        data = {"image": image}
+        # image_id (of `int` type) required by some object detection models
+        data = {"image": image, "image_id": index}
         if self.config.predict_dx:
             data["dx"] = row["dx"]  # int
         if self.config.predict_digitization:
@@ -176,6 +177,10 @@ class FastDataReader(ReprMixin, Dataset):
             # except for a default lead (lead II)
             # keys are "digitization" and "mask"
             raise NotImplementedError("data preparation for digitization prediction is not implemented yet")
+        if self.config.predict_bbox:
+            # load the bounding boxes
+            # keys are "bbox", "category_id", "area"
+            raise NotImplementedError("data preparation for bbox prediction is not implemented yet")
 
         return data
 
