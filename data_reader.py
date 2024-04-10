@@ -648,6 +648,16 @@ class CINC2024Reader(PhysioNetDataBase):
     ) -> None:
         try:
             if parallel:
+                if kwargs.get("hw_text", self.__gen_img_default_config__["hw_text"]) is True:
+                    from utils.ecg_image_generator.HandwrittenText.generate import en_core_sci_sm_model
+
+                    if en_core_sci_sm_model is None:
+                        self.logger.warning(
+                            "The spaCy model en_core_sci_sm is not cached locally. Call the function download_en_core_sci_sm "
+                            "from utils.ecg_image_generator.HandwrittenText.generate to download the model. "
+                            "Otherwise, it would be downloaded multiple times in parallel."
+                        )
+                        return
                 if output_folder is None:
                     output_folder = self._synthetic_images_dir
                 output_folder = Path(output_folder)
