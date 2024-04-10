@@ -90,8 +90,8 @@ def test_dataset() -> None:
     # int indexing
     data = ds_val[0]
     assert isinstance(data, dict)
-    assert "image" in data
-    assert set(data.keys()) <= set(["dx", "digitization", "image", "mask"])
+    assert "image" in data and "image_id" in data
+    assert set(data.keys()) <= ds_val.data_fields
     # since the image backbone from transformers automatically converts the image to correct format
     # preprocessings including normalization, resizing, channel conversion, etc. are done in the backbone
     # instead of in the dataset
@@ -108,13 +108,16 @@ def test_dataset() -> None:
         assert isinstance(data["mask"], np.ndarray)
         assert data["mask"].ndim == 2
         assert data["mask"].shape[0] == ds_val.config.num_leads
+    if "bbox" in data:
+        # TODO: test fields for object detection
+        pass
 
     # slice indexing
     batch_size = 4
     data = ds_val[:batch_size]
     assert isinstance(data, dict)
-    assert "image" in data
-    assert set(data.keys()) <= set(["dx", "digitization", "image", "mask"])
+    assert "image" in data and "image_id" in data
+    assert set(data.keys()) <= ds_val.data_fields
     assert isinstance(data["image"], list)
     assert len(data["image"]) == batch_size
     assert all([isinstance(img, np.ndarray) for img in data["image"]])
@@ -134,6 +137,8 @@ def test_dataset() -> None:
         # assert data["mask"].ndim == 3
         # assert data["mask"].shape[0] == batch_size
         # assert data["mask"].shape[1] == ds_val.config.num_leads
+    if "bbox" in data:
+        pass
 
     # DO NOT use the following code to load all data
     # since the dataset is too large to load all data into memory

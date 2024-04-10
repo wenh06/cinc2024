@@ -3,7 +3,7 @@
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Sequence, Union
+from typing import Dict, List, Sequence, Set, Union
 
 import numpy as np
 import torch
@@ -135,6 +135,17 @@ class CinC2024Dataset(Dataset, ReprMixin):
     @property
     def cache(self) -> Dict[str, np.ndarray]:
         return self.__cache
+
+    @property
+    def data_fields(self) -> Set[str]:
+        # fmt: off
+        return set([
+            "image", "image_id",  # basic fields
+            "dx",  # classification
+            "digitization", "mask",  # digitization
+            "bbox", "category_id", "area"  # object detection
+        ])
+        # fmt: on
 
     def extra_repr_keys(self) -> List[str]:
         return ["reader", "training"]
