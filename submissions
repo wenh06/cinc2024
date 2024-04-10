@@ -14,6 +14,9 @@ Unofficial Phase:
       max_lr: 0.018
       early_stopping_patience: 35
       augmentations: null
+      base_datasets:
+      - ptb-xl
+      synthetic_image_gen_config: default
     hash: 9d568f7
 
   submission 2:
@@ -31,13 +34,16 @@ Unofficial Phase:
       max_lr: 0.018
       early_stopping_patience: 35
       augmentations: null
+      base_datasets:
+      - ptb-xl
+      synthetic_image_gen_config: default
     hash: 6a7cead
 
   submission 3:
-    f_measure: null
-    snr: null
-    submission ID: null
-    submission time: null
+    f_measure: 0.624
+    snr: -13.203
+    submission ID: 1108
+    submission time: 4/7/2024 5:01:09 ET
     digitization_workaround: simulator
     backbone: facebook/convnextv2-nano-22k-384
     train:
@@ -48,13 +54,16 @@ Unofficial Phase:
       max_lr: 0.0067
       early_stopping_patience: 8
       augmentations: null
+      base_datasets:
+      - ptb-xl
+      synthetic_image_gen_config: default
     hash: eadc65e
 
   submission 4:
-    f_measure: null
-    snr: null
-    submission ID: null
-    submission time: null
+    f_measure: 0.514
+    snr: -13.211
+    submission ID: 1122
+    submission time: 4/8/2024 1:37:13 ET
     digitization_workaround: simulator
     backbone: microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft
     train:
@@ -65,13 +74,16 @@ Unofficial Phase:
       max_lr: 0.0067
       early_stopping_patience: 8
       augmentations: null
+      base_datasets:
+      - ptb-xl
+      synthetic_image_gen_config: default
     hash: 4db9018
 
   submission 5:
-    f_measure: null
-    snr: null
-    submission ID: null
-    submission time: null
+    f_measure: 0.456
+    snr: -13.213
+    submission ID: 1146
+    submission time: 4/8/2024 13:42:11 ET
     digitization_workaround: simulator
     backbone: facebook/convnextv2-atto-1k-224
     train:
@@ -82,7 +94,10 @@ Unofficial Phase:
       max_lr: 0.0067
       early_stopping_patience: 35
       augmentations: null
-    hash: null
+      base_datasets:
+      - ptb-xl
+      synthetic_image_gen_config: default
+    hash: f67caca
 
 Official Phase:
   submission 1: null
