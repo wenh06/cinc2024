@@ -22,7 +22,7 @@ from torch_ecg.utils.misc import add_docstring, dict_to_str, remove_parameters_r
 from tqdm.auto import tqdm
 
 from add_image_filenames import find_images  # noqa: F401
-from cfg import BaseCfg
+from cfg import BaseCfg, ModelCfg
 from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
 from utils.ecg_image_generator import constants as ecg_img_gen_constants
@@ -52,6 +52,7 @@ _CINC2024_INFO = DataBaseInfo(
     usage=[
         "Re-digitization of ECG images",
         "Classification of ECG images",
+        "Waveform and lead names detection in ECG images",
     ],
     note="""
     """,
@@ -165,6 +166,7 @@ class CINC2024Reader(PhysioNetDataBase):
         self._synthetic_images_dir = kwargs.pop("synthetic_images_dir", None)
         self.__config = CFG(BaseCfg.copy())
         self.__config.update(kwargs)
+        self.__bbox_class_names = kwargs.pop("bbox_class_names", ModelCfg.object_detection.class_names)
 
         self._df_records = None
         self._df_metadata = None
@@ -475,6 +477,120 @@ class CINC2024Reader(PhysioNetDataBase):
         elif class_map is not False:
             dx = class_map[dx]
         return dx
+
+    def load_bbox(
+        self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco"
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        """Load the bounding boxes of the image.
+
+        Parameters
+        ----------
+        img : str or int
+            The image name or the index of the image.
+        bbox_type : {"lead", "text"}, optional
+            The type of the bounding box.
+            If is ``None``, both types of bounding boxes will be loaded.
+        fmt : {"coco", "pascal_voc", "yolo"}, default "coco"
+            The format of the bounding boxes to be returned.
+            - If is "coco", the bounding boxes will be in COCO format:
+              ``[x, y, width, height]``.
+            - If is "pascal_voc", the bounding boxes will be in Pascal VOC format:
+              ``[xmin, ymin, xmax, ymax]``.
+            - If is "yolo", the bounding boxes will be in YOLO format:
+              ``[x_center, y_center, width, height]``.
+
+        Returns
+        -------
+        bbox : dict or list of dict
+            The bounding boxes of the ECG waveforms and (or) lead names in the image.
+
+        """
+        if isinstance(img, int):
+            img = self._all_images[img]
+        with_lead_bbox, with_text_bbox = True, True
+        if bbox_type == "lead":
+            with_text_bbox = False
+        elif bbox_type == "text":
+            with_lead_bbox = False
+
+        bbox = []
+
+        if with_lead_bbox:
+            # lead_bbox has the format [x1, y1, x2, y2, is_full], where is_full takes 0 or 1
+            lead_bbox_file = self._df_images.loc[img, "lead_bbox"]
+            if lead_bbox_file is not None:
+                lead_bbox = np.loadtxt(lead_bbox_file, delimiter=",", dtype=int)
+                for x1, y1, x2, y2, is_full in lead_bbox:
+                    if fmt.lower() == "coco":
+                        bbox.append(
+                            {
+                                "bbox": [x1, y1, x2 - x1, y2 - y1],
+                                "category_id": self.__bbox_class_names.index("waveform"),
+                                "area": (x2 - x1) * (y2 - y1),
+                                "category_name": "waveform",
+                            }
+                        )
+                    elif fmt.lower() == "pascal_voc":
+                        bbox.append(
+                            {
+                                "bbox": [x1, y1, x2, y2],
+                                "category_id": self.__bbox_class_names.index("waveform"),
+                                "area": (x2 - x1) * (y2 - y1),
+                                "category_name": "waveform",
+                            }
+                        )
+                    elif fmt.lower() == "yolo":
+                        bbox.append(
+                            {
+                                "bbox": [(x1 + x2) / 2, (y1 + y2) / 2, x2 - x1, y2 - y1],
+                                "category_id": self.__bbox_class_names.index("waveform"),
+                                "area": (x2 - x1) * (y2 - y1),
+                                "category_name": "waveform",
+                            }
+                        )
+                    else:
+                        raise ValueError(f"Invalid format `{fmt}`")
+            else:
+                self.logger.warning(f"no lead bounding box found for image `{img}`.")
+        if with_text_bbox:
+            # text_bbox has the format [x1, y1, x2, y2, lead_name], where lead_name is the name of the lead
+            text_bbox_file = self._df_images.loc[img, "text_bbox"]
+            if text_bbox_file is not None:
+                text_bbox = pd.read_csv(text_bbox_file, header=None, names=["x1", "y1", "x2", "y2", "lead_name"])
+                for idx, row in text_bbox.iterrows():
+                    x1, y1, x2, y2 = row[["x1", "y1", "x2", "y2"]].values.astype(int)
+                    if fmt.lower() == "coco":
+                        bbox.append(
+                            {
+                                "bbox": [x1, y1, x2 - x1, y2 - y1],
+                                "category_id": self.__bbox_class_names.index(row.lead_name),
+                                "area": (x2 - x1) * (y2 - y1),
+                                "category_name": row.lead_name,
+                            }
+                        )
+                    elif fmt.lower() == "pascal_voc":
+                        bbox.append(
+                            {
+                                "bbox": [x1, y1, x2, y2],
+                                "category_id": self.__bbox_class_names.index(row.lead_name),
+                                "area": (x2 - x1) * (y2 - y1),
+                                "category_name": row.lead_name,
+                            }
+                        )
+                    elif fmt.lower() == "yolo":
+                        bbox.append(
+                            {
+                                "bbox": [(x1 + x2) / 2, (y1 + y2) / 2, x2 - x1, y2 - y1],
+                                "category_id": self.__bbox_class_names.index(row.lead_name),
+                                "area": (x2 - x1) * (y2 - y1),
+                                "category_name": row.lead_name,
+                            }
+                        )
+                    else:
+                        raise ValueError(f"Invalid format `{fmt}`")
+            else:
+                self.logger.warning(f"no text bounding box found for image `{img}`.")
+        return bbox
 
     def load_header(self, rec_or_img: Union[str, int], source: Optional[str] = "image") -> str:
         """Load the header of a record or an image.

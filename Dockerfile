@@ -62,9 +62,9 @@ RUN pip list
 
 
 # change PyPI source to Tsinghua mirror if the system time zone is in China (+08:00 CST)
-RUN if [[ $(date +'%:z %Z') == "+08:00 CST" ]]; \
+RUN if [ $(date +'%:z %Z') == "+08:00 CST" ]; \
     then pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
-    else echo "System time zone is not in China, skip changing PyPI source."; \
+    else echo "System time zone is not in China, skip changing PyPI source." && echo $(date +'%:z %Z'); \
     fi
 
 
