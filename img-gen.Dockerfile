@@ -60,18 +60,11 @@ RUN pip list
 
 # torch and related packages (torchvision, torchaudio, etc.) are already installed in the base image
 
-# change PyPI source to Tsinghua mirror if the system time zone is in China (+08:00 CST)
-# TODO: seems NOT working, one has to pass the host time zone as environment variables
-# RUN if [ $(date +'%:z %Z') == "+08:00 CST" ]; \
-#     then pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && date +'%:z %Z'; \
-#     else echo "System time zone is not in China, skip changing PyPI source." && date +'%:z %Z'; \
-#     fi
-
 
 # alternative pypi sources
 # http://mirrors.aliyun.com/pypi/simple/
 # http://pypi.douban.com/simple/
-# RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 RUN python -m pip install --upgrade pip setuptools wheel
 
@@ -80,40 +73,15 @@ RUN pip install torch-ecg
 
 ## DO NOT EDIT the 3 lines.
 RUN mkdir /challenge
-COPY ./requirements-docker.txt /challenge
+COPY ./requirements-img-gen.txt /challenge
 WORKDIR /challenge
 
 
 # install dependencies other than torch-related packages
-RUN pip install -r requirements-docker.txt
+RUN pip install -r requirements-img-gen.txt
 
 # list packages after installing requirements
 RUN pip list
 
 # copy the whole project to the docker container
 COPY ./ /challenge
-
-
-# Download synthetic image data and pretrained models
-RUN python post_docker_build.py
-# check if the data and model are downloaded
-# TODO: pass the path as environment variables
-RUN du -sh ~/.cache/cinc2024/revenger_model_dir
-RUN du -sh ~/.cache/cinc2024/revenger_data_dir
-
-
-# NOTE: also run test_local.py to test locally
-# since GitHub Actions does not have GPU,
-# one need to run test_local.py to avoid errors related to devices
-# RUN python test_docker.py
-
-
-# commands to run test with docker container:
-
-# sudo docker build -t image .
-# sudo docker run -it --shm-size=10240m --gpus all -v ~/Jupyter/temp/cinc2024_docker_test/model:/challenge/model -v ~/Jupyter/temp/cinc2024_docker_test/test_data:/challenge/test_data -v ~/Jupyter/temp/cinc2024_docker_test/test_outputs:/challenge/test_outputs -v ~/Jupyter/temp/cinc2024_docker_test/data:/challenge/training_data image bash
-
-
-# python train_model.py training_data model
-# python run_model.py model test_data test_outputs
-# python evaluate_model.py labels outputs scores.csv

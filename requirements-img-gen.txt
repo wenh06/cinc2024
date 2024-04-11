@@ -1,0 +1,25 @@
+numpy==1.26.4
+scipy==1.12.0
+joblib==1.3.2
+# Cython==0.29.10
+pandas==2.2.1
+wfdb==3.2.0
+opencv-python
+tqdm
+biosppy
+matplotlib
+seaborn
+requests
+bib-lookup
+# from ecg-image-kit/codes/ecg-image-generator
+validators
+spacy
+Pillow
+beautifulsoup4
+scikit-image
+imageio
+imutils
+imgaug
+html5lib
+tensorflow
+keras
