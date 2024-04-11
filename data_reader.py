@@ -1059,14 +1059,29 @@ if __name__ == "__main__":
         "-o",
         "--output-folder",
         type=str,
-        help="The output directory to store the generated synthetic images, when `operations` contain `prepare_synthetic_images`.",
+        help="The output directory to store the generated synthetic images, used when `operations` contain `prepare_synthetic_images`.",
         default=None,
+    )
+    parser.add_argument(
+        "-p",
+        "--parallel",
+        action="store_true",
+        help="Whether to use multiprocessing for generating synthetic images, used when `operations` contain `prepare_synthetic_images`.",
+        default=False,
+    )
+    parser.add_argument(
+        "--gen-img-config",
+        type=str,
+        help="Path to the configuration file for generating synthetic images, used when `operations` contain `prepare_synthetic_images`.",
+        default=None,
+        dest="gen_img_config",
     )
     parser.add_argument(
         "--download-image-set",
         type=str,
         default="subset",
         help="The image set to download",
+        dest="download_image_set",
     )
 
     args = parser.parse_args()
@@ -1081,14 +1096,21 @@ if __name__ == "__main__":
         dr.download_subset()
 
     if "download_synthetic_images" in operations:
-        dr.download_synthetic_images()
+        dr.download_synthetic_images(set_name=args.download_image_set)
 
     if "prepare_synthetic_images" in operations:
-        dr.prepare_synthetic_images(output_folder=args.output_folder)
+        if args.gen_img_config is not None:
+            gen_img_config = json.loads(Path(args.gen_img_config).read_text())
+        if args.parallel:
+            from utils.ecg_image_generator.HandwrittenText.generate import download_en_core_sci_sm, en_core_sci_sm_model
+
+            if en_core_sci_sm_model is None and gen_img_config.get("hw_text", dr.__gen_img_default_config__["hw_text"]) is True:
+                download_en_core_sci_sm()
+        dr.prepare_synthetic_images(output_folder=args.output_folder, parallel=args.parallel, **gen_img_config)
 
     print("Done.")
 
     # usage examples:
     # python data_reader.py download -d /path/to/db_dir
     # python data_reader.py download download_synthetic_images -d /path/to/db_dir
-    # python data_reader.py prepare_synthetic_images -d /path/to/db_dir [-o /path/to/output_folder]
+    # python data_reader.py prepare_synthetic_images -d /path/to/db_dir [-o /path/to/output_folder] [--parallel] [--gen-img-config /path/to/gen_img_config.json]
