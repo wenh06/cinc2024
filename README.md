@@ -30,9 +30,9 @@ Digitization and Classification of ECG Images: The George B. Moody PhysioNet Cha
 
 - **Several-stage solution**: A multi-stage solution that consists of several models, possibly including:
 
-  - **OCR model**: Recognizes the ECG signal names and its locations in the input image, as well as other metadata.
-    For example, using [EasyOCR](https://github.com/JaidedAI/EasyOCR), or [Tesseract](https://github.com/tesseract-ocr/tesseract),
-    or [TrOCR](https://huggingface.co/docs/transformers/en/model_doc/trocr).
+  - ~~**OCR model**: Recognizes the ECG signal names and its locations in the input image, as well as other metadata.~~
+    ~~For example, using [EasyOCR](https://github.com/JaidedAI/EasyOCR), or [Tesseract](https://github.com/tesseract-ocr/tesseract),~~
+    ~~or [TrOCR](https://huggingface.co/docs/transformers/en/model_doc/trocr).~~
 
   - **Object detection model**: Detects the area (bounding box) of the ECG signal in the input image.
     This bounding box, together with the location of the ECG signal names, can be used to crop each channel of the ECG signal.
