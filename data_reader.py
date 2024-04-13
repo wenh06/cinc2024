@@ -8,20 +8,20 @@ import re
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gdown
 import numpy as np
 import pandas as pd
 from bib_lookup.utils import is_notebook
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.databases.base import DataBaseInfo, PhysioNetDataBase
 from torch_ecg.utils.download import _unzip_file, http_get
 from torch_ecg.utils.misc import add_docstring, dict_to_str, remove_parameters_returns_from_docstring  # noqa: F401
 from tqdm.auto import tqdm
 
-from add_image_filenames import find_images  # noqa: F401
+from add_image_filenames import find_images
 from cfg import BaseCfg, ModelCfg
 from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
@@ -343,7 +343,7 @@ class CINC2024Reader(PhysioNetDataBase):
             raise ValueError(f"Invalid return format `{fmt}`")
 
     def view_image(
-        self, img: Union[str, int], with_lead_bbox: bool = True, with_text_bbox: bool = True
+        self, img: Union[str, int], with_lead_bbox: bool = True, with_text_bbox: bool = True, with_matched_bbox: bool = True
     ) -> Optional[Image.Image]:
         """View the image of a record.
 
@@ -355,6 +355,8 @@ class CINC2024Reader(PhysioNetDataBase):
             Whether to show the bounding boxes of the waveforms.
         with_text_bbox : bool, default True
             Whether to show the bounding boxes of the text.
+        with_matched_bbox : bool, default True
+            Whether to show the matched lead names for the waveforms bounding boxes.
 
         Returns
         -------
@@ -367,33 +369,39 @@ class CINC2024Reader(PhysioNetDataBase):
         if isinstance(img, int):
             img = self._all_images[img]
         ecg_image = self.load_image(img, fmt="pil")
+        bbox = self.load_bbox(img)
         if with_lead_bbox:
-            # lead_bbox has the format [x1, y1, x2, y2, is_full], where is_full takes 0 or 1
-            lead_bbox_file = self._df_images.loc[img, "lead_bbox"]
-            if lead_bbox_file is not None:
-                lead_bbox = np.loadtxt(lead_bbox_file, delimiter=",", dtype=int)
+            lead_bbox = [wb["bbox"] for wb in bbox if wb["category_name"] == "waveform"]
+            if len(lead_bbox) > 0:
                 # plot the bounding boxes in the image
                 draw = ImageDraw.Draw(ecg_image)
-                for x1, y1, x2, y2, is_full in lead_bbox:
-                    # map to the PIL coordinate system
-                    x1, y1, x2, y2 = x1, ecg_image.height - y2, x2, ecg_image.height - y1
+                for x1, y1, x2, y2 in lead_bbox:
+                    x2, y2 = x1 + x2, y1 + y2  # COCO format to PIL format
                     draw.rectangle([x1, y1, x2, y2], outline="red", width=2)
             else:
+                lead_bbox = None
                 self.logger.warning(f"no lead bounding box found for image `{img}`.")
+        else:
+            lead_bbox = None
         if with_text_bbox:
-            # text_bbox has the format [x1, y1, x2, y2, lead_name], where lead_name is the name of the lead
-            text_bbox_file = self._df_images.loc[img, "text_bbox"]
-            if text_bbox_file is not None:
-                text_bbox = pd.read_csv(text_bbox_file, header=None, names=["x1", "y1", "x2", "y2", "lead_name"])
+            text_bbox = [wb["bbox"] for wb in bbox if wb["category_name"] != "waveform"]
+            if len(text_bbox) > 0:
                 # plot the bounding boxes in the image
                 draw = ImageDraw.Draw(ecg_image)
-                for idx, row in text_bbox.iterrows():
-                    # map to the PIL coordinate system
-                    x1, y1, x2, y2 = row[["x1", "y1", "x2", "y2"]].values.astype(int)
-                    x1, y1, x2, y2 = x1, ecg_image.height - y2, x2, ecg_image.height - y1
+                for x1, y1, x2, y2 in text_bbox:
+                    x2, y2 = x1 + x2, y1 + y2  # COCO format to PIL format
                     draw.rectangle([x1, y1, x2, y2], outline="blue", width=2)
             else:
+                text_bbox = None
                 self.logger.warning(f"no text bounding box found for image `{img}`.")
+        else:
+            text_bbox = None
+        if with_matched_bbox:
+            for wb in CINC2024Reader.match_bbox(self.load_bbox(img)):
+                # wb is a dict with keys "bbox" and "lead_name"
+                # "bbox" is in COCO format [x, y, width, height]
+                font = ImageFont.truetype("arial.ttf", 32)
+                draw.text((wb["bbox"][0], wb["bbox"][1]), wb["lead_name"], fill="red", font=font)
         # if is jupyter notebook, show the image inline
         if is_notebook():
             return ecg_image
@@ -478,9 +486,7 @@ class CINC2024Reader(PhysioNetDataBase):
             dx = class_map[dx]
         return dx
 
-    def load_bbox(
-        self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco"
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    def load_bbox(self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco") -> List[Dict[str, Any]]:
         """Load the bounding boxes of the image.
 
         Parameters
@@ -501,17 +507,31 @@ class CINC2024Reader(PhysioNetDataBase):
 
         Returns
         -------
-        bbox : dict or list of dict
+        bbox : list of dict
             The bounding boxes of the ECG waveforms and (or) lead names in the image.
+
+        .. note::
+
+            The bounding boxes generated by the `ecg-image-generator` module are obtained
+            using :func:`matplotlib.axes.Axes.get_window_extent`, which is in the coordinate system of the axes,
+            namely the origin is at the lower left corner of the axes.
+            While the PIL coordinate system, and all the common image processing libraries (e.g. OpenCV, torchvision),
+            and also the COCO, Pascal VOC, YOLO formats, have the origin at the upper left corner of the image.
 
         """
         if isinstance(img, int):
             img = self._all_images[img]
+        img_path = self._df_images.loc[img, "path"]
         with_lead_bbox, with_text_bbox = True, True
         if bbox_type == "lead":
             with_text_bbox = False
         elif bbox_type == "text":
             with_lead_bbox = False
+
+        # get image width and height without loading the image
+        pil_img = Image.open(img_path)
+        img_width, img_height = pil_img.size
+        pil_img.close()
 
         bbox = []
 
@@ -521,6 +541,8 @@ class CINC2024Reader(PhysioNetDataBase):
             if lead_bbox_file is not None:
                 lead_bbox = np.loadtxt(lead_bbox_file, delimiter=",", dtype=int)
                 for x1, y1, x2, y2, is_full in lead_bbox:
+                    # convert to the PIL coordinate system
+                    x1, y1, x2, y2 = x1, img_height - y2, x2, img_height - y1
                     if fmt.lower() == "coco":
                         bbox.append(
                             {
@@ -559,6 +581,8 @@ class CINC2024Reader(PhysioNetDataBase):
                 text_bbox = pd.read_csv(text_bbox_file, header=None, names=["x1", "y1", "x2", "y2", "lead_name"])
                 for idx, row in text_bbox.iterrows():
                     x1, y1, x2, y2 = row[["x1", "y1", "x2", "y2"]].values.astype(int)
+                    # convert to the PIL coordinate system
+                    x1, y1, x2, y2 = x1, img_height - y2, x2, img_height - y1
                     if fmt.lower() == "coco":
                         bbox.append(
                             {
@@ -923,6 +947,70 @@ class CINC2024Reader(PhysioNetDataBase):
                 correction_flag = True
             if correction_flag:
                 header_file.write_text("\n".join(lines))
+
+    def get_img_size(self, img: Union[str, int]) -> Tuple[int, int]:
+        """Get the size of the image.
+
+        Parameters
+        ----------
+        img : str or int
+            The image name or the index of the image.
+
+        Returns
+        -------
+        tuple
+            The size of the image in the form ``(width, height)``.
+
+        """
+        if isinstance(img, int):
+            img = self._all_images[img]
+        with Image.open(self._df_images.loc[img, "path"]) as img:
+            return img.size
+
+    @staticmethod
+    def match_bbox(bbox: List[Dict[str, Any]], fmt: str = "coco") -> List[Dict[str, Any]]:
+        """Match the waveform boxes with the lead name boxes.
+
+        The matching is done by finding the minimum distance between
+        the upper left corner of the lead name box and the lower left corner of the waveform box.
+
+        Parameters
+        ----------
+        bbox : list of dict
+            The bounding boxes. Each dict has the keys "bbox", "category_id", "category_name", etc.
+        fmt : {"coco", "pascal_voc", "yolo"}, default "coco"
+            The format of the bounding boxes, case insensitive.
+            If is "coco", the bounding boxes will be in COCO format: ``[x, y, width, height]``.
+            If is "pascal_voc", the bounding boxes will be in Pascal VOC format: ``[xmin, ymin, xmax, ymax]``.
+            If is "yolo", the bounding boxes will be in YOLO format: ``[x_center, y_center, width, height]``.
+            The coordinates have the origin at the upper left corner of the image.
+
+        Returns
+        -------
+        list of dict
+            The matched waveform bounding boxes,
+            an item with key "lead_name" will be added to each dict.
+
+        """
+        waveform_boxes = [box for box in bbox if box["category_name"] == "waveform"]
+        lead_name_boxes = [box for box in bbox if box["category_name"] != "waveform"]
+        for wb in waveform_boxes:
+            # find the minimum distance between the upper left corner of the lead name box
+            # and the lower left corner of the waveform box.
+            if fmt.lower() == "coco":
+                dist_x = [np.abs(wb["bbox"][0] - lb["bbox"][0]) for lb in lead_name_boxes]
+                dist_y = [np.abs(wb["bbox"][1] + wb["bbox"][3] - lb["bbox"][1]) for lb in lead_name_boxes]
+            elif fmt.lower() == "pascal_voc":
+                dist_x = [np.abs(wb["bbox"][0] - lb["bbox"][0]) for lb in lead_name_boxes]
+                dist_y = [np.abs(wb["bbox"][3] - lb["bbox"][1]) for lb in lead_name_boxes]
+            elif fmt.lower() == "yolo":
+                dist_x = [np.abs(wb["bbox"][0] - lb["bbox"][0]) for lb in lead_name_boxes]
+                dist_y = [np.abs(wb["bbox"][1] + wb["bbox"][3] / 2 - lb["bbox"][1]) for lb in lead_name_boxes]
+            else:
+                raise ValueError(f"Invalid bbox format `{fmt}`")
+            min_dist_idx = np.argmin(np.array(dist_x) ** 2 + np.array(dist_y) ** 2)
+            wb["lead_name"] = lead_name_boxes[min_dist_idx]["category_name"]
+        return waveform_boxes
 
 
 def _generate_synthetic_image(args: Dict[str, Any]) -> None:
