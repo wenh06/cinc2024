@@ -53,7 +53,7 @@ class CINC2024Outputs:
     bbox: Optional[Sequence[Dict[str, Union[float, int, str]]]] = None
     bbox_loss: Optional[Sequence[float]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         assert any(
             [self.dx is not None, self.digitization is not None]
         ), "at least one of `dx`, `digitization` prediction should be provided"
