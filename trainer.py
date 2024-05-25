@@ -274,7 +274,7 @@ class CINC2024Trainer(BaseTrainer):
                 labels = {k: v.numpy() for k, v in input_tensors.items() if v is not None}
                 if "dx" in labels:
                     # convert numeric labels to string labels
-                    labels["dx"] = np.array([self._model.config.dx_head.classes[i] for i in labels["dx"]])
+                    labels["dx"] = np.array([self._model.config.classification_head.classes[i] for i in labels["dx"]])
 
                 all_labels.append(labels)
 
@@ -331,7 +331,7 @@ class CINC2024Trainer(BaseTrainer):
     @property
     def save_prefix(self) -> str:
         prefix = f"""{self.model_config.backbone_source}-{self.model_config.backbone_name.replace("/", "-")}"""
-        if self.model_config.dx_head.include:
+        if self.model_config.classification_head.include:
             prefix = f"{prefix}-dx"
         if self.model_config.digitization_head.include:
             prefix = f"{prefix}-digitization"
@@ -341,7 +341,7 @@ class CINC2024Trainer(BaseTrainer):
 
     def extra_log_suffix(self) -> str:
         suffix = f"""{self.model_config.backbone_source}-{self.model_config.backbone_name.replace("/", "-")}"""
-        if self.model_config.dx_head.include:
+        if self.model_config.classification_head.include:
             suffix = f"{suffix}-dx"
         if self.model_config.digitization_head.include:
             suffix = f"{suffix}-digitization"
@@ -374,8 +374,8 @@ class CINC2024Trainer(BaseTrainer):
             "optimizer_state_dict": self.optimizer.state_dict(),
             "epoch": self.epoch,
         }
-        if self.model_config.dx_head.include:
-            checkpoint.update({"dx_head_state_dict": self._model.dx_head.state_dict()})
+        if self.model_config.classification_head.include:
+            checkpoint.update({"classification_head_state_dict": self._model.classification_head.state_dict()})
         if self.model_config.digitization_head.include:
             checkpoint.update({"digitization_head_state_dict": self._model.digitization_head.state_dict()})
         torch.save(checkpoint, path)

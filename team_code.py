@@ -32,8 +32,8 @@ from helper_code import (  # noqa: F401
     get_num_signals,
     get_sampling_frequency,
     get_signal_names,
-    load_dx,
-    load_image,
+    load_images,
+    load_labels,
     load_text,
 )
 from models import MultiHead_CINC2024
@@ -294,9 +294,11 @@ def run_models(
     -------
     numpy.ndarray
         The digitized signal.
+    list of str
+        The predicted labels.
 
     """
-    input_images = load_image(record)  # a list of PIL.Image.Image
+    input_images = load_images(record)  # a list of PIL.Image.Image
     # convert to RGB (it's possible that the images are RGBA format)
     input_images = [img.convert("RGB") for img in input_images]
     output = digitization_model.inference(input_images)  # of type CINC2024Outputs

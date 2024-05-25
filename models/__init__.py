@@ -22,13 +22,13 @@ from outputs import CINC2024Outputs
 from utils.misc import url_is_reachable
 
 from .backbone import ImageBackbone
-from .heads import DigitizationHead, DxHead
+from .heads import ClassificationHead, DigitizationHead
 from .loss import get_loss_func
 
 __all__ = [
     "MultiHead_CINC2024",
     "ImageBackbone",
-    "DxHead",
+    "ClassificationHead",
     "DigitizationHead",
     "get_loss_func",
 ]
@@ -67,17 +67,21 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         if self.config.backbone_freeze:
             self.freeze_backbone(freeze=True)
         backbone_output_shape = self.image_backbone.compute_output_shape()
-        if self.config.dx_head.include:
-            self.__config.dx_head.backbone_name = self.config.backbone_name
-            if self.config.dx_head.remote_checkpoints_name is not None:
-                self.dx_head = DxHead.from_remote(
-                    url=self.config.dx_head.remote_checkpoints[self.config.dx_head.remote_checkpoints_name],
+        if self.config.classification_head.include:
+            self.__config.classification_head.backbone_name = self.config.backbone_name
+            if self.config.classification_head.remote_checkpoints_name is not None:
+                self.classification_head = ClassificationHead.from_remote(
+                    url=self.config.classification_head.remote_checkpoints[
+                        self.config.classification_head.remote_checkpoints_name
+                    ],
                     model_dir=self.config.checkpoints,
                 )
             else:
-                self.dx_head = DxHead(inp_features=backbone_output_shape[0], config=self.config.dx_head)
+                self.classification_head = ClassificationHead(
+                    inp_features=backbone_output_shape[0], config=self.config.classification_head
+                )
         else:
-            self.dx_head = None
+            self.classification_head = None
         if self.config.digitization_head.include:
             self.__config.digitization_head.backbone_name = self.config.backbone_name
             if self.config.digitization_head.remote_checkpoints_name is not None:
@@ -89,7 +93,9 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
                 self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)
         else:
             self.digitization_head = None
-        assert self.dx_head is not None or self.digitization_head is not None, "At least one head should be included."
+        assert (
+            self.classification_head is not None or self.digitization_head is not None
+        ), "At least one head should be included."
 
     def forward(
         self,
@@ -116,8 +122,8 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
 
         """
         features = self.image_backbone(img)
-        if self.dx_head is not None:
-            dx_pred = self.dx_head(features, labels)
+        if self.classification_head is not None:
+            dx_pred = self.classification_head(features, labels)
         else:
             dx_pred = {}
         if self.digitization_head is not None:
@@ -176,7 +182,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         return CINC2024Outputs(
             dx=output["dx"],
             dx_logits=output["dx_logits"],
-            dx_classes=self.config.dx_head.classes,
+            dx_classes=self.config.classification_head.classes,
             digitization=output["digitization"],
         )
 
@@ -219,8 +225,8 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
             "model_config": self.config,
             "train_config": train_config,
         }
-        if self.config.dx_head.include:
-            to_save["dx_head_state_dict"] = self.dx_head.state_dict()
+        if self.config.classification_head.include:
+            to_save["classification_head_state_dict"] = self.classification_head.state_dict()
         if self.config.digitization_head.include:
             to_save["digitization_head_state_dict"] = self.digitization_head.state_dict()
         torch.save(to_save, path)
@@ -281,11 +287,18 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         kwargs = dict(
             config=ckpt["model_config"],
         )
+        # backward compatibility
+        if aux_config is not None:
+            aux_config = {key.replace("dx_", "classification_"): value for key, value in aux_config.items()}
+        kwargs["config"] = {key.replace("dx_", "classification_"): value for key, value in kwargs["config"].items()}
+        ckpt["classification_head_state_dict"] = {
+            key.replace("dx_", "classification_"): value for key, value in ckpt["classification_head_state_dict"].items()
+        }
         if "classes" in aux_config:
             kwargs["classes"] = aux_config["classes"]
         model = cls(**kwargs)
-        if model.config.dx_head.include:
-            model.dx_head.load_state_dict(ckpt["dx_head_state_dict"])
+        if model.config.classification_head.include:
+            model.classification_head.load_state_dict(ckpt["classification_head_state_dict"])
         if model.config.digitization_head.include:
             model.digitization_head.load_state_dict(ckpt["digitization_head_state_dict"])
         return model

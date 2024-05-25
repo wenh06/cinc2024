@@ -21,10 +21,10 @@ from torch_ecg.utils.download import _unzip_file, http_get
 from torch_ecg.utils.misc import add_docstring, dict_to_str, remove_parameters_returns_from_docstring  # noqa: F401
 from tqdm.auto import tqdm
 
-from add_image_filenames import find_images
 from cfg import BaseCfg, ModelCfg
 from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
+from prepare_image_data import find_files as find_images
 from utils.ecg_image_generator import constants as ecg_img_gen_constants
 from utils.ecg_image_generator.gen_ecg_image_from_data import run_single_file
 from utils.misc import get_record_list_recursive3, url_is_reachable
@@ -75,7 +75,7 @@ _prepare_synthetic_images_docstring = """Prepare synthetic images from the ECG t
         This function is modified from the functions
 
         - prepare_ptbxl_data.run
-        - add_image_filenames.run
+        - prepare_image_data.run
         - ecg_image_generator.gen_ecg_image_from_data.run_single_file
 
         Parameters

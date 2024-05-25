@@ -16,10 +16,10 @@ from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin, compute_conv_output_s
 
 from .loss import get_loss_func
 
-__all__ = ["DxHead", "DigitizationHead"]
+__all__ = ["ClassificationHead", "DigitizationHead"]
 
 
-class DxHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
+class ClassificationHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
     """Head for making Dx classification (binary) predictions, including loss computation.
 
     The output features of the backbone model is fed into this head to make classification predictions.
@@ -46,14 +46,14 @@ class DxHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
         super().__init__()
         self.__inp_features = inp_features
         self.__config = config
-        if self.__config.get("dx_head", None) is not None:
-            self.dx_head = self.__config.dx_head
+        if self.__config.get("classification_head", None) is not None:
+            self.classification_head = self.__config.classification_head
         # create the Dx classification head
-        # self.dx_head = None  # TODO: implement the head
-        self.dx_head = nn.Sequential()
-        self.dx_head.add_module("global_pool", nn.AdaptiveAvgPool2d((1, 1)))
-        self.dx_head.add_module("flatten", Rearrange("b c h w -> b (c h w)"))
-        self.dx_head.add_module(
+        # self.classification_head = None  # TODO: implement the head
+        self.classification_head = nn.Sequential()
+        self.classification_head.add_module("global_pool", nn.AdaptiveAvgPool2d((1, 1)))
+        self.classification_head.add_module("flatten", Rearrange("b c h w -> b (c h w)"))
+        self.classification_head.add_module(
             "mlp",
             MLP(
                 in_channels=self.inp_features,
@@ -62,7 +62,7 @@ class DxHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
                 dropouts=self.config.dropouts,
             ),
         )
-        self.dx_criterion = nn.CrossEntropyLoss()
+        self.classification_criterion = nn.CrossEntropyLoss()
 
     def forward(self, img_features: torch.Tensor, labels: Optional[Dict[str, torch.Tensor]] = None) -> Dict[str, torch.Tensor]:
         """Forward pass of the model.
@@ -80,11 +80,11 @@ class DxHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
             Output dictionary containing the predictions and loss.
 
         """
-        logits = self.dx_head(img_features)
+        logits = self.classification_head(img_features)
         preds = torch.argmax(logits, dim=1)
         output = {"preds": preds, "logits": logits}
         if labels is not None and "dx" in labels:
-            loss = self.dx_criterion(logits, labels["dx"].to(self.device))
+            loss = self.classification_criterion(logits, labels["dx"].to(self.device))
             output["loss"] = loss
         return output
 

@@ -134,28 +134,28 @@ ModelCfg.backbone_name = "facebook/convnextv2-atto-1k-224"
 ModelCfg.backbone_source = "hf"
 ModelCfg.backbone_freeze = True
 
-ModelCfg.dx_head = deepcopy(linear)
+ModelCfg.classification_head = deepcopy(linear)
 
-ModelCfg.dx_head.out_channels = [
+ModelCfg.classification_head.out_channels = [
     # containing just the intermediate features
     # not including the input features and the output features
     # 1024,
     256,
 ]
-ModelCfg.dx_head.dropouts = 0.3
-ModelCfg.dx_head.activation = "mish"
+ModelCfg.classification_head.dropouts = 0.3
+ModelCfg.classification_head.activation = "mish"
 
-ModelCfg.dx_head.classes = BaseCfg.classes
-ModelCfg.dx_head.num_classes = len(ModelCfg.dx_head.classes)
-ModelCfg.dx_head.criterion = "CrossEntropyLoss"
-ModelCfg.dx_head.label_smoothing = 0.1
+ModelCfg.classification_head.classes = BaseCfg.classes
+ModelCfg.classification_head.num_classes = len(ModelCfg.classification_head.classes)
+ModelCfg.classification_head.criterion = "CrossEntropyLoss"
+ModelCfg.classification_head.label_smoothing = 0.1
 
-ModelCfg.dx_head.remote_checkpoints = {
-    # stores the checkpoints of the dx head
+ModelCfg.classification_head.remote_checkpoints = {
+    # stores the checkpoints of the classification head
 }
-ModelCfg.dx_head.remote_checkpoints_name = None  # None for not loading from remote checkpoints
+ModelCfg.classification_head.remote_checkpoints_name = None  # None for not loading from remote checkpoints
 
-ModelCfg.dx_head.include = TrainCfg.predict_dx
+ModelCfg.classification_head.include = TrainCfg.predict_dx
 
 # ModelCfg.digitization_head = deepcopy(linear)
 # ModelCfg.digitization_head.out_channels = [
