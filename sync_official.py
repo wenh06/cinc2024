@@ -14,7 +14,7 @@ files = {
     "baseline": [
         "helper_code.py",
         "remove_hidden_data.py",
-        "add_image_filenames.py",
+        "prepare_image_data.py",
         "run_model.py",
         "train_model.py",
         "prepare_ptbxl_data.py",

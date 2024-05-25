@@ -12,7 +12,7 @@
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -111,11 +111,10 @@ CINC2024Trainer.__DEBUG__ = False
 ################################################################################
 
 
-# Train your digitization model.
-def train_digitization_model(
+def train_models(
     data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
 ) -> None:
-    """Train the digitization model.
+    """Train the digitization and classification models.
 
     Parameters
     ----------
@@ -242,40 +241,10 @@ def train_digitization_model(
     print(msg)
 
 
-# Train your dx model.
-def train_dx_model(
-    data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
-) -> None:
-    """Train the dx model.
-
-    This function will not be used,
-    since the dx classification model and the digitization model will be trained simultaneously,
-    in which case they share a same backbone, with different heads.
-
-    Parameters
-    ----------
-    data_folder : `path_like`
-        The path to the folder containing the training data.
-    model_folder : `path_like`
-        The path to the folder where the model will be saved.
-    verbose : bool
-        Whether to display progress information.
-
-    Returns
-    -------
-    None
-
-    """
-    print("\n" + "*" * 100)
-    msg = "   Dx model is trained simultaneously with the digitization model   ".center(100, "#")
-    print(msg)
-    print("*" * 100 + "\n")
-
-
-# Load your trained digitization model. This function is *required*. You should edit this function to add your code, but do *not*
-# change the arguments of this function. If you do not train a digitization model, then you can return None.
-def load_digitization_model(model_folder: Union[str, bytes, os.PathLike], verbose: bool) -> MultiHead_CINC2024:
-    """Load the trained digitization model.
+# Load your trained models. This function is *required*. You should edit this function to add your code, but do *not* change the
+# arguments of this function. If you do not train one of the models, then you can return None for the model.
+def load_models(model_folder: Union[str, bytes, os.PathLike], verbose: bool) -> MultiHead_CINC2024:
+    """Load the trained digitization and classification models.
 
     Parameters
     ----------
@@ -305,35 +274,11 @@ def load_digitization_model(model_folder: Union[str, bytes, os.PathLike], verbos
     return model
 
 
-# Load your trained dx classification model. This function is *required*. You should edit this function to add your code, but do
-# *not* change the arguments of this function. If you do not train a dx classification model, then you can return None.
-def load_dx_model(model_folder: Union[str, bytes, os.PathLike], verbose: bool) -> MultiHead_CINC2024:
-    """Load the trained dx classification model.
-
-    This function will do the same thing as load_digitization_model,
-    where both heads are included in the same model
-
-    Parameters
-    ----------
-    model_folder : `path_like`
-        The path to the folder containing the trained model.
-    verbose : bool
-        Whether to display progress information.
-
-    Returns
-    -------
-    MultiHead_CINC2024
-        The trained dx classification model.
-
-    """
-    return load_digitization_model(model_folder, verbose)
-
-
-# Run your trained digitization model. This function is *required*. You should edit this function to add your code, but do *not*
-# change the arguments of this function.
-def run_digitization_model(
+# Run your trained models. This function is *required*. You should edit this function to add your code, but do *not*
+# change the arguments of this function. If you did not train one of the models, then you can return None for the model.
+def run_models(
     digitization_model: MultiHead_CINC2024, record: Union[str, bytes, os.PathLike], verbose: bool
-) -> np.ndarray:
+) -> Tuple[Optional[np.ndarray], Optional[List[str]]]:
     """Run the digitization model on a record.
 
     Parameters
@@ -357,80 +302,56 @@ def run_digitization_model(
     output = digitization_model.inference(input_images)  # of type CINC2024Outputs
 
     if output.digitization is not None:
-        return output.digitization
-
-    use_workaround = True
-
-    if use_workaround:
-        # workaround for Dx prediction only by returning a random signal (or nan values),
-        # to avoid the FileNotFoundError in the evaluation script.
-        # The following code block comes from the official baseline.
-
-        # Load the dimensions of the signal.
-        header_file = get_header_file(record)
-        header = load_text(header_file)
-
-        num_samples = get_num_samples(header)  # length of the signal
-        num_signals = get_num_signals(header)  # channels of the signal
-        signal_names = get_signal_names(header)  # names of the signals (lead names)
-        signal_names = [sn.upper() for sn in signal_names]
-        signal_fs = get_sampling_frequency(header)  # sampling frequency of the signal
-        signal_duration = num_samples / signal_fs  # duration of the signal
-
-        standard_lead_names = ["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"]
-        if set(signal_names).issubset(standard_lead_names):
-            indices_mapping = [standard_lead_names.index(sn) for sn in signal_names]
-        else:
-            indices_mapping = np.arange(num_signals, dtype=int).tolist()
-
-        bpm = np.clip(np.random.default_rng().normal(80, 23), 50, 120)
-        start_idx = np.random.default_rng().integers(low=int(2.5 * signal_fs), high=int(5.5 * signal_fs))
-        try:
-            signal = evolve_standard_12_lead_ecg(
-                signal_duration + 8, fs=signal_fs, bpm=bpm, remove_baseline=0.8, return_phase=False, return_format="lead_last"
-            )["ecg"][start_idx : start_idx + num_samples]
-            signal = signal[:, indices_mapping]
-        except Exception:
-            print("Failed to generate the signal. Return random signal.")
-            # official baseline uses random signal
-            signal = np.random.default_rng().uniform(low=-1000, high=1000, size=(num_samples, num_signals))
-
-        signal = np.asarray(signal, dtype=np.int16)
-        return signal
-
+        signal = output.digitization
     else:
-        return None
+        use_workaround = True
 
+        if use_workaround:
+            # workaround for Dx prediction only by returning a random signal (or nan values),
+            # to avoid the FileNotFoundError in the evaluation script.
+            # The following code block comes from the official baseline.
 
-# Run your trained dx classification model. This function is *required*. You should edit this function to add your code, but do
-# *not* change the arguments of this function.
-def run_dx_model(
-    dx_model: MultiHead_CINC2024, record: Union[str, bytes, os.PathLike], signal: np.ndarray, verbose: bool
-) -> list[str]:
-    """Run the dx classification model on a record.
+            # Load the dimensions of the signal.
+            header_file = get_header_file(record)
+            header = load_text(header_file)
 
-    Parameters
-    ----------
-    dx_model : MultiHead_CINC2024
-        The trained dx classification model.
-    record : Union[str, bytes, os.PathLike]
-        The path to the record to process.
-    signal : numpy.ndarray
-        The digitized signal.
-    verbose : bool
-        Whether to display progress information.
+            num_samples = get_num_samples(header)  # length of the signal
+            num_signals = get_num_signals(header)  # channels of the signal
+            signal_names = get_signal_names(header)  # names of the signals (lead names)
+            signal_names = [sn.upper() for sn in signal_names]
+            signal_fs = get_sampling_frequency(header)  # sampling frequency of the signal
+            signal_duration = num_samples / signal_fs  # duration of the signal
 
-    Returns
-    -------
-    list[str]
-        The predicted labels.
+            standard_lead_names = ["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+            if set(signal_names).issubset(standard_lead_names):
+                indices_mapping = [standard_lead_names.index(sn) for sn in signal_names]
+            else:
+                indices_mapping = np.arange(num_signals, dtype=int).tolist()
 
-    """
-    input_images = load_image(record)  # a list of PIL.Image.Image
-    # convert to RGB (it's possible that the images are RGBA format)
-    input_images = [img.convert("RGB") for img in input_images]
-    output = dx_model.inference(input_images)  # of type CINC2024Outputs
-    return output.dx
+            bpm = np.clip(np.random.default_rng().normal(80, 23), 50, 120)
+            start_idx = np.random.default_rng().integers(low=int(2.5 * signal_fs), high=int(5.5 * signal_fs))
+            try:
+                signal = evolve_standard_12_lead_ecg(
+                    signal_duration + 8,
+                    fs=signal_fs,
+                    bpm=bpm,
+                    remove_baseline=0.8,
+                    return_phase=False,
+                    return_format="lead_last",
+                )["ecg"][start_idx : start_idx + num_samples]
+                signal = signal[:, indices_mapping]
+            except Exception:
+                print("Failed to generate the signal. Return random signal.")
+                # official baseline uses random signal
+                signal = np.random.default_rng().uniform(low=-1000, high=1000, size=(num_samples, num_signals))
+
+            signal = np.asarray(signal, dtype=np.int16)
+        else:
+            signal = None
+
+    labels = output.dx
+
+    return signal, labels
 
 
 ################################################################################

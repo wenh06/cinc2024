@@ -1,5 +1,5 @@
 # ignore svg, txt, json, html files and the folders final_results
-exclude: '^.*\.(svg|txt|json|html)$|final_results|^build|^dist|official_baseline|official_scoring_metric|helper_code\.py|run_model\.py|train_model\.py|evaluate_model\.py|remove_hidden_data\.py|add_image_filenames\.py|prepare_ptbxl_data\.py|\.ipynb_checkpoints|fast-test.*\.ipynb'
+exclude: '^.*\.(svg|txt|json|html)$|final_results|^build|^dist|official_baseline|official_scoring_metric|helper_code\.py|run_model\.py|train_model\.py|evaluate_model\.py|remove_hidden_data\.py|prepare_image_data\.py|prepare_ptbxl_data\.py|\.ipynb_checkpoints|fast-test.*\.ipynb'
 fail_fast: false
 
 repos:
@@ -17,7 +17,7 @@ repos:
     rev: 5.0.4
     hooks:
       - id: flake8
-        args: [--max-line-length=128, '--exclude=./.*,build,dist,official*,helper_code.py,run_model.py,train_model.py,evaluate_model.py,remove_hidden_data.py,add_image_filenames.py,prepare_ptbxl_data.py,*.ipynb', '--ignore=E501,W503,E203,F841,E402,E231', --count, --statistics, --show-source]
+        args: [--max-line-length=128, '--exclude=./.*,build,dist,official*,helper_code.py,run_model.py,train_model.py,evaluate_model.py,remove_hidden_data.py,prepare_image_data.py,prepare_ptbxl_data.py,*.ipynb', '--ignore=E501,W503,E203,F841,E402,E231', --count, --statistics, --show-source]
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
