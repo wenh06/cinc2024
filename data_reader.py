@@ -61,12 +61,15 @@ _CINC2024_INFO = DataBaseInfo(
     references=[
         "https://moody-challenge.physionet.org/2024/",
         "https://physionet.org/content/ptb-xl/",
+        "https://physionet.org/content/ptb-xl-plus/",
         "https://github.com/alphanumericslab/ecg-image-kit",
     ],
     doi=[
-        "https://doi.org/10.13026/kfzx-aw45",
-        "https://doi.org/10.1038/s41597-020-0495-6",
-        "https://doi.org/10.48550/ARXIV.2307.01946",
+        "https://doi.org/10.1038/s41597-023-02153-8",  # PTB-XL+ paper
+        "https://doi.org/10.1038/s41597-020-0495-6",  # PTB-XL paper
+        "https://doi.org/10.13026/nqsf-pc74",  # PTB-XL+ physionet
+        "https://doi.org/10.13026/6sec-a640",  # PTB-XL physionet
+        "https://doi.org/10.48550/ARXIV.2307.01946",  # ecg-image-kit
     ],
 )
 
@@ -121,6 +124,8 @@ class CINC2024Reader(PhysioNetDataBase):
     __name__ = "CINC2024Reader"
     __metadata_file__ = "ptbxl_database.csv"
     __scp_statements_file__ = "scp_statements.csv"
+    __12sl_statements_file__ = "12sl_statements.csv"
+    __12sl_mapping_file__ = "12slv23ToSNOMED.csv"
     __100Hz_dir__ = "records100"
     __500Hz_dir__ = "records500"
     __synthetic_images_dir__ = "synthetic_images"
