@@ -49,6 +49,7 @@ jobs:
       run: |
         mkdir -p ${{ env.download_data_dir }}
         docker run \
+          -e PYTHONUNBUFFERED=1 \
           -e CINC2024_REVENGER_TEST=${{ env.CINC2024_REVENGER_TEST }} \
           -e revenger_data_dir=${{ env.revenger_data_dir }} \
           -v ${{ env.download_data_dir }}:${{ env.revenger_data_dir }} \
@@ -64,6 +65,7 @@ jobs:
       if: ${{ env.status != 'pre' }}
       run: |
         docker run \
+          -e PYTHONUNBUFFERED=1 \
           -e CINC2024_REVENGER_TEST=${{ env.CINC2024_REVENGER_TEST }} \
           -e revenger_data_dir=${{ env.revenger_data_dir }} \
           -e revenger_model_dir=${{ env.revenger_model_dir }} \
