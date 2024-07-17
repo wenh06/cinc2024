@@ -92,7 +92,11 @@ TrainCfg.flooding_level = 0.0  # flooding performed if positive,
 TrainCfg.log_step = 10
 # TrainCfg.eval_every = 20
 
+# data augmentation
+# https://pytorch.org/vision/stable/transforms.html
 
+
+# tasks to be performed
 TrainCfg.predict_dx = True
 TrainCfg.predict_digitization = False  # TODO: implement digitization prediction
 TrainCfg.predict_bbox = False  # TODO: implement bounding box prediction

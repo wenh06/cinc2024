@@ -37,13 +37,13 @@ class CINC2024Trainer(BaseTrainer):
 
     Parameters
     ----------
-    model : torch.nnModule
-        the model to be trained
+    model : torch.nn.Module
+        The model to be trained
     model_config : dict
-        the configuration of the model,
+        The configuration of the model,
         used to keep a record in the checkpoints
     train_config : dict
-        the configuration of the training,
+        The configuration of the training,
         including configurations for the data loader, for the optimization, etc.
         will also be recorded in the checkpoints.
         `train_config` should at least contain the following keys:
@@ -62,9 +62,9 @@ class CINC2024Trainer(BaseTrainer):
             - "momentum": obj:`float`, optional, depending on the optimizer
 
     device : torch.device, optional
-        the device to be used for training
+        The device to be used for training
     lazy : bool, default True
-        whether to initialize the data loader lazily
+        Whether to initialize the data loader lazily
 
     """
 
