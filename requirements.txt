@@ -43,3 +43,5 @@ imgaug
 html5lib
 tensorflow
 keras
+pyyaml
+qrcode
