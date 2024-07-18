@@ -8,7 +8,7 @@ import re
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import gdown
 import numpy as np
@@ -122,10 +122,16 @@ class CINC2024Reader(PhysioNetDataBase):
     """
 
     __name__ = "CINC2024Reader"
-    __metadata_file__ = "ptbxl_database.csv"
-    __scp_statements_file__ = "scp_statements.csv"
-    __12sl_statements_file__ = "12sl_statements.csv"
-    __12sl_mapping_file__ = "12slv23ToSNOMED.csv"
+    __aux_files__ = {
+        "metadata_file": "ptbxl_database.csv",
+        "scp_statements_file": "scp_statements.csv",
+        "12sl_statements_file": "12sl_statements.csv",
+        "12sl_mapping_file": "12slv23ToSNOMED.csv",
+    }
+    __aux_files_url__ = {
+        "12sl_statements_file": "https://physionet.org/files/ptb-xl-plus/1.0.1/labels/12sl_statements.csv",
+        "12sl_mapping_file": "https://physionet.org/files/ptb-xl-plus/1.0.1/labels/mapping/12slv23ToSNOMED.csv",
+    }
     __100Hz_dir__ = "records100"
     __500Hz_dir__ = "records500"
     __synthetic_images_dir__ = "synthetic_images"
@@ -143,6 +149,7 @@ class CINC2024Reader(PhysioNetDataBase):
         "subset": "https://drive.google.com/u/0/uc?id=13VtUMQxvQSSG6rolzg7yXsMRrpo9XwXU",
         "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset-tiny.zip",
     }
+    __acute_mi_statements__ = set([821, 822, 823, 827, 829, 902, 903, 904, 963, 964, 965, 966, 967, 968])
 
     def __init__(
         self,
@@ -176,7 +183,11 @@ class CINC2024Reader(PhysioNetDataBase):
         self._df_records = None
         self._df_metadata = None
         self._df_scp_statements = None
+        self._subclass_to_superclass = {}
         self._df_images = None
+        self._df_12sl_statements = None
+        self._df_12sl_mapping = None
+        self._acute_mi_classes = set()
         self._all_records = None
         self._all_subjects = None
         self._all_images = None
@@ -188,33 +199,86 @@ class CINC2024Reader(PhysioNetDataBase):
         """
         # locate the true database directory using the metadata file
         try:
-            metadata_file = list(self.db_dir.rglob(self.__metadata_file__))[0]
+            metadata_file = list(self.db_dir.rglob(self.__aux_files__["metadata_file"]))[0]
         except IndexError:
-            # raise FileNotFoundError(f"metadata file {self.__metadata_file__} not found in {self.db_dir}")
             self.logger.info(
-                f"metadata file {self.__metadata_file__} not found in {self.db_dir}. "
+                f"""metadata file {self.__aux_files__["metadata_file"]} not found in {self.db_dir}. """
                 "Download the database first using the `download` method."
             )
             self._df_records = pd.DataFrame()
             self._df_metadata = pd.DataFrame()
             self._df_scp_statements = pd.DataFrame()
             self._df_images = pd.DataFrame()
+            self._df_12sl_statements = pd.DataFrame()
+            self._df_12sl_mapping = pd.DataFrame()
             self._all_records = []
             self._all_subjects = []
             self._all_images = []
             self._create_synthetic_images_dir()
             return
         self.db_dir = metadata_file.parent.resolve()
-        assert (self.db_dir / self.__scp_statements_file__).exists(), f"scp_statements file not found in {self.db_dir}"
+        assert (
+            self.db_dir / self.__aux_files__["scp_statements_file"]
+        ).exists(), f"scp_statements file not found in {self.db_dir}"
+
+        if not (self.db_dir / self.__aux_files__["12sl_statements_file"]).exists():
+            self.logger.info(
+                f"""12sl_statements file {self.__aux_files__["12sl_statements_file"]} not found in {self.db_dir}. """
+                "Download the database first using the `download_aux_files` method."
+            )
+            self._df_12sl_statements = pd.DataFrame()
+        else:
+            self._df_12sl_statements = pd.read_csv(self.db_dir / self.__aux_files__["12sl_statements_file"])
+            self._df_12sl_statements["ecg_id"] = self._df_12sl_statements["ecg_id"].apply(lambda x: f"{x:05d}")
+            self._df_12sl_statements.set_index("ecg_id", inplace=True)
+        if not (self.db_dir / self.__aux_files__["12sl_mapping_file"]).exists():
+            self.logger.info(
+                f"""12sl_mapping file {self.__aux_files__["12sl_mapping_file"]} not found in {self.db_dir}. """
+                "Download the database first using the `download_aux_files` method."
+            )
+            self._df_12sl_mapping = pd.DataFrame()
+        else:
+            self._df_12sl_mapping = pd.read_csv(self.db_dir / self.__aux_files__["12sl_mapping_file"])
+            # drop nan rows and columns
+            self._df_12sl_mapping.dropna(axis=0, how="all", inplace=True)
+            self._df_12sl_mapping.dropna(axis=1, how="all", inplace=True)
+            # self._df_12sl_mapping["StatementNumber"] = self._df_12sl_mapping["StatementNumber"].astype(int)
+            self._df_12sl_mapping.set_index("StatementNumber", inplace=True)
 
         self._create_synthetic_images_dir()
 
         # read metadata file and scp_statements file
-        self._df_metadata = pd.read_csv(self.db_dir / self.__metadata_file__)
+        self._df_metadata = pd.read_csv(self.db_dir / self.__aux_files__["metadata_file"])
         self._df_metadata["ecg_id"] = self._df_metadata["ecg_id"].apply(lambda x: f"{x:05d}")
         self._df_metadata.set_index("ecg_id", inplace=True)
         self._df_metadata["patient_id"] = self._df_metadata["patient_id"].astype(int)
-        self._df_scp_statements = pd.read_csv(self.db_dir / self.__scp_statements_file__, index_col=0)
+        self._df_scp_statements = pd.read_csv(self.db_dir / self.__aux_files__["scp_statements_file"], index_col=0)
+
+        for row_idx, row in self._df_scp_statements.iterrows():
+            if row["diagnostic"] == 1:
+                self._subclass_to_superclass[row_idx] = row["diagnostic_class"]
+        # # Map the PTB-XL classes to superclasses.
+        self._df_metadata["diagnostic_superclass"] = self._df_metadata["scp_codes"].apply(
+            lambda x: sorted(
+                set(
+                    [
+                        self._subclass_to_superclass[subclass]
+                        for subclass in literal_eval(x)
+                        if subclass in self._subclass_to_superclass
+                    ]
+                )
+            )
+        )
+        self._df_metadata["diagnostic_superclass_augmented"] = self._df_metadata["diagnostic_superclass"].apply(
+            lambda x: x if len(x) > 0 else [self.config.default_class]
+        )
+
+        # Map the 12SL classes to the PTB-XL classes for the following acute myocardial infarction (MI) classes;
+        # PTB-XL does not include a separate acute MI class.
+
+        for statement in self.__acute_mi_statements__:
+            if statement in self._df_12sl_mapping.index:
+                self._acute_mi_classes.add(self._df_12sl_mapping.loc[statement]["Acronym"])
 
         # self._df_images = pd.DataFrame({"image": find_images(str(self._synthetic_images_dir), [".png", ".jpg", ".jpeg"])})
         # self._df_images["path"] = self._df_images["image"].apply(lambda x: self._synthetic_images_dir / x)
@@ -462,8 +526,10 @@ class CINC2024Reader(PhysioNetDataBase):
                 ann[statement].update(self._df_scp_statements.loc[statement].to_dict())
         return ann
 
-    def load_dx_ann(self, rec: Union[str, int], class_map: Optional[Union[bool, Dict[str, int]]] = None) -> Union[str, int]:
-        """Load the Dx annotation of a record.
+    def load_dx_ann(
+        self, rec: Union[str, int], class_map: Optional[Union[bool, Dict[str, int]]] = None, augmented: bool = True
+    ) -> Union[List[str], List[int]]:
+        """Load the diagnostic superclass annotations of a record.
 
         Parameters
         ----------
@@ -473,22 +539,21 @@ class CINC2024Reader(PhysioNetDataBase):
             The mapping from the statement to the binary class.
             If is ``None``, the default mapping will be used.
             If is ``False``, the statement will be returned.
+        augmented : bool, default True
+            Whether to use the augmented diagnostic superclass annotations.
 
         Returns
         -------
-        dx : int or str
-            The Dx annotation of the record.
+        dx : list of str or list of int
+            The Dx annotations of the record.
 
         """
-        dx = self.load_ann(rec)
-        if "NORM" in dx:
-            dx = self.config.normal_class
-        else:
-            dx = self.config.abnormal_class
+        key = "diagnostic_superclass_augmented" if augmented else "diagnostic_superclass"
+        dx = self.load_metadata(rec)[key]  # list of superclasses names (str)
         if class_map is None:
-            dx = {dx_cls: i for i, dx_cls in enumerate(self.config.classes)}[dx]
+            dx = [self.config.classes.index(diag_sc) for diag_sc in dx]
         elif class_map is not False:
-            dx = class_map[dx]
+            dx = [class_map[diag_sc] for diag_sc in dx]
         return dx
 
     def load_bbox(self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco") -> List[Dict[str, Any]]:
@@ -712,11 +777,38 @@ class CINC2024Reader(PhysioNetDataBase):
                 weight = cast_int_float_unknown(weight)
 
                 # Extract the diagnostic superclasses.
-                scp_codes = row["scp_codes"]
-                if "NORM" in scp_codes:
-                    dx = "Normal"
+                scp_codes = [scp_code for scp_code, likelihood in row["scp_codes"].items() if likelihood > 0]
+                superclasses = row["diagnostic_superclass"]
+
+                if ecg_id in self._df_12sl_statements.index:
+                    sl_codes = self._df_12sl_statements.loc[ecg_id]["statements"]
                 else:
-                    dx = "Abnormal"
+                    sl_codes = list()
+
+                labels = list()
+                if "NORM" in superclasses:
+                    labels.append("NORM")
+                if any(c in sl_codes for c in self._acute_mi_classes):
+                    labels.append("Acute MI")
+                if "MI" in superclasses and not any(c in sl_codes for c in self._acute_mi_classes):
+                    labels.append("Old MI")
+                if "STTC" in superclasses:
+                    labels.append("STTC")
+                if "CD" in superclasses:
+                    labels.append("CD")
+                if "HYP" in superclasses:
+                    labels.append("HYP")
+                if "PAC" in scp_codes:
+                    labels.append("PAC")
+                if "PVC" in scp_codes:
+                    labels.append("PVC")
+                if "AFIB" in scp_codes or "AFLT" in scp_codes:
+                    labels.append("AFIB/AFL")
+                if "STACH" in scp_codes or "SVTAC" in scp_codes or "PSVT" in scp_codes:
+                    labels.append("TACHY")
+                if "SBRAD" in scp_codes:
+                    labels.append("BRADY")
+                labels = ", ".join(labels)
 
                 input_dir = input_folder / record_dir
                 output_dir = output_folder / record_dir
@@ -765,7 +857,9 @@ class CINC2024Reader(PhysioNetDataBase):
                         ln.strip()
                         for ln in lines[1:]
                         if ln.startswith("#")
-                        and not any((ln.startswith(x) for x in ("#Age:", "#Sex:", "#Height:", "#Weight:", "#Dx:", "#Image:")))
+                        and not any(
+                            (ln.startswith(x) for x in ("# Age:", "# Sex:", "# Height:", "# Weight:", "# Labels:", "# Image:"))
+                        )
                     )
                     + "\n"
                 )
@@ -773,10 +867,11 @@ class CINC2024Reader(PhysioNetDataBase):
                 record_line = record_line.strip() + f" {recording_date_string}\n"
                 signal_lines = signal_lines.strip() + "\n"
                 comment_lines = (
-                    comment_lines.strip() + f"#Age: {age}\n#Sex: {sex}\n#Height: {height}\n#Weight: {weight}\n#Dx: {dx}\n"
+                    comment_lines.strip()
+                    + f"# Age: {age}\n# Sex: {sex}\n# Height: {height}\n# Weight: {weight}\n# Labels: {labels}\n"
                 )
                 record_image_string = ", ".join(record_images)
-                comment_lines += f"#Image: {record_image_string}\n"
+                comment_lines += f"# Image: {record_image_string}\n"
 
                 output_header = record_line + signal_lines + comment_lines
 
@@ -921,6 +1016,16 @@ class CINC2024Reader(PhysioNetDataBase):
         # reload the records
         self._ls_rec()
 
+    def download_aux_files(self) -> None:
+        """Download the auxiliary files."""
+        for filename, url in self.__aux_files__.items():
+            if (self.db_dir / filename).exists():
+                continue
+            http_get(url, self.db_dir, filename=filename, extract=False)
+
+        # reload the records
+        self._ls_rec()
+
     @staticmethod
     def fix_datetime_format(folder: Union[str, bytes, os.PathLike]) -> None:
         """Fix the datetime format of the header files in the folder.
@@ -952,6 +1057,11 @@ class CINC2024Reader(PhysioNetDataBase):
                 correction_flag = True
             if correction_flag:
                 header_file.write_text("\n".join(lines))
+
+    def assign_superclass(self, subclasses: Sequence[str]) -> List[str]:
+        return sorted(
+            set([self._subclass_to_superclass[subclass] for subclass in subclasses if subclass in self._subclass_to_superclass])
+        )
 
     def get_img_size(self, img: Union[str, int]) -> Tuple[int, int]:
         """Get the size of the image.

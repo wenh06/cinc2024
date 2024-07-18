@@ -38,9 +38,19 @@ BaseCfg.model_dir.mkdir(exist_ok=True)
 BaseCfg.torch_dtype = torch.float32  # "double"
 BaseCfg.np_dtype = np.float32
 BaseCfg.num_leads = 12
-BaseCfg.normal_class = "Normal"
-BaseCfg.abnormal_class = "Abnormal"
-BaseCfg.classes = [BaseCfg.normal_class, BaseCfg.abnormal_class]
+
+# BaseCfg.normal_class = "Normal"
+# BaseCfg.abnormal_class = "Abnormal"
+# BaseCfg.classes = [BaseCfg.normal_class, BaseCfg.abnormal_class]
+
+# fmt: off
+BaseCfg.default_class = "OTHER"  # an extra class for empty labels
+BaseCfg.classes = [
+    # diagnostic superclass
+    "NORM", "Acute MI", "Old MI", "STTC", "CD", "HYP", "PAC", "PVC", "AFIB/AFL", "TACHY", "BRADY",
+    BaseCfg.default_class,
+]
+# fmt: on
 
 BaseCfg.lead_names = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
 
