@@ -6,7 +6,6 @@ from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 __all__ = [
     "CINC2024Outputs",
@@ -19,8 +18,8 @@ class CINC2024Outputs:
 
     Attributes
     ----------
-    dx : Sequence[str]
-        Predicted class names ("Normal", "Abnormal") of the Dx classification.
+    dx : Sequence[Sequence[str]]
+        Predicted class names of the Dx classification.
     dx_logits : Sequence[Sequence[float]]
         Logits of the Dx classification.
     dx_prob : Sequence[Sequence[float]]
@@ -29,6 +28,9 @@ class CINC2024Outputs:
         Loss for the Dx classification.
     dx_classes : Sequence[str]
         Class names for the Dx classification.
+    dx_threshold : float
+        Threshold for the Dx classification (multi-label).
+        Default is 0.5.
     digitization : Sequence[numpy.ndarray]
         Predicted digitization results.
     digitization_loss : Sequence[float]
@@ -42,11 +44,12 @@ class CINC2024Outputs:
 
     """
 
-    dx: Optional[Sequence[str]] = None
+    dx: Optional[Sequence[Sequence[str]]] = None
     dx_logits: Optional[Sequence[Sequence[float]]] = None
     dx_prob: Optional[Sequence[Sequence[float]]] = None
     dx_loss: Optional[Sequence[float]] = None
     dx_classes: Optional[Sequence[str]] = None
+    dx_threshold: float = 0.5
     digitization: Optional[Sequence[np.ndarray]] = None
     digitization_loss: Optional[Sequence[float]] = None
     total_loss: Optional[Sequence[float]] = None
@@ -55,22 +58,30 @@ class CINC2024Outputs:
 
     def __post_init__(self) -> None:
         assert any(
-            [self.dx is not None, self.digitization is not None]
+            [self.dx is not None, self.dx_logits, self.dx_prob, self.digitization is not None]
         ), "at least one of `dx`, `digitization` prediction should be provided"
         if self.dx is not None:
             assert self.dx_classes is not None, "dx_classes should be provided if `dx` is provided"
             idx2class = {idx: cl for idx, cl in enumerate(self.dx_classes)}
-            if isinstance(self.dx, torch.Tensor):
-                self.dx = self.dx.cpu().detach().numpy().tolist()
-            self.dx = [idx2class[item] if isinstance(item, int) else item for item in self.dx]
-        if self.dx_logits is not None:
-            if isinstance(self.dx_logits, torch.Tensor):
-                self.dx_logits = self.dx_logits.cpu().detach().numpy()
+            # in case the dx is not converted to class names
+            self.dx = [[idx2class.get(item, item) for item in items] for items in self.dx]
         if self.dx_prob is not None:
+            assert self.dx_classes is not None, "dx_classes should be provided if `dx` is provided"
             if isinstance(self.dx_prob, torch.Tensor):
                 self.dx_prob = self.dx_prob.cpu().detach().numpy()
+            if self.dx is None:
+                self.dx = [
+                    [self.dx_classes[idx] for idx in np.where(np.array(items) > self.dx_threshold)[0]] for items in self.dx_prob
+                ]
         elif self.dx_logits is not None:
-            self.dx_prob = F.softmax(torch.from_numpy(self.dx_logits), dim=-1).cpu().detach().numpy()
+            assert self.dx_classes is not None, "dx_classes should be provided if `dx` is provided"
+            if isinstance(self.dx_logits, torch.Tensor):
+                self.dx_logits = self.dx_logits.cpu().detach().numpy()
+            self.dx_prob = torch.sigmoid(torch.from_numpy(self.dx_logits)).cpu().detach().numpy()
+            if self.dx is None:
+                self.dx = [
+                    [self.dx_classes[idx] for idx in np.where(np.array(items) > self.dx_threshold)[0]] for items in self.dx_prob
+                ]
         if self.dx_loss is not None:
             if isinstance(self.dx_loss, torch.Tensor):
                 self.dx_loss = self.dx_loss.cpu().detach().numpy()

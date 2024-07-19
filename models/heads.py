@@ -23,7 +23,7 @@ class ClassificationHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
     """Head for making Dx classification (binary) predictions, including loss computation.
 
     The output features of the backbone model is fed into this head to make classification predictions.
-    There are two Dx classes in CINC2024, "Normal" and "Abnormal".
+    There are 10 Dx classes in CINC2024, and an extra class ("OTHER") for those that do not belong to any of the 10 classes.
 
     Typically, this module includes a few fully connected layers, followed by a softmax layer.
     The input image features are of shape ``(batch_size, num_features, height, width)``.
@@ -81,8 +81,9 @@ class ClassificationHead(nn.Module, SizeMixin, CkptMixin, CitationMixin):
 
         """
         logits = self.classification_head(img_features)
-        preds = torch.argmax(logits, dim=1)
-        output = {"preds": preds, "logits": logits}
+        # preds = torch.argmax(logits, dim=1)
+        probs = torch.sigmoid(logits)
+        output = {"probs": probs, "logits": logits}
         if labels is not None and "dx" in labels:
             loss = self.classification_criterion(logits, labels["dx"].to(self.device))
             output["loss"] = loss

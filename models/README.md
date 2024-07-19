@@ -4,7 +4,7 @@ This folder (module) contains the models for the CINC 2024 Challenge. The models
 
 - **Pre-trained image backbone**: This part is responsible for extracting features from the input images. The backbone is pre-trained on the ImageNet dataset and is frozen during training.
 
-- **Dx head**: This part is responsible for making classification predictions ("Normal" or "Abnormal") based on the features extracted by the image backbone. The Dx head is trained (fine-tuned) on the CINC 2024 dataset.
+- **Classification head**: This part is responsible for making Dx classification predictions based on the features extracted by the image backbone. The classification head is trained (fine-tuned) on the CINC 2024 dataset.
 
 - **Digitization head**: This part is responsible for recovering the digitized ECG signal from the input image. The digitization head is trained (fine-tuned) on the CINC 2024 dataset.
 

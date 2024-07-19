@@ -117,7 +117,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         Returns
         -------
         dict
-            Predictions, including "dx" and "digitization",
+            Predictions, including "dx" classification and digitization,
             and the loss if any of the labels is provided.
 
         """
@@ -139,7 +139,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
             else:
                 total_loss += digitization_pred["loss"]
         return {
-            "dx": dx_pred.get("preds", None),
+            "dx_probs": dx_pred.get("probs", None),
             "dx_logits": dx_pred.get("logits", None),
             "dx_loss": dx_pred.get("loss", None),
             "digitization": digitization_pred.get("preds", None),
@@ -161,13 +161,16 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         self.image_backbone.freeze_backbone(freeze)
 
     @torch.no_grad()
-    def inference(self, img: INPUT_IMAGE_TYPES) -> CINC2024Outputs:
+    def inference(self, img: INPUT_IMAGE_TYPES, threshold: Optional[float] = None) -> CINC2024Outputs:
         """Inference on a single image or a batch of images.
 
         Parameters
         ----------
         img : numpy.ndarray or torch.Tensor or PIL.Image.Image, or list
             Input image.
+        threshold : float, optional
+            Threshold for multi-label Dx classification.
+            Defaults to `self.classification_head.config.threshold`.
 
         Returns
         -------
@@ -175,22 +178,25 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
             Predictions, including "dx" and "digitization".
 
         """
+        if threshold is None:
+            threshold = self.config.classification_head.threshold
         original_mode = self.training
         self.eval()
         output = self.forward(self.image_backbone.get_input_tensors(img))
+        dx_probs = output["dx_probs"]
+        dx = [[self.config.classification_head.classes[idx] for idx, prob in enumerate(dx_probs) if prob >= threshold]]
         self.train(original_mode)
         return CINC2024Outputs(
-            dx=output["dx"],
+            dx=dx,
             dx_logits=output["dx_logits"],
+            dx_prob=dx_probs,
             dx_classes=self.config.classification_head.classes,
             digitization=output["digitization"],
         )
 
     @add_docstring(inference.__doc__)
     def inference_CINC2024(self, img: INPUT_IMAGE_TYPES) -> CINC2024Outputs:
-        """
-        alias for `self.inference`
-        """
+        """alias for `self.inference`"""
         return self.inference(img)
 
     @property

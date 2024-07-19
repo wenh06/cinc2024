@@ -249,6 +249,7 @@ class CINC2024Reader(PhysioNetDataBase):
 
         # read metadata file and scp_statements file
         self._df_metadata = pd.read_csv(self.db_dir / self.__aux_files__["metadata_file"])
+        self._df_metadata["scp_codes"] = self._df_metadata["scp_codes"].apply(lambda x: literal_eval(x))
         self._df_metadata["ecg_id"] = self._df_metadata["ecg_id"].apply(lambda x: f"{x:05d}")
         self._df_metadata.set_index("ecg_id", inplace=True)
         self._df_metadata["patient_id"] = self._df_metadata["patient_id"].astype(int)
@@ -260,13 +261,7 @@ class CINC2024Reader(PhysioNetDataBase):
         # # Map the PTB-XL classes to superclasses.
         self._df_metadata["diagnostic_superclass"] = self._df_metadata["scp_codes"].apply(
             lambda x: sorted(
-                set(
-                    [
-                        self._subclass_to_superclass[subclass]
-                        for subclass in literal_eval(x)
-                        if subclass in self._subclass_to_superclass
-                    ]
-                )
+                set([self._subclass_to_superclass[subclass] for subclass in x if subclass in self._subclass_to_superclass])
             )
         )
         self._df_metadata["diagnostic_superclass_augmented"] = self._df_metadata["diagnostic_superclass"].apply(
@@ -519,7 +514,7 @@ class CINC2024Reader(PhysioNetDataBase):
             where ``...`` are other information of the statement.
 
         """
-        ann = literal_eval(self.load_metadata(rec)["scp_codes"])
+        ann = self.load_metadata(rec)["scp_codes"]
         if with_interpretation:
             for statement, likelihood in ann.items():
                 ann[statement] = {"likelihood": likelihood}
@@ -931,6 +926,8 @@ class CINC2024Reader(PhysioNetDataBase):
                             "data_ext": self.data_ext,
                             "force_recompute": force_recompute,
                             "ecg_img_gen_config": ecg_img_gen_config,
+                            "df_12sl_statements": self._df_12sl_statements,
+                            "acute_mi_classes": self._acute_mi_classes,
                         }
                     )
                 pool = mp.Pool(processes=max(1, mp.cpu_count() - 3))
@@ -1145,6 +1142,8 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
     force_recompute = args["force_recompute"]  # bool
     ecg_img_gen_config = args["ecg_img_gen_config"]  # CFG
     ecg_img_gen_config["link"] = ""  # set to empty to avoid internet errors
+    df_12sl_statements = args["df_12sl_statements"]  # pd.DataFrame
+    acute_mi_classes = args["acute_mi_classes"]  # set
 
     # Extract the demographics data.
     record_dir, record_basename = os.path.split(record)
@@ -1173,11 +1172,38 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
     weight = cast_int_float_unknown(weight)
 
     # Extract the diagnostic superclasses.
-    scp_codes = row["scp_codes"]
-    if "NORM" in scp_codes:
-        dx = "Normal"
+    scp_codes = [scp_code for scp_code, likelihood in row["scp_codes"].items() if likelihood > 0]
+    superclasses = row["diagnostic_superclass"]
+
+    if ecg_id in df_12sl_statements.index:
+        sl_codes = df_12sl_statements.loc[ecg_id]["statements"]
     else:
-        dx = "Abnormal"
+        sl_codes = list()
+
+    labels = list()
+    if "NORM" in superclasses:
+        labels.append("NORM")
+    if any(c in sl_codes for c in acute_mi_classes):
+        labels.append("Acute MI")
+    if "MI" in superclasses and not any(c in sl_codes for c in acute_mi_classes):
+        labels.append("Old MI")
+    if "STTC" in superclasses:
+        labels.append("STTC")
+    if "CD" in superclasses:
+        labels.append("CD")
+    if "HYP" in superclasses:
+        labels.append("HYP")
+    if "PAC" in scp_codes:
+        labels.append("PAC")
+    if "PVC" in scp_codes:
+        labels.append("PVC")
+    if "AFIB" in scp_codes or "AFLT" in scp_codes:
+        labels.append("AFIB/AFL")
+    if "STACH" in scp_codes or "SVTAC" in scp_codes or "PSVT" in scp_codes:
+        labels.append("TACHY")
+    if "SBRAD" in scp_codes:
+        labels.append("BRADY")
+    labels = ", ".join(labels)
 
     input_dir = input_folder / record_dir
     output_dir = output_folder / record_dir
@@ -1217,16 +1243,18 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
             ln.strip()
             for ln in lines[1:]
             if ln.startswith("#")
-            and not any((ln.startswith(x) for x in ("#Age:", "#Sex:", "#Height:", "#Weight:", "#Dx:", "#Image:")))
+            and not any((ln.startswith(x) for x in ("# Age:", "# Sex:", "# Height:", "# Weight:", "# Labels:", "# Image:")))
         )
         + "\n"
     )
 
     record_line = record_line.strip() + f" {recording_date_string}\n"
     signal_lines = signal_lines.strip() + "\n"
-    comment_lines = comment_lines.strip() + f"#Age: {age}\n#Sex: {sex}\n#Height: {height}\n#Weight: {weight}\n#Dx: {dx}\n"
+    comment_lines = (
+        comment_lines.strip() + f"# Age: {age}\n# Sex: {sex}\n# Height: {height}\n# Weight: {weight}\n# Labels: {labels}\n"
+    )
     record_image_string = ", ".join(record_images)
-    comment_lines += f"#Image: {record_image_string}\n"
+    comment_lines += f"# Image: {record_image_string}\n"
 
     output_header = record_line + signal_lines + comment_lines
 

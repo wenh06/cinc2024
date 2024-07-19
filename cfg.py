@@ -39,10 +39,6 @@ BaseCfg.torch_dtype = torch.float32  # "double"
 BaseCfg.np_dtype = np.float32
 BaseCfg.num_leads = 12
 
-# BaseCfg.normal_class = "Normal"
-# BaseCfg.abnormal_class = "Abnormal"
-# BaseCfg.classes = [BaseCfg.normal_class, BaseCfg.abnormal_class]
-
 # fmt: off
 BaseCfg.default_class = "OTHER"  # an extra class for empty labels
 BaseCfg.classes = [
@@ -163,6 +159,7 @@ ModelCfg.classification_head.classes = BaseCfg.classes
 ModelCfg.classification_head.num_classes = len(ModelCfg.classification_head.classes)
 ModelCfg.classification_head.criterion = "CrossEntropyLoss"
 ModelCfg.classification_head.label_smoothing = 0.1
+ModelCfg.classification_head.threshold = 0.5  # threshold for multi-label classification
 
 ModelCfg.classification_head.remote_checkpoints = {
     # stores the checkpoints of the classification head
