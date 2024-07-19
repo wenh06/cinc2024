@@ -936,6 +936,69 @@ class CINC2024Reader(PhysioNetDataBase):
         except KeyboardInterrupt:
             self.logger.info("Cancelled by user.")
 
+    def _prepare_synthetic_image_from_record(
+        self,
+        record: Union[str, int],
+        output_folder: Union[str, bytes, os.PathLike],
+        fs: int = 500,
+        force_recompute: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        """Prepare the synthetic images from a record.
+
+        This function is mainly for testing and debugging purposes
+        for generating synthetic images from a single record.
+
+        Parameters
+        ----------
+        record : str or int
+            The record name (ecg_id) or the index of the record.
+        output_folder : str or bytes or os.PathLike
+            The output folder to save the synthetic images.
+        fs : int, default 500
+            The sampling frequency of the record to generate the images.
+        force_recompute : bool, default False
+            Whether to force recompute the synthetic images.
+        **kwargs : dict
+            The keyword arguments for the image generator.
+
+        """
+        if isinstance(record, int):
+            record = self._all_records[record]
+        if output_folder is None:
+            output_folder = self._synthetic_images_dir
+        output_folder = Path(output_folder)
+        output_folder.mkdir(parents=True, exist_ok=True)
+        if fs is None:
+            if self.fs in [100, 500]:
+                fs = self.fs
+            else:
+                self.logger.warning(f"invalid fs `{fs}`, use default fs {self.gen_img_default_fs} instead.")
+                fs = self.gen_img_default_fs
+        input_folder = self.db_dir / self.__500Hz_dir__ if fs == 500 else self.db_dir / self.__100Hz_dir__
+
+        ecg_img_gen_config = CFG(self.__gen_img_default_config__.copy())
+        ecg_img_gen_config.update(kwargs)
+
+        record_dir, record_basename = os.path.split(record)
+        ecg_id = record_basename.split("_")[0]
+        row = self._df_metadata.loc[ecg_id]
+        gen_img_args = {
+            "input_folder": input_folder,
+            "output_folder": output_folder,
+            "record": record,
+            "row": row,
+            "src_datetime_fmt": self.src_datetime_fmt,
+            "dst_datetime_fmt": self.dst_datetime_fmt,
+            "header_ext": self.header_ext,
+            "data_ext": self.data_ext,
+            "force_recompute": force_recompute,
+            "ecg_img_gen_config": ecg_img_gen_config,
+            "df_12sl_statements": self._df_12sl_statements,
+            "acute_mi_classes": self._acute_mi_classes,
+        }
+        _generate_synthetic_image(gen_img_args)
+
     @property
     def database_info(self) -> DataBaseInfo:
         return _CINC2024_INFO
