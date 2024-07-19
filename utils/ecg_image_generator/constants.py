@@ -4,6 +4,10 @@ MODULE_DIR = Path(__file__).parent
 CACHE_DIR = MODULE_DIR / ".cache"
 CACHE_DIR.mkdir(exist_ok=True, parents=True)
 CONFIG_DIR = MODULE_DIR / "Config"
+FONT_DIR = MODULE_DIR / "Fonts"
+TEMPLATE_DIR = MODULE_DIR / "TemplateFiles"
+CREASES_WRINKLES_DIR = MODULE_DIR / "CreasesWrinkles"
+HANDWRITTEN_TEXT_DIR = MODULE_DIR / "HandwrittenText"
 
 save_img_ext = ".png"
 lead_bounding_box_dir_name = "lead_bounding_box"

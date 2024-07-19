@@ -7,7 +7,7 @@ from cfg import ModelCfg
 from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS
 from data_reader import CINC2024Reader
 from models import MultiHead_CINC2024
-from utils.ecg_image_generator.HandwrittenText import download_en_core_sci_sm
+from utils.ecg_image_generator import download_en_core_sci_sm
 from utils.misc import url_is_reachable
 
 if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable("https://huggingface.co")):

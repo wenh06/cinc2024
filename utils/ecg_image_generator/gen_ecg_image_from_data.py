@@ -20,7 +20,7 @@ try:
 except ImportError:
     cv2 = None
 
-from constants import CONFIG_DIR, MODULE_DIR
+from constants import CONFIG_DIR, FONT_DIR
 from CreasesWrinkles.creases import get_creased
 from extract_leads import get_paper_ecg
 from HandwrittenText.generate import get_handwritten
@@ -135,7 +135,7 @@ def run_single_file(args):
     else:
         bernoulli_add_print = bernoulli(args.random_print_header)
 
-    font = os.path.join(MODULE_DIR / "Fonts", random.choice(os.listdir(MODULE_DIR / "Fonts")))
+    font = os.path.join(FONT_DIR, random.choice(os.listdir(FONT_DIR)))
 
     if args.random_bw == 0:
         if args.random_grid_color is False:

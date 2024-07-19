@@ -8,7 +8,7 @@ import re
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gdown
 import numpy as np
@@ -26,7 +26,7 @@ from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
 from prepare_image_data import find_files as find_images
 from utils.ecg_image_generator import constants as ecg_img_gen_constants
-from utils.ecg_image_generator.gen_ecg_image_from_data import run_single_file
+from utils.ecg_image_generator import run_single_file
 from utils.misc import get_record_list_recursive3, url_is_reachable
 
 __all__ = [
@@ -79,7 +79,7 @@ _prepare_synthetic_images_docstring = """Prepare synthetic images from the ECG t
 
         - prepare_ptbxl_data.run
         - prepare_image_data.run
-        - ecg_image_generator.gen_ecg_image_from_data.run_single_file
+        - ecg_image_generator.run_single_file
 
         Parameters
         ----------
@@ -97,9 +97,6 @@ _prepare_synthetic_images_docstring = """Prepare synthetic images from the ECG t
             Extra key word arguments passed to the image generator.
 
         """
-
-
-_ECG_IMAGE_GENERATOR_CONFIG_DIR = Path(__file__).resolve().parent / "utils/ecg_image_generator/Configs"
 
 
 @add_docstring(_CINC2024_INFO.format_database_docstring(), mode="prepend")
@@ -136,11 +133,11 @@ class CINC2024Reader(PhysioNetDataBase):
     __500Hz_dir__ = "records500"
     __synthetic_images_dir__ = "synthetic_images"
     __gen_img_default_config__ = CFG(
-        json.loads((_ECG_IMAGE_GENERATOR_CONFIG_DIR / "ecg-image-gen-default-config.json").read_text())
+        json.loads((ecg_img_gen_constants.CONFIG_DIR / "ecg-image-gen-default-config.json").read_text())
     )
     __gen_img_extra_configs__ = [
-        CFG(json.loads((_ECG_IMAGE_GENERATOR_CONFIG_DIR / cfg_file).read_text()))
-        for cfg_file in _ECG_IMAGE_GENERATOR_CONFIG_DIR.glob("*.json")
+        CFG(json.loads((ecg_img_gen_constants.CONFIG_DIR / cfg_file).read_text()))
+        for cfg_file in ecg_img_gen_constants.CONFIG_DIR.glob("*.json")
         if cfg_file.name != "ecg-image-gen-default-config.json"
     ]
     __synthetic_images_url__ = {
@@ -876,7 +873,7 @@ class CINC2024Reader(PhysioNetDataBase):
     def prepare_synthetic_images(
         self,
         output_folder: Optional[Union[str, bytes, os.PathLike]] = None,
-        fs: int = 100,
+        fs: int = 500,
         force_recompute: bool = False,
         parallel: bool = False,
         **kwargs: Any,
@@ -884,12 +881,12 @@ class CINC2024Reader(PhysioNetDataBase):
         try:
             if parallel:
                 if kwargs.get("hw_text", self.__gen_img_default_config__["hw_text"]) is True:
-                    from utils.ecg_image_generator.HandwrittenText.generate import en_core_sci_sm_model
+                    from utils.ecg_image_generator import en_core_sci_sm_model
 
                     if en_core_sci_sm_model is None:
                         self.logger.warning(
                             "The spaCy model en_core_sci_sm is not cached locally. Call the function download_en_core_sci_sm "
-                            "from utils.ecg_image_generator.HandwrittenText.generate to download the model. "
+                            "from utils.ecg_image_generator to download the model. "
                             "Otherwise, it would be downloaded multiple times in parallel."
                         )
                         return
@@ -1055,11 +1052,6 @@ class CINC2024Reader(PhysioNetDataBase):
             if correction_flag:
                 header_file.write_text("\n".join(lines))
 
-    def assign_superclass(self, subclasses: Sequence[str]) -> List[str]:
-        return sorted(
-            set([self._subclass_to_superclass[subclass] for subclass in subclasses if subclass in self._subclass_to_superclass])
-        )
-
     def get_img_size(self, img: Union[str, int]) -> Tuple[int, int]:
         """Get the size of the image.
 
@@ -1130,6 +1122,15 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
 
     This function is used for multiprocessing.
 
+    Parameters
+    ----------
+    args : dict
+        The arguments for generating the synthetic images.
+
+    Returns
+    -------
+    None
+
     """
     input_folder = Path(args["input_folder"])
     output_folder = Path(args["output_folder"])
@@ -1148,7 +1149,6 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
     # Extract the demographics data.
     record_dir, record_basename = os.path.split(record)
     ecg_id = record_basename.split("_")[0]
-    # row = self._df_metadata.loc[ecg_id]
 
     recording_date_string = row["recording_date"]
     recording_date = datetime.strptime(recording_date_string, src_datetime_fmt)
@@ -1333,7 +1333,7 @@ if __name__ == "__main__":
         if args.gen_img_config is not None:
             gen_img_config = json.loads(Path(args.gen_img_config).read_text())
         if args.parallel:
-            from utils.ecg_image_generator.HandwrittenText.generate import download_en_core_sci_sm, en_core_sci_sm_model
+            from utils.ecg_image_generator import download_en_core_sci_sm, en_core_sci_sm_model
 
             if en_core_sci_sm_model is None and gen_img_config.get("hw_text", dr.__gen_img_default_config__["hw_text"]) is True:
                 download_en_core_sci_sm()

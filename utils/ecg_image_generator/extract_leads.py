@@ -8,8 +8,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
-from constants import MODULE_DIR, save_img_ext
-from ecg_plot import ecg_plot
+from _ecg_plot import ecg_plot
+from constants import FONT_DIR, TEMPLATE_DIR, save_img_ext
 from helper_functions import (
     create_signal_dictionary,
     get_adc_gains,
@@ -51,9 +51,9 @@ def get_paper_ecg(
     columns=-1,
 ):
     if template_file is None:
-        template_file = str((MODULE_DIR / "TemplateFiles/TextFile1.txt").resolve())
+        template_file = str((TEMPLATE_DIR / "TextFile1.txt").resolve())
     if font_type is None:
-        font_type = str((MODULE_DIR / "Fonts/Times_New_Roman.ttf").resolve())
+        font_type = str((FONT_DIR / "Times_New_Roman.ttf").resolve())
 
     # Extract a reduced-lead set from each pair of full-lead header and recording files.
     full_header_file = header_file

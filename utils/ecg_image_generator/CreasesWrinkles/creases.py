@@ -8,7 +8,7 @@ try:
 except ImportError:
     cv2 = None
 import numpy as np
-from constants import MODULE_DIR
+from constants import CREASES_WRINKLES_DIR
 from PIL import Image
 from skimage import util
 
@@ -268,8 +268,8 @@ def get_creased(
         # Seed with a different selection of a wrinkle image
         # read wrinkle image as grayscale and convert to float in range 0 to 1
         wrinkle_file_name = os.path.join(
-            os.path.join(MODULE_DIR, "CreasesWrinkles", "wrinkles-dataset"),
-            random.choice(os.listdir(os.path.join(MODULE_DIR, "CreasesWrinkles", "wrinkles-dataset"))),
+            os.path.join(CREASES_WRINKLES_DIR, "wrinkles-dataset"),
+            random.choice(os.listdir(os.path.join(CREASES_WRINKLES_DIR, "wrinkles-dataset"))),
         )
         wrinklesImg = quilt(wrinkle_file_name, 250, (1, 1), "Cut")
         wrinklesImg = cv2.cvtColor(wrinklesImg, cv2.COLOR_BGR2GRAY)

@@ -9,10 +9,10 @@ from typing import Union
 
 import numpy as np
 import torch
-from torch.nn.parallel import DataParallel as DP  # noqa: F401
+from torch.nn.parallel import DataParallel as DP
 from torch.utils.data import DataLoader
 from torch_ecg.cfg import CFG
-from torch_ecg.utils.misc import dict_to_str, str2bool  # noqa: F401
+from torch_ecg.utils.misc import str2bool
 
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
 from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS

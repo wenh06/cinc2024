@@ -16,7 +16,7 @@ import spacy
 import tensorflow as tf
 import validators
 from bs4 import BeautifulSoup, Comment
-from constants import CACHE_DIR, MODULE_DIR, en_core_sci_sm_url, save_img_ext
+from constants import CACHE_DIR, HANDWRITTEN_TEXT_DIR, en_core_sci_sm_url, save_img_ext
 from PIL import Image
 from torch_ecg.utils.download import http_get
 
@@ -36,7 +36,7 @@ def get_parser():
         "--model",
         dest="model_path",
         type=str,
-        default=os.path.join(os.path.join(MODULE_DIR, "HandwrittenText", "pretrained"), "model-29"),
+        default=os.path.join(os.path.join(HANDWRITTEN_TEXT_DIR, "pretrained"), "model-29"),
     )
     parser.add_argument("--text", dest="text", type=str, default=None)
     parser.add_argument("--style", dest="style", type=int, default=None)
@@ -205,7 +205,7 @@ def get_handwritten(
         return outfile
 
     if model_path is None:
-        model_path = str((MODULE_DIR / "HandwrittenText/pretrained/model-29").resolve())
+        model_path = str((HANDWRITTEN_TEXT_DIR / "pretrained/model-29").resolve())
 
     # Use 'Agg' mode to prevent accumulation of figures
     matplotlib.use("Agg")
@@ -232,7 +232,7 @@ def get_handwritten(
     else:
         # Extract medical terms from .txt files
         if link == "":
-            link = MODULE_DIR / "HandwrittenText/Biomedical.txt"
+            link = HANDWRITTEN_TEXT_DIR / "Biomedical.txt"
         with open(link, "r") as f:
             # Extract lines from the file
             text = ""
@@ -246,7 +246,7 @@ def get_handwritten(
     # Load the pretrained RNN model for handwritten text generation
     # with open(os.path.join(os.path.join("HandwrittenText", "data"), "translation.pkl"), "rb") as file:
     #     translation = pickle.load(file)
-    translation = pickle.loads((MODULE_DIR / "HandwrittenText/data/translation.pkl").read_bytes())
+    translation = pickle.loads((HANDWRITTEN_TEXT_DIR / "data/translation.pkl").read_bytes())
     rev_translation = {v: k for k, v in translation.items()}
     charset = [rev_translation[i] for i in range(len(rev_translation))]
     charset[0] = ""
@@ -270,7 +270,7 @@ def get_handwritten(
                 style = None
                 # with open(os.path.join(os.path.join("HandwrittenText", "data"), "styles.pkl"), "rb") as file:
                 #     styles = pickle.load(file)
-                styles = pickle.loads((MODULE_DIR / "HandwrittenText/data/styles.pkl").read_bytes())
+                styles = pickle.loads((HANDWRITTEN_TEXT_DIR / "data/styles.pkl").read_bytes())
                 if style > len(styles[0]):
                     raise ValueError("Requested style is not in style list")
                 style = [styles[0][style], styles[1][style]]
