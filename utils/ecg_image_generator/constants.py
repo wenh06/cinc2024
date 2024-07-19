@@ -3,7 +3,7 @@ from pathlib import Path
 MODULE_DIR = Path(__file__).parent
 CACHE_DIR = MODULE_DIR / ".cache"
 CACHE_DIR.mkdir(exist_ok=True, parents=True)
-CONFIG_DIR = MODULE_DIR / "Config"
+CONFIG_DIR = MODULE_DIR / "Configs"
 FONT_DIR = MODULE_DIR / "Fonts"
 TEMPLATE_DIR = MODULE_DIR / "TemplateFiles"
 CREASES_WRINKLES_DIR = MODULE_DIR / "CreasesWrinkles"

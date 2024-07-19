@@ -145,7 +145,6 @@ def run_single_file(args):
     else:
         standard_colours = False
 
-    # configs = read_config_file(os.path.join(os.getcwd(), args.config_file))
     configs = read_config_file(os.path.join(CONFIG_DIR, args.config_file))
 
     out_array = get_paper_ecg(
