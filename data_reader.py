@@ -8,7 +8,7 @@ import re
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import gdown
 import numpy as np
@@ -272,6 +272,14 @@ class CINC2024Reader(PhysioNetDataBase):
             if statement in self._df_12sl_mapping.index:
                 self._acute_mi_classes.add(self._df_12sl_mapping.loc[statement]["Acronym"])
 
+        # Obtain the labels for the challenge
+        self._df_metadata["labels"] = self._df_metadata.apply(
+            lambda row: get_record_labels(row, self._df_12sl_statements, self._acute_mi_classes), axis=1
+        )
+        self._df_metadata["labels_augmented"] = self._df_metadata["labels"].apply(
+            lambda x: x if len(x) > 0 else [self.config.default_class]
+        )
+
         # self._df_images = pd.DataFrame({"image": find_images(str(self._synthetic_images_dir), [".png", ".jpg", ".jpeg"])})
         # self._df_images["path"] = self._df_images["image"].apply(lambda x: self._synthetic_images_dir / x)
         self._df_images = pd.DataFrame(
@@ -521,7 +529,7 @@ class CINC2024Reader(PhysioNetDataBase):
     def load_dx_ann(
         self, rec: Union[str, int], class_map: Optional[Union[bool, Dict[str, int]]] = None, augmented: bool = True
     ) -> Union[List[str], List[int]]:
-        """Load the diagnostic superclass annotations of a record.
+        """Load the challenge labels (Dx classification labels) of a record.
 
         Parameters
         ----------
@@ -532,21 +540,48 @@ class CINC2024Reader(PhysioNetDataBase):
             If is ``None``, the default mapping will be used.
             If is ``False``, the statement will be returned.
         augmented : bool, default True
-            Whether to use the augmented diagnostic superclass annotations.
+            Whether to use the augmented annotations ("OTHER" included).
 
         Returns
         -------
-        dx : list of str or list of int
+        list of str or list of int
             The Dx annotations of the record.
 
         """
-        key = "diagnostic_superclass_augmented" if augmented else "diagnostic_superclass"
-        dx = self.load_metadata(rec)[key]  # list of superclasses names (str)
+        key = "labels_augmented" if augmented else "labels"
+        dx = self.load_metadata(rec)[key]
         if class_map is None:
-            dx = [self.config.classes.index(diag_sc) for diag_sc in dx]
+            dx = [self.config.classes.index(dx) for dx in dx]
         elif class_map is not False:
-            dx = [class_map[diag_sc] for diag_sc in dx]
+            dx = [class_map[dx] for dx in dx]
         return dx
+
+    def load_diagnostic_superclasses(
+        self, rec: Union[str, int], class_map: Optional[Dict[str, int]] = None, augmented: bool = True
+    ) -> Union[List[str], List[int]]:
+        """Load the diagnostic superclasses annotations of a record.
+
+        Parameters
+        ----------
+        rec : str or int
+            The record name (ecg_id) or the index of the record.
+        class_map : dict or bool, optional
+            The mapping from the statement to the binary class.
+            If is ``None``, the statements will be returned.
+        augmented : bool, default True
+            Whether to use the augmented diagnostic superclass annotations ("OTHER" included).
+
+        Returns
+        -------
+        list of str or list of int
+            The diagnostic superclasses annotations of the record.
+
+        """
+        key = "diagnostic_superclass_augmented" if augmented else "diagnostic_superclass"
+        diagnostic_superclasses = self.load_metadata(rec)[key]  # list of superclasses names (str)
+        if class_map is not None:
+            diagnostic_superclasses = [class_map[diag_sc] for diag_sc in diagnostic_superclasses]
+        return diagnostic_superclasses
 
     def load_bbox(self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco") -> List[Dict[str, Any]]:
         """Load the bounding boxes of the image.
@@ -596,7 +631,6 @@ class CINC2024Reader(PhysioNetDataBase):
         pil_img.close()
 
         bbox = []
-
         if with_lead_bbox:
             # lead_bbox has the format [x1, y1, x2, y2, is_full], where is_full takes 0 or 1
             lead_bbox_file = self._df_images.loc[img, "lead_bbox"]
@@ -1180,6 +1214,81 @@ class CINC2024Reader(PhysioNetDataBase):
         return waveform_boxes
 
 
+def get_record_labels(row: pd.Series, df_12sl_statements: pd.DataFrame, acute_mi_classes: Set[str]) -> List[str]:
+    """Get the diagnostic labels of the record.
+
+    Parameters
+    ----------
+    row : pd.Series
+        The metadata of the record.
+    df_12sl_statements : pd.DataFrame
+        The 12SL statements.
+    acute_mi_classes : set of str
+        Additional 12SL statements for acute myocardial infarction.
+
+    Returns
+    -------
+    list of str
+        The diagnostic labels of the record.
+
+    """
+    scp_codes = [scp_code for scp_code, likelihood in row["scp_codes"].items() if likelihood > 0]
+    superclasses = row["diagnostic_superclass"]
+    if row.name in df_12sl_statements.index:
+        sl_codes = df_12sl_statements.loc[row.name]["statements"]
+    else:
+        sl_codes = list()
+    return scp_codes_to_labels(scp_codes, superclasses, sl_codes, acute_mi_classes)
+
+
+def scp_codes_to_labels(
+    scp_codes: Sequence[str], superclasses: Sequence[str], sl_codes: Sequence[str], acute_mi_classes: Set[str]
+) -> List[str]:
+    """Map the SCP codes to the diagnostic labels.
+
+    Parameters
+    ----------
+    scp_codes : Sequence[str]
+        The SCP codes.
+    superclasses : Sequence[str]
+        The diagnostic superclasses obtained from the SCP codes.
+    sl_codes : Sequence[str]
+        Codes from the 12SL statements.
+    acute_mi_classes : set of str
+        Additional 12SL statements for acute myocardial infarction.
+
+    Returns
+    -------
+    list of str
+        The diagnostic labels.
+
+    """
+    labels = list()
+    if "NORM" in superclasses:
+        labels.append("NORM")
+    if any(c in sl_codes for c in acute_mi_classes):
+        labels.append("Acute MI")
+    if "MI" in superclasses and not any(c in sl_codes for c in acute_mi_classes):
+        labels.append("Old MI")
+    if "STTC" in superclasses:
+        labels.append("STTC")
+    if "CD" in superclasses:
+        labels.append("CD")
+    if "HYP" in superclasses:
+        labels.append("HYP")
+    if "PAC" in scp_codes:
+        labels.append("PAC")
+    if "PVC" in scp_codes:
+        labels.append("PVC")
+    if "AFIB" in scp_codes or "AFLT" in scp_codes:
+        labels.append("AFIB/AFL")
+    if "STACH" in scp_codes or "SVTAC" in scp_codes or "PSVT" in scp_codes:
+        labels.append("TACHY")
+    if "SBRAD" in scp_codes:
+        labels.append("BRADY")
+    return labels
+
+
 def _generate_synthetic_image(args: Dict[str, Any]) -> None:
     """Generate the synthetic images from the ECG time series data.
 
@@ -1243,30 +1352,7 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
     else:
         sl_codes = list()
 
-    labels = list()
-    if "NORM" in superclasses:
-        labels.append("NORM")
-    if any(c in sl_codes for c in acute_mi_classes):
-        labels.append("Acute MI")
-    if "MI" in superclasses and not any(c in sl_codes for c in acute_mi_classes):
-        labels.append("Old MI")
-    if "STTC" in superclasses:
-        labels.append("STTC")
-    if "CD" in superclasses:
-        labels.append("CD")
-    if "HYP" in superclasses:
-        labels.append("HYP")
-    if "PAC" in scp_codes:
-        labels.append("PAC")
-    if "PVC" in scp_codes:
-        labels.append("PVC")
-    if "AFIB" in scp_codes or "AFLT" in scp_codes:
-        labels.append("AFIB/AFL")
-    if "STACH" in scp_codes or "SVTAC" in scp_codes or "PSVT" in scp_codes:
-        labels.append("TACHY")
-    if "SBRAD" in scp_codes:
-        labels.append("BRADY")
-    labels = ", ".join(labels)
+    labels = ", ".join(scp_codes_to_labels(scp_codes, superclasses, sl_codes, acute_mi_classes))
 
     input_dir = input_folder / record_dir
     output_dir = output_folder / record_dir
