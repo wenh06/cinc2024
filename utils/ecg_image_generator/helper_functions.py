@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
 import wfdb
+from constants import CONFIG_DIR
 from scipy.io import loadmat
 
 BIT_NAN_16 = -(2.0**15)
@@ -23,6 +24,8 @@ def read_config_file(config_file):
     Returns:
         configs (dict): Returns dictionary with all the configs
     """
+    if not os.path.exists(config_file):
+        config_file = os.path.join(CONFIG_DIR, config_file)
     if Path(config_file).suffix == ".json":
         with open(config_file, "r") as f:
             configs = json.load(f)

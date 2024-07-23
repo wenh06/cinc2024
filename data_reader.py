@@ -169,7 +169,7 @@ class CINC2024Reader(PhysioNetDataBase):
 
         self.src_datetime_fmt = "%Y-%m-%d %H:%M:%S"
         self.dst_datetime_fmt = "%H:%M:%S %d/%m/%Y"
-        self.gen_img_default_fs = 100
+        self.gen_img_default_fs = 500
         self.gen_img_pattern = "[\\d]{5}_[lh]r-[\\d]+.png"
 
         self._synthetic_images_dir = kwargs.pop("synthetic_images_dir", None)
@@ -1009,18 +1009,22 @@ class CINC2024Reader(PhysioNetDataBase):
             else:
                 self.logger.warning(f"invalid fs `{fs}`, use default fs {self.gen_img_default_fs} instead.")
                 fs = self.gen_img_default_fs
-        input_folder = self.db_dir / self.__500Hz_dir__ if fs == 500 else self.db_dir / self.__100Hz_dir__
 
         ecg_img_gen_config = CFG(self.__gen_img_default_config__.copy())
         ecg_img_gen_config.update(kwargs)
 
-        record_dir, record_basename = os.path.split(record)
-        ecg_id = record_basename.split("_")[0]
-        row = self._df_metadata.loc[ecg_id]
+        ecg_id = record
+        row = self._df_metadata.loc[record]
+        if fs == 500:
+            input_folder = self.db_dir / self.__500Hz_dir__
+            record_rel_path = (self.db_dir / row.filename_hr).relative_to(input_folder)
+        else:
+            input_folder = self.db_dir / self.__100Hz_dir__
+            record_rel_path = (self.db_dir / row.filename_lr).relative_to(input_folder)
         gen_img_args = {
             "input_folder": input_folder,
             "output_folder": output_folder,
-            "record": record,
+            "record": record_rel_path,
             "row": row,
             "src_datetime_fmt": self.src_datetime_fmt,
             "dst_datetime_fmt": self.dst_datetime_fmt,

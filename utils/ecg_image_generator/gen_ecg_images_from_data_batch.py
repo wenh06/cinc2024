@@ -21,7 +21,7 @@ def get_parser():
     parser.add_argument("-se", "--seed", type=int, required=False, default=-1)
     parser.add_argument("--num_leads", type=str, default="twelve")
     parser.add_argument("--max_num_images", type=int, default=-1)
-    parser.add_argument("--config_file", type=str, default="ecg-image-gen-default-config")
+    parser.add_argument("--config_file", type=str, default="ecg-plot-config.yaml")
 
     parser.add_argument("-r", "--resolution", type=int, required=False, default=200)
     parser.add_argument("--pad_inches", type=int, required=False, default=0)
