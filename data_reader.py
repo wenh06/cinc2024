@@ -863,9 +863,8 @@ class CINC2024Reader(PhysioNetDataBase):
                     "record": record,
                 }
 
-                # print(dict_to_str(ecg_img_gen_config))
-
-                num_ecg_img_gen += run_single_file(ecg_img_gen_config)
+                num_gen, out_image_files, metadata_array = run_single_file(ecg_img_gen_config)
+                num_ecg_img_gen += num_gen
                 pbar.set_postfix(num_ecg_img_gen=num_ecg_img_gen)
 
                 record_images = []
@@ -1379,7 +1378,7 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
     ecg_img_gen_config.output_directory = str(output_dir)
     ecg_img_gen_config.start_index = -1
 
-    run_single_file(ecg_img_gen_config)
+    _, out_image_files, metadata_array = run_single_file(ecg_img_gen_config)
 
     record_images = []
     for image in find_images(str(output_dir), [".png", ".jpg", ".jpeg"]):
@@ -1412,6 +1411,22 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
     output_header = record_line + signal_lines + comment_lines
 
     output_header_file.write_text(output_header)
+
+    # write the metadata (mainly bounding boxes) to files
+    for idx, metadata in enumerate(metadata_array):
+        image_file = Path(out_image_files[idx])
+        text_bbox = np.array([list(item["text_bounding_box"].values()) for item in metadata["leads"]])
+        metadata_file = (
+            image_file.parent / ecg_img_gen_constants.text_bounding_box_dir_name / image_file.with_suffix(".npy").name
+        )
+        metadata_file.parent.mkdir(parents=True, exist_ok=True)
+        np.save(metadata_file, text_bbox)
+        lead_bbox = np.array([list(item["lead_bounding_box"].values()) for item in metadata["leads"]])
+        metadata_file = (
+            image_file.parent / ecg_img_gen_constants.lead_bounding_box_dir_name / image_file.with_suffix(".npy").name
+        )
+        metadata_file.parent.mkdir(parents=True, exist_ok=True)
+        np.save(metadata_file, lead_bbox)
 
 
 if __name__ == "__main__":

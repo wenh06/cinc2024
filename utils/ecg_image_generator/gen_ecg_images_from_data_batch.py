@@ -110,7 +110,8 @@ def run(args):
         args.output_directory = os.path.join(original_output_dir, "/".join(folder_struct_list))
         args.encoding = os.path.split(os.path.splitext(filename)[0])[1]
 
-        i += run_single_file(args)
+        # i += run_single_file(args)
+        i += run_single_file(args)[0]
 
         if args.max_num_images != -1 and i >= args.max_num_images:
             break

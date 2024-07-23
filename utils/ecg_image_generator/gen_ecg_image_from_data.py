@@ -123,6 +123,8 @@ def run_single_file(args):
     header = args.header_file
     resolution = random.choice(range(50, args.resolution + 1)) if (args.random_resolution) else args.resolution
     padding = random.choice(range(0, args.pad_inches + 1)) if (args.random_padding) else args.pad_inches
+    original_store_config = args.store_config
+    args.store_config = 2
 
     papersize = ""
     lead = args.remove_lead_names
@@ -147,13 +149,15 @@ def run_single_file(args):
 
     configs = read_config_file(os.path.join(CONFIG_DIR, args.config_file))
 
-    out_array = get_paper_ecg(
+    # out_array = get_paper_ecg(
+    out_array, metadata_array = get_paper_ecg(
         input_file=filename,
         header_file=header,
         configs=configs,
         mask_unplotted_samples=args.mask_unplotted_samples,
         start_index=args.start_index,
-        store_configs=args.store_config,
+        # store_configs=args.store_config,
+        store_configs=original_store_config,
         store_text_bbox=args.lead_name_bbox,
         output_directory=args.output_directory,
         resolution=resolution,
@@ -172,13 +176,15 @@ def run_single_file(args):
         seed=args.seed,
     )
 
-    for out in out_array:
-        if args.store_config:
+    for idx, out in enumerate(out_array):
+        # if args.store_config:
+        if original_store_config:
             rec_tail, extn = os.path.splitext(out)
             with open(rec_tail + ".json", "r") as file:
                 json_dict = json.load(file)
         else:
-            json_dict = None
+            # json_dict = None
+            json_dict = metadata_array[idx]
         if args.fully_random:
             hw_text = random.choice((True, False))
             wrinkles = random.choice((True, False))
@@ -292,7 +298,8 @@ def run_single_file(args):
             json_dict["rotate"] = rotate
             json_dict["noise"] = noise
 
-        if args.store_config:
+        # if args.store_config:
+        if original_store_config:
             json_object = json.dumps(json_dict, indent=4)
 
             with open(rec_tail + ".json", "w") as f:
@@ -319,7 +326,9 @@ def run_single_file(args):
             img = Image.fromarray(img)
             img.save(out)
 
-    return len(out_array)
+        out_array[idx] = out
+
+    return len(out_array), out_array, metadata_array
 
 
 if __name__ == "__main__":

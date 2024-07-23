@@ -33,9 +33,9 @@ def get_paper_ecg(
     show_grid,
     add_print,
     configs,
-    mask_unplotted_samples: bool = False,
+    mask_unplotted_samples=False,
     start_index=-1,
-    store_configs=False,
+    store_configs=0,
     store_text_bbox=True,
     key="val",
     resolution=100,
@@ -296,12 +296,15 @@ def get_paper_ecg(
                 ecg_frame.append(frame)
                 start = start + int(rate * abs_lead_step)
     outfile_array = []
+    metadata_array = []
+    original_store_configs = store_configs
+    store_configs = 2
 
     name, ext = os.path.splitext(full_header_file)
     write_wfdb_file(segmented_ecg_data, name, rate, header_file, output_directory, full_mode, mask_unplotted_samples)
 
     if len(ecg_frame) == 0:
-        return outfile_array
+        return outfile_array, metadata_array
 
     start = 0
     for i in range(len(ecg_frame)):
@@ -368,11 +371,13 @@ def get_paper_ecg(
         json_object = json.dumps(json_dict, indent=4)
 
         # Writing to sample.json
-        if store_configs:
+        # if store_configs:
+        if original_store_configs:
             with open(os.path.join(output_directory, rec_tail + ".json"), "w") as f:
                 f.write(json_object)
 
+        metadata_array.append(json_dict)
         outfile_array.append(outfile)
         start += int(rate * abs_lead_step)
 
-    return outfile_array
+    return outfile_array, metadata_array

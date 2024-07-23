@@ -127,6 +127,9 @@ def ecg_plot(
     if ecg == {}:
         return
 
+    original_store_configs = store_configs
+    store_configs = 2
+
     # secs = len(list(ecg.items())[0][1]) / sample_rate
     secs = lead_length_in_seconds
 
@@ -267,10 +270,11 @@ def ecg_plot(
                 x2 = bb.x1 * resolution / fig.dpi
                 y2 = bb.y1 * resolution / fig.dpi
                 box_dict = dict()
-                x1 = int(x1)
-                y1 = int(y1)
-                x2 = int(x2)
-                y2 = int(y2)
+                # x1 = int(x1)
+                # y1 = int(y1)
+                # x2 = int(x2)
+                # y2 = int(y2)
+                # convert from mpl coordinates to common (PIL, etc.) coordinates
                 box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
                 box_dict[1] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
                 box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
@@ -328,10 +332,11 @@ def ecg_plot(
                 x2 = bb.x1 * resolution / fig.dpi
 
             box_dict = dict()
-            x1 = int(x1)
-            y1 = int(y1)
-            x2 = int(x2)
-            y2 = int(y2)
+            # x1 = int(x1)
+            # y1 = int(y1)
+            # x2 = int(x2)
+            # y2 = int(y2)
+            # convert from mpl coordinates to common (PIL, etc.) coordinates
             box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
             box_dict[1] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
             box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
@@ -381,10 +386,11 @@ def ecg_plot(
                 x2 = bb.x1 * resolution / fig.dpi
                 y2 = bb.y1 * resolution / fig.dpi
                 box_dict = dict()
-                x1 = int(x1)
-                y1 = int(y1)
-                x2 = int(x2)
-                y2 = int(y2)
+                # x1 = int(x1)
+                # y1 = int(y1)
+                # x2 = int(x2)
+                # y2 = int(y2)
+                # convert from mpl coordinates to common (PIL, etc.) coordinates
                 box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
                 box_dict[1] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
                 box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
@@ -433,10 +439,11 @@ def ecg_plot(
                 x2 = bb.x1 * resolution / fig.dpi
 
             box_dict = dict()
-            x1 = int(x1)
-            y1 = int(y1)
-            x2 = int(x2)
-            y2 = int(y2)
+            # x1 = int(x1)
+            # y1 = int(y1)
+            # x2 = int(x2)
+            # y2 = int(y2)
+            # convert from mpl coordinates to common (PIL, etc.) coordinates
             box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
             box_dict[1] = [round(json_dict["height"] - y2), round(x2, 2)]
             box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
