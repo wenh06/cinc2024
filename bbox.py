@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Optional
 
 import numpy as np
@@ -13,9 +13,10 @@ class BBox:
     ymin: int
     width: int
     height: int
-    img_width: int = None
-    img_height: int = None
-    category_name: str = None
+    img_width: Optional[int] = None
+    img_height: Optional[int] = None
+    category_name: Optional[str] = None
+    category_id: Optional[int] = None
 
     def __post_init__(self):
         self.xmin = int(self.xmin)
@@ -39,6 +40,10 @@ class BBox:
     @property
     def bottom(self) -> int:
         return self.ymin + self.height
+
+    @property
+    def area(self) -> int:
+        return self.width * self.height
 
     def __repr__(self) -> str:
         return f"BBox(xmin={self.xmin}, ymin={self.ymin}, width={self.width}, height={self.height})"
@@ -77,30 +82,54 @@ class BBox:
         union = self.union(other)
         return intersection.width * intersection.height / union.width / union.height
 
-    def to_coco_format(self) -> list:
-        return [self.xmin, self.ymin, self.width, self.height]
+    def to_coco_format(self) -> dict:
+        return {
+            "bbox": [self.xmin, self.ymin, self.width, self.height],
+            "category_id": self.category_id,
+            "category_name": self.category_name,
+            "area": self.area,
+        }
 
-    def to_voc_format(self) -> list:
-        return [self.xmin, self.ymin, self.right, self.bottom]
+    def to_voc_format(self) -> dict:
+        return {
+            "bbox": [self.xmin, self.ymin, self.right, self.bottom],
+            "category_id": self.category_id,
+            "category_name": self.category_name,
+            "area": self.area,
+        }
 
-    def to_yolo_format(self) -> list:
+    def to_yolo_format(self) -> dict:
         x_center = (self.left + self.right) / 2 / self.img_width
         y_center = (self.top + self.bottom) / 2 / self.img_height
         width = self.width / self.img_width
         height = self.height / self.img_height
-        return [x_center, y_center, width, height]
+        return {
+            "bbox": [x_center, y_center, width, height],
+            "category_id": self.category_id,
+            "category_name": self.category_name,
+            "area": self.area,
+        }
 
-    def to_matplotlib_format(self) -> list:
-        return [self.left, self.img_height - self.bottom, self.right, self.img_height - self.top]
+    def to_matplotlib_format(self) -> dict:
+        return {
+            "bbox": [self.left, self.img_height - self.bottom, self.right, self.img_height - self.top],
+            "category_id": self.category_id,
+            "category_name": self.category_name,
+            "area": self.area,
+        }
+
+    def asdict(self) -> dict:
+        return asdict(self)
 
 
 @dataclass
 class RotatedBBox:
 
     corners: list
-    img_width: int = None
-    img_height: int = None
-    category_name: str = None
+    img_width: Optional[int] = None
+    img_height: Optional[int] = None
+    category_name: Optional[str] = None
+    category_id: Optional[int] = None
 
     def __post_init__(self):
         if len(self.corners) != 4:
@@ -145,6 +174,14 @@ class RotatedBBox:
             self.category_name,
         )
 
+    @property
+    def vertices(self) -> list:
+        return self.corners.tolist()
+
+    @property
+    def area(self) -> float:
+        return np.linalg.norm(np.cross(self.corners[1] - self.corners[0], self.corners[2] - self.corners[0]))
+
     def __repr__(self) -> str:
         if np.issubdtype(self.corners.dtype, np.integer):
             return f"RotatedBBox(corners={self.corners.tolist()})"
@@ -158,14 +195,25 @@ class RotatedBBox:
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
-    def __contains__(self, other) -> bool:
-        raise NotImplementedError
+    def __contains__(self, other: "RotatedBBox") -> bool:
+        # check by orient test on the 4 corners of the other bbox
+        for corner in other.corners:
+            sign = set()
+            for a, b in zip(self.corners, np.roll(self.corners, 1, axis=0)):
+                s = np.sign((corner[0] - a[0]) * (b[1] - a[1]) - (corner[1] - a[1]) * (b[0] - a[0]))
+                if s == 0:
+                    # the current corner is on the edge of this bbox
+                    break
+                sign.add(s)
+                if len(sign) > 1:
+                    return False
+        return True
 
-    def intersection(self, other: "RotatedBBox") -> "RotatedBBox":
-        raise NotImplementedError
+    # def intersection(self, other: "RotatedBBox") -> "RotatedBBox":
+    #     raise NotImplementedError
 
-    def union(self, other: "RotatedBBox") -> "RotatedBBox":
-        raise NotImplementedError
+    # def union(self, other: "RotatedBBox") -> "RotatedBBox":
+    #     raise NotImplementedError
 
     def iou(self, other: "RotatedBBox") -> float:
         raise NotImplementedError
@@ -179,10 +227,6 @@ class RotatedBBox:
         corners = np.dot(rot_mat, (self.corners - center).T).T + center
         return RotatedBBox(corners, self.img_width, self.img_height, self.category_name)
 
-        # rot_mat = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
-        # corners = np.dot(self.corners - center, rot_mat.T) + center
-        # return RotatedBBox(corners, self.img_width, self.img_height, self.category_name)
-
     def to_coco_format(self) -> list:
         return self.bbox.to_coco_format()
 
@@ -194,3 +238,6 @@ class RotatedBBox:
 
     def to_matplotlib_format(self) -> list:
         return self.bbox.to_matplotlib_format()
+
+    def asdict(self) -> dict:
+        return asdict(self)
