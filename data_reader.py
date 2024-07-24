@@ -18,9 +18,10 @@ from PIL import Image, ImageDraw, ImageFont
 from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.databases.base import DataBaseInfo, PhysioNetDataBase
 from torch_ecg.utils.download import _unzip_file, http_get
-from torch_ecg.utils.misc import add_docstring, dict_to_str, remove_parameters_returns_from_docstring  # noqa: F401
+from torch_ecg.utils.misc import add_docstring, remove_parameters_returns_from_docstring
 from tqdm.auto import tqdm
 
+from bbox import BBox, RotatedBBox  # noqa: F401
 from cfg import BaseCfg, ModelCfg
 from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
@@ -303,18 +304,28 @@ class CINC2024Reader(PhysioNetDataBase):
             self._df_images["ecg_id"] = self._df_images["image"].apply(lambda x: x[:5])
             self._df_images["patient_id"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "patient_id"])
             self._df_images["strat_fold"] = self._df_images["ecg_id"].apply(lambda x: self._df_metadata.loc[x, "strat_fold"])
-            self._df_images["lead_bbox"] = self._df_images["path"].apply(
+            self._df_images["lead_bbox_file"] = self._df_images["path"].apply(
                 lambda x: x.parent / ecg_img_gen_constants.lead_bounding_box_dir_name / f"{x.stem}.{self.bbox_ext}"
             )
-            self._df_images["lead_bbox"] = self._df_images["lead_bbox"].apply(lambda x: x if x.exists() else None)
-            self._df_images["text_bbox"] = self._df_images["path"].apply(
+            self._df_images["lead_bbox_file"] = self._df_images["lead_bbox_file"].apply(lambda x: x if x.exists() else None)
+            self._df_images["text_bbox_file"] = self._df_images["path"].apply(
                 lambda x: x.parent / ecg_img_gen_constants.text_bounding_box_dir_name / f"{x.stem}.{self.bbox_ext}"
             )
-            self._df_images["text_bbox"] = self._df_images["text_bbox"].apply(lambda x: x if x.exists() else None)
+            self._df_images["text_bbox_file"] = self._df_images["text_bbox_file"].apply(lambda x: x if x.exists() else None)
             self._df_images.set_index("image", inplace=True)
         else:
             self._df_images = pd.DataFrame(
-                columns=["path", "image", "image_header", "ecg_id", "patient_id", "strat_fold", "lead_bbox", "text_bbox"]
+                columns=[
+                    "path",
+                    "image",
+                    "image_header",
+                    "ecg_id",
+                    "patient_id",
+                    "strat_fold",
+                    "lead_bbox_file",
+                    "text_bbox_file",
+                    "bbox",
+                ]
             )
             self._df_images.set_index("image", inplace=True)
             self.logger.warning(f"no synthetic images found in {self._synthetic_images_dir}")
@@ -340,6 +351,16 @@ class CINC2024Reader(PhysioNetDataBase):
         self._all_records = self._df_records.index.tolist()
         self._all_subjects = self._df_records["patient_id"].unique().tolist()
         self._all_images = self._df_images.index.tolist()
+
+        # load the bounding boxes into self._df_images
+        if not self._df_images.empty:
+            self._df_images["bbox"] = None
+            with tqdm(
+                total=len(self._df_images), desc="Loading bounding boxes", dynamic_ncols=True, mininterval=1, leave=True
+            ) as pbar:
+                for img_id in self._all_images:
+                    self._df_images.at[img_id, "bbox"] = self._load_bbox(img_id)
+                    pbar.update(1)
 
     def _create_synthetic_images_dir(self) -> None:
         """Create the directory to store the synthetic images."""
@@ -604,7 +625,7 @@ class CINC2024Reader(PhysioNetDataBase):
             - If is "pascal_voc", the bounding boxes will be in Pascal VOC format:
               ``[xmin, ymin, xmax, ymax]``.
             - If is "yolo", the bounding boxes will be in YOLO format:
-              ``[x_center, y_center, width, height]``.
+              ``[x_center, y_center, width, height]`` (normalized to [0, 1]).
 
         Returns
         -------
@@ -636,12 +657,28 @@ class CINC2024Reader(PhysioNetDataBase):
         """
         if isinstance(img, int):
             img = self._all_images[img]
-        img_path = self._df_images.loc[img, "path"]
-        with_lead_bbox, with_text_bbox = True, True
+        bbox = self._df_images.loc[img, "bbox"]
         if bbox_type == "lead":
-            with_text_bbox = False
+            bbox = [wb for wb in bbox if wb.category_name == "waveform"]
         elif bbox_type == "text":
-            with_lead_bbox = False
+            bbox = [wb for wb in bbox if wb.category_name != "waveform"]
+        if len(bbox) == 0:
+            self.logger.warning(f"no bounding box found for image `{img}`.")
+        if fmt.lower() == "coco":
+            bbox = [wb.to_coco_format() for wb in bbox]
+        elif fmt.lower() == "pascal_voc":
+            bbox = [wb.to_pascal_voc_format() for wb in bbox]
+        elif fmt.lower() == "yolo":
+            bbox = [wb.to_yolo_format() for wb in bbox]
+        else:
+            raise ValueError(f"Invalid format `{fmt}`")
+        return bbox
+
+    @add_docstring(remove_parameters_returns_from_docstring(load_bbox.__doc__, parameters=["bbox_type", "fmt"]))
+    def _load_bbox(self, img: Union[str, int]) -> List[Union[BBox, RotatedBBox]]:
+        if isinstance(img, int):
+            img = self._all_images[img]
+        img_path = self._df_images.loc[img, "path"]
 
         # get image width and height without loading the image
         pil_img = Image.open(img_path)
@@ -649,97 +686,46 @@ class CINC2024Reader(PhysioNetDataBase):
         pil_img.close()
 
         bbox = []
-        if with_lead_bbox:
-            # lead_bbox has the format [[y0, x0], [y1, x1], [y2, x2], [y3, x3]]
-            lead_bbox_file = self._df_images.loc[img, "lead_bbox"]
-            if lead_bbox_file is not None:
-                # lead_bbox = np.loadtxt(lead_bbox_file, delimiter=",", dtype=int)
-                lead_bbox = np.load(lead_bbox_file)["lead_bbox"].astype(int)
-                for l_bbox in lead_bbox:
-                    # convert to the PIL coordinate system
-                    x1, y1, x2, y2 = l_bbox[:, 1].min(), l_bbox[:, 0].min(), l_bbox[:, 1].max(), l_bbox[:, 0].max()
-                    if fmt.lower() == "coco":
-                        bbox.append(
-                            {
-                                "bbox": [x1, y1, x2 - x1, y2 - y1],
-                                "category_id": self.__bbox_class_names.index("waveform"),
-                                "area": (x2 - x1) * (y2 - y1),
-                                "category_name": "waveform",
-                            }
-                        )
-                    elif fmt.lower() == "pascal_voc":
-                        bbox.append(
-                            {
-                                "bbox": [x1, y1, x2, y2],
-                                "category_id": self.__bbox_class_names.index("waveform"),
-                                "area": (x2 - x1) * (y2 - y1),
-                                "category_name": "waveform",
-                            }
-                        )
-                    elif fmt.lower() == "yolo":
-                        bbox.append(
-                            {
-                                "bbox": [
-                                    (x1 + x2) / 2 / img_width,
-                                    (y1 + y2) / 2 / img_height,
-                                    (x2 - x1) / img_width,
-                                    (y2 - y1) / img_height,
-                                ],
-                                "category_id": self.__bbox_class_names.index("waveform"),
-                                "area": (x2 - x1) * (y2 - y1),
-                                "category_name": "waveform",
-                            }
-                        )
-                    else:
-                        # TODO: add rotated bounding box format
-                        raise ValueError(f"Invalid format `{fmt}`")
-            else:
-                self.logger.warning(f"no lead bounding box found for image `{img}`.")
-        if with_text_bbox:
-            # text_bbox has the format [[y0, x0], [y1, x1], [y2, x2], [y3, x3]]
-            text_bbox_file = self._df_images.loc[img, "text_bbox"]
-            if text_bbox_file is not None:
-                text_bbox = np.load(text_bbox_file)
-                text_bbox, lead_name = text_bbox["text_bbox"].astype(int), text_bbox["lead_name"]
-                for t_bbox, ln in zip(text_bbox, lead_name):
-                    # convert to the PIL coordinate system
-                    x1, y1, x2, y2 = t_bbox[:, 1].min(), t_bbox[:, 0].min(), t_bbox[:, 1].max(), t_bbox[:, 0].max()
-                    if fmt.lower() == "coco":
-                        bbox.append(
-                            {
-                                "bbox": [x1, y1, x2 - x1, y2 - y1],
-                                "category_id": self.__bbox_class_names.index(ln),
-                                "area": (x2 - x1) * (y2 - y1),
-                                "category_name": ln,
-                            }
-                        )
-                    elif fmt.lower() == "pascal_voc":
-                        bbox.append(
-                            {
-                                "bbox": [x1, y1, x2, y2],
-                                "category_id": self.__bbox_class_names.index(ln),
-                                "area": (x2 - x1) * (y2 - y1),
-                                "category_name": ln,
-                            }
-                        )
-                    elif fmt.lower() == "yolo":
-                        bbox.append(
-                            {
-                                "bbox": [
-                                    (x1 + x2) / 2 / img_width,
-                                    (y1 + y2) / 2 / img_height,
-                                    (x2 - x1) / img_width,
-                                    (y2 - y1) / img_height,
-                                ],
-                                "category_id": self.__bbox_class_names.index(ln),
-                                "area": (x2 - x1) * (y2 - y1),
-                                "category_name": ln,
-                            }
-                        )
-                    else:
-                        raise ValueError(f"Invalid format `{fmt}`")
-            else:
-                self.logger.warning(f"no text bounding box found for image `{img}`.")
+        # lead_bbox has the format [[y0, x0], [y1, x1], [y2, x2], [y3, x3]]
+        lead_bbox_file = self._df_images.loc[img, "lead_bbox_file"]
+        if lead_bbox_file is not None:
+            # lead_bbox = np.loadtxt(lead_bbox_file, delimiter=",", dtype=int)
+            lead_bbox = np.load(lead_bbox_file)["lead_bbox"].astype(int)
+            for l_bbox in lead_bbox:
+                # convert to the PIL coordinate system
+                x1, y1, x2, y2 = l_bbox[:, 1].min(), l_bbox[:, 0].min(), l_bbox[:, 1].max(), l_bbox[:, 0].max()
+                bbox.append(
+                    BBox(
+                        xmin=x1,
+                        ymin=y1,
+                        width=x2 - x1,
+                        height=y2 - y1,
+                        category_name="waveform",
+                        category_id=self.__bbox_class_names.index("waveform"),
+                        img_height=img_height,
+                        img_width=img_width,
+                    )
+                )
+        # text_bbox has the format [[y0, x0], [y1, x1], [y2, x2], [y3, x3]]
+        text_bbox_file = self._df_images.loc[img, "text_bbox_file"]
+        if text_bbox_file is not None:
+            text_bbox = np.load(text_bbox_file)
+            text_bbox, lead_name = text_bbox["text_bbox"].astype(int), text_bbox["lead_name"]
+            for t_bbox, ln in zip(text_bbox, lead_name):
+                # convert to the PIL coordinate system
+                x1, y1, x2, y2 = t_bbox[:, 1].min(), t_bbox[:, 0].min(), t_bbox[:, 1].max(), t_bbox[:, 0].max()
+                bbox.append(
+                    BBox(
+                        xmin=x1,
+                        ymin=y1,
+                        width=x2 - x1,
+                        height=y2 - y1,
+                        category_name=ln,
+                        category_id=self.__bbox_class_names.index(ln),
+                        img_height=img_height,
+                        img_width=img_width,
+                    )
+                )
         return bbox
 
     def load_header(self, rec_or_img: Union[str, int], source: Optional[str] = "image") -> str:
