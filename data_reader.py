@@ -1214,9 +1214,9 @@ class CINC2024Reader(PhysioNetDataBase):
             The bounding boxes. Each dict has the keys "bbox", "category_id", "category_name", etc.
         fmt : {"coco", "pascal_voc", "yolo"}, default "coco"
             The format of the bounding boxes, case insensitive.
-            If is "coco", the bounding boxes will be in COCO format: ``[x, y, width, height]``.
+            If is "coco", the bounding boxes will be in COCO format: ``[xmin, ymin, width, height]``.
             If is "pascal_voc", the bounding boxes will be in Pascal VOC format: ``[xmin, ymin, xmax, ymax]``.
-            If is "yolo", the bounding boxes will be in YOLO format: ``[x_center, y_center, width, height]``.
+            If is "yolo", the bounding boxes will be in YOLO format: ``[x_center, y_center, width, height]`` (normalized).
             The coordinates have the origin at the upper left corner of the image.
 
         Returns
