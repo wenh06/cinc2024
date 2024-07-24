@@ -95,6 +95,11 @@ def get_parser():
     parser.add_argument("--augment", action="store_true", default=False)
     parser.add_argument("--lead_bbox", action="store_true", default=False)
 
+    # custom arguments
+    parser.add_argument(
+        "--write-signal-file", action="store_true", default=False, help="Write signal data to file", dest="write_signal_file"
+    )
+
     return parser
 
 
@@ -174,6 +179,7 @@ def run_single_file(args):
         bbox=args.lead_bbox,
         columns=args.num_columns,
         seed=args.seed,
+        write_signal_file=args.write_signal_file,
     )
 
     for idx, out in enumerate(out_array):

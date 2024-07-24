@@ -49,6 +49,7 @@ def get_paper_ecg(
     full_mode="II",
     bbox=False,
     columns=-1,
+    write_signal_file=False,
 ):
     if template_file is None:
         template_file = str((TEMPLATE_DIR / "TextFile1.txt").resolve())
@@ -301,7 +302,8 @@ def get_paper_ecg(
     store_configs = 2
 
     name, ext = os.path.splitext(full_header_file)
-    write_wfdb_file(segmented_ecg_data, name, rate, header_file, output_directory, full_mode, mask_unplotted_samples)
+    if write_signal_file:
+        write_wfdb_file(segmented_ecg_data, name, rate, header_file, output_directory, full_mode, mask_unplotted_samples)
 
     if len(ecg_frame) == 0:
         return outfile_array, metadata_array

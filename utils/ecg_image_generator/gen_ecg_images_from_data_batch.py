@@ -77,6 +77,11 @@ def get_parser():
     parser.add_argument("--augment", action="store_true", default=False)
     parser.add_argument("--lead_bbox", action="store_true", default=False)
 
+    # custom arguments
+    parser.add_argument(
+        "--write-signal-file", action="store_true", default=False, help="Write signal data to file", dest="write_signal_file"
+    )
+
     return parser
 
 
