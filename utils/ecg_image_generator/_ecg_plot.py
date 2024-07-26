@@ -100,6 +100,7 @@ def ecg_plot(
     start_index=-1,
     store_configs=0,
     lead_length_in_seconds=10,
+    lead_bbox_include_dc=False,
 ):
     # Inputs :
     # ecg - Dictionary of ecg signal with lead names as keys
@@ -323,10 +324,11 @@ def ecg_plot(
             renderer1 = fig.canvas.get_renderer()
             transf = ax.transData.inverted()
             bb = t1[0].get_window_extent()
-            if show_dc_pulse is False or (columns == 4 and (i != 0 and i != 4 and i != 8)):
+            if (lead_bbox_include_dc is False) or (show_dc_pulse is False) or (columns == 4 and (i != 0 and i != 4 and i != 8)):
                 x1, y1 = bb.x0 * resolution / fig.dpi, bb.y0 * resolution / fig.dpi
                 x2, y2 = bb.x1 * resolution / fig.dpi, bb.y1 * resolution / fig.dpi
             else:
+                # the following includes the dc pulse
                 y1 = min(y1, bb.y0 * resolution / fig.dpi)
                 y2 = max(y2, bb.y1 * resolution / fig.dpi)
                 x2 = bb.x1 * resolution / fig.dpi
@@ -430,7 +432,7 @@ def ecg_plot(
             renderer1 = fig.canvas.get_renderer()
             transf = ax.transData.inverted()
             bb = t1[0].get_window_extent()
-            if show_dc_pulse is False:
+            if (lead_bbox_include_dc) is False or (show_dc_pulse is False):
                 x1, y1 = bb.x0 * resolution / fig.dpi, bb.y0 * resolution / fig.dpi
                 x2, y2 = bb.x1 * resolution / fig.dpi, bb.y1 * resolution / fig.dpi
             else:

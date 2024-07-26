@@ -53,6 +53,7 @@
     "add_qr_code": false,
     "lead_bbox": true,
     "write_signal_file": false,
+    "lead_bbox_include_dc": false,
     "paper_len": 10.0,
     "abs_lead_step": 10,
     "format_4_by_3": [["I", "II", "III"], ["aVR", "aVL", "aVF", "AVR", "AVL", "AVF"], ["V1", "V2", "V3"], ["V4", "V5", "V6"]],

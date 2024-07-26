@@ -180,6 +180,7 @@ def run_single_file(args):
         columns=args.num_columns,
         seed=args.seed,
         write_signal_file=args.write_signal_file,
+        lead_bbox_include_dc=args.lead_bbox_include_dc,
     )
 
     for idx, out in enumerate(out_array):

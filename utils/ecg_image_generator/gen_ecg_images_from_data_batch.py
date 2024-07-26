@@ -81,6 +81,13 @@ def get_parser():
     parser.add_argument(
         "--write-signal-file", action="store_true", default=False, help="Write signal data to file", dest="write_signal_file"
     )
+    parser.add_argument(
+        "--lead-bbox-include-dc",
+        action="store_true",
+        default=False,
+        help="lead bbox include DC pulse",
+        dest="lead_bbox_include_dc",
+    )
 
     return parser
 

@@ -51,6 +51,7 @@ def get_paper_ecg(
     bbox=False,
     columns=-1,
     write_signal_file=False,
+    lead_bbox_include_dc=False,
 ):
     if template_file is None:
         template_file = str((TEMPLATE_DIR / "TextFile1.txt").resolve())
@@ -362,6 +363,7 @@ def get_paper_ecg(
             start_index=start,
             store_configs=store_configs,
             lead_length_in_seconds=lead_length_in_seconds,
+            lead_bbox_include_dc=lead_bbox_include_dc,
         )
 
         rec_head, rec_tail = os.path.split(rec_file)
