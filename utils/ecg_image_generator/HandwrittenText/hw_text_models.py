@@ -1,9 +1,8 @@
 from pathlib import Path
 
 import spacy
+from constants import CACHE_DIR, en_core_sci_sm_url
 from torch_ecg.utils.download import http_get
-
-from ..constants import CACHE_DIR, en_core_sci_sm_url
 
 __all__ = ["download_en_core_sci_sm", "en_core_sci_sm_model_dir", "load_en_core_sci_sm"]
 
