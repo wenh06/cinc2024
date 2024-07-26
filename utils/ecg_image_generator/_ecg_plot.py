@@ -275,10 +275,10 @@ def ecg_plot(
                 # x2 = int(x2)
                 # y2 = int(y2)
                 # convert from mpl coordinates to common (PIL, etc.) coordinates
-                box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
-                box_dict[1] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
-                box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
-                box_dict[3] = [round(json_dict["height"] - y1, 2), round(x1, 2)]
+                box_dict["0"] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
+                box_dict["1"] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
+                box_dict["2"] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
+                box_dict["3"] = [round(json_dict["height"] - y1, 2), round(x1, 2)]
                 current_lead_ds["text_bounding_box"] = box_dict
 
         current_lead_ds["lead_name"] = leadName
@@ -337,10 +337,10 @@ def ecg_plot(
             # x2 = int(x2)
             # y2 = int(y2)
             # convert from mpl coordinates to common (PIL, etc.) coordinates
-            box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
-            box_dict[1] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
-            box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
-            box_dict[3] = [round(json_dict["height"] - y1, 2), round(x1, 2)]
+            box_dict["0"] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
+            box_dict["1"] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
+            box_dict["2"] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
+            box_dict["3"] = [round(json_dict["height"] - y1, 2), round(x1, 2)]
             current_lead_ds["lead_bounding_box"] = box_dict
 
         st = start_index
@@ -391,10 +391,10 @@ def ecg_plot(
                 # x2 = int(x2)
                 # y2 = int(y2)
                 # convert from mpl coordinates to common (PIL, etc.) coordinates
-                box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
-                box_dict[1] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
-                box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
-                box_dict[3] = [round(json_dict["height"] - y1), round(x1, 2)]
+                box_dict["0"] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
+                box_dict["1"] = [round(json_dict["height"] - y2, 2), round(x2, 2)]
+                box_dict["2"] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
+                box_dict["3"] = [round(json_dict["height"] - y1), round(x1, 2)]
                 current_lead_ds["text_bounding_box"] = box_dict
             current_lead_ds["lead_name"] = full_mode
 
@@ -444,10 +444,10 @@ def ecg_plot(
             # x2 = int(x2)
             # y2 = int(y2)
             # convert from mpl coordinates to common (PIL, etc.) coordinates
-            box_dict[0] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
-            box_dict[1] = [round(json_dict["height"] - y2), round(x2, 2)]
-            box_dict[2] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
-            box_dict[3] = [round(json_dict["height"] - y1, 2), round(x1, 2)]
+            box_dict["0"] = [round(json_dict["height"] - y2, 2), round(x1, 2)]
+            box_dict["1"] = [round(json_dict["height"] - y2), round(x2, 2)]
+            box_dict["2"] = [round(json_dict["height"] - y1, 2), round(x2, 2)]
+            box_dict["3"] = [round(json_dict["height"] - y1, 2), round(x1, 2)]
             current_lead_ds["lead_bounding_box"] = box_dict
         current_lead_ds["start_sample"] = start_index
         current_lead_ds["end_sample"] = start_index + len(ecg["full" + full_mode])
