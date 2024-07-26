@@ -2,6 +2,7 @@
 # Load libraries.
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -308,6 +309,16 @@ def get_paper_ecg(
     if len(ecg_frame) == 0:
         return outfile_array, metadata_array
 
+    # find existing image files
+    existing_files = Path(output_directory).glob(f"*{save_img_ext}")
+    existing_files = [f.stem for f in existing_files]
+    img_file_pattern = f"^{Path(name).name}-(?P<index>[\\d]+)$"
+    existing_files = [f for f in existing_files if re.match(img_file_pattern, f)]
+    if len(existing_files) > 0:
+        start_img_idx = max([int(re.match(img_file_pattern, f).group("index")) for f in existing_files]) + 1
+    else:
+        start_img_idx = 0
+
     start = 0
     for i in range(len(ecg_frame)):
         dc = add_dc_pulse.rvs()
@@ -321,7 +332,7 @@ def get_paper_ecg(
         if bw:
             grid_colour = "bw"
 
-        rec_file = name + "-" + str(i)
+        rec_file = name + "-" + str(i + start_img_idx)
 
         if ecg_frame[i] == {}:
             continue
