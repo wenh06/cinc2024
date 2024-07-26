@@ -97,6 +97,13 @@ _prepare_synthetic_images_docstring = """Prepare synthetic images from the ECG t
         kwargs : dict, optional
             Extra key word arguments passed to the image generator.
 
+        .. note::
+
+            To use configurations other than the default configuration, pass the configurations as key word arguments.
+            self.__gen_img_extra_configs__ contains a list of extra configurations stored in the configuration directory.
+            It can be used via `**self.__gen_img_extra_configs__[i]`, where `i` is the index of the configuration,
+            passed as key word arguments.
+
         """
 
 
@@ -115,7 +122,11 @@ class CINC2024Reader(PhysioNetDataBase):
     verbose : int, default 1
         Level of logging verbosity.
     kwargs : dict, optional
-        Auxilliary key word arguments.
+        Auxilliary key word arguments, including
+        - synthetic_images_dir : `path-like`, optional
+            The directory to store the synthetic images.
+        - bbox_class_names : list, optional
+            The class names of the bounding boxes.
 
     """
 
@@ -934,8 +945,8 @@ class CINC2024Reader(PhysioNetDataBase):
 
                     if en_core_sci_sm_model is None:
                         self.logger.warning(
-                            "The spaCy model en_core_sci_sm is not cached locally. Call the function download_en_core_sci_sm "
-                            "from utils.ecg_image_generator to download the model. "
+                            "The spaCy model en_core_sci_sm is not cached locally. Call the function `download_en_core_sci_sm` "
+                            "from `utils.ecg_image_generator` to download the model. "
                             "Otherwise, it would be downloaded multiple times in parallel."
                         )
                         return
@@ -984,6 +995,9 @@ class CINC2024Reader(PhysioNetDataBase):
                 self._prepare_synthetic_images(output_folder=output_folder, fs=fs, force_recompute=force_recompute, **kwargs)
         except KeyboardInterrupt:
             self.logger.info("Cancelled by user.")
+
+        # save `ecg_img_gen_config` to the output folder
+        Path(output_folder).joinpath("ecg_img_gen_config.json").write_text(json.dumps(ecg_img_gen_config, indent=4))
 
     def _prepare_synthetic_image_from_record(
         self,

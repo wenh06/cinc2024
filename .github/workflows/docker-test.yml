@@ -21,7 +21,7 @@ jobs:
   build:
     if: contains(fromJson('["wenh06", "kjs11", "DeepPSP"]'), github.repository_owner)
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4

@@ -10,7 +10,7 @@
     "print_header": true,
     "num_columns": -1,
     "full_mode": "II",
-    "link": "https://www.physionet.org/content/ptbdb/1.0.3/",
+    "link": "",
     "config_file": "ecg-plot-config.yaml",
     "num_words": 5,
     "x_offset": 30,

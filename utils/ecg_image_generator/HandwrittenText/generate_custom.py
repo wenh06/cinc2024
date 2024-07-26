@@ -71,6 +71,24 @@ if len(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))) == 1:
     en_core_sci_sm_model_dir = str(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))[0].parent)
     en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
 
+# Load the pretrained RNN model for handwritten text generation
+translation = pickle.loads((HANDWRITTEN_TEXT_DIR / "data/translation.pkl").read_bytes())
+rev_translation = {v: k for k, v in translation.items()}
+charset = [rev_translation[i] for i in range(len(rev_translation))]
+charset[0] = ""
+
+# Load the styles for the handwritten text
+styles = pickle.loads((HANDWRITTEN_TEXT_DIR / "data/styles.pkl").read_bytes())
+
+# load the pretrained model for handwritten text generation
+# use all available GPUs by default
+tf.compat.v1.disable_eager_execution()
+default_sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(device_count={"GPU": 0}))
+default_sess = tf.compat.v1.Session()
+default_model_path = str((HANDWRITTEN_TEXT_DIR / "pretrained/model-29").resolve())
+default_saver = tf.compat.v1.train.import_meta_graph(default_model_path + ".meta")
+default_saver.restore(default_sess, default_model_path)
+
 
 def download_en_core_sci_sm():
     global en_core_sci_sm_model_dir
@@ -113,25 +131,15 @@ def cumsum(points):
 
 
 # Code snippet from https://github.com/Grzego/handwriting-generation
-def sample_text(sess, args_text, translation, force, bias, style=None):
+def sample_text(sess, args_text, force, bias, style=None):
+    global translation
+    # fmt: off
     fields = [
-        "coordinates",
-        "sequence",
-        "bias",
-        "e",
-        "pi",
-        "mu1",
-        "mu2",
-        "std1",
-        "std2",
-        "rho",
-        "window",
-        "kappa",
-        "phi",
-        "finish",
-        "zero_states",
+        "coordinates", "sequence", "bias", "e", "pi", "mu1", "mu2", "std1", "std2",
+        "rho", "window", "kappa", "phi", "finish", "zero_states",
     ]
     vs = namedtuple("Params", fields)(*[tf.compat.v1.get_collection(name)[0] for name in fields])
+    # fmt: on
 
     text = np.array([translation.get(c, 0) for c in args_text])
     coord = np.array([0.0, 0.0, 1.0])
@@ -211,6 +219,9 @@ def get_handwritten(
     bbox=False,
 ):
     global en_core_sci_sm_model
+    global styles
+    global default_sess
+    global default_model_path
     if en_core_sci_sm_model is None:
         warnings.warn("No spacy model named 'en_core_sci_sm', skipping handwritting text generation")
         if Path(input_file).parent.expanduser().resolve() != Path(output_dir).expanduser().resolve():
@@ -218,8 +229,17 @@ def get_handwritten(
         outfile = os.path.join(output_dir, Path(input_file).name)
         return outfile
 
-    if model_path is None:
-        model_path = str((HANDWRITTEN_TEXT_DIR / "pretrained/model-29").resolve())
+    if model_path is not None:
+        # model_path = str((HANDWRITTEN_TEXT_DIR / "pretrained/model-29").resolve())
+        model_path = str(Path(model_path).expanduser().resolve())
+        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(device_count={"GPU": 0}))
+        saver = tf.compat.v1.train.import_meta_graph(model_path + ".meta")
+        saver.restore(sess, model_path)
+        use_default_sess = False
+    else:
+        sess = default_sess
+        use_default_sess = True
+        model_path = default_model_path
 
     # Use 'Agg' mode to prevent accumulation of figures
     matplotlib.use("Agg")
@@ -233,6 +253,7 @@ def get_handwritten(
 
         if platform == "darwin":
             soup = BeautifulSoup(r.content, "html5lib")
+
         else:
             soup = BeautifulSoup(r.content, "lxml")
 
@@ -256,104 +277,111 @@ def get_handwritten(
         # Choose n random words from the extracted list
     words = random.choices(doc.ents, k=num_words)
 
-    # Load the pretrained RNN model for handwritten text generation
-    # with open(os.path.join(os.path.join("HandwrittenText", "data"), "translation.pkl"), "rb") as file:
-    #     translation = pickle.load(file)
-    translation = pickle.loads((HANDWRITTEN_TEXT_DIR / "data/translation.pkl").read_bytes())
-    rev_translation = {v: k for k, v in translation.items()}
-    charset = [rev_translation[i] for i in range(len(rev_translation))]
-    charset[0] = ""
-
     # Configure machine
-    config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
-    # Create session
-    with tf.compat.v1.Session(config=config) as sess:
-        saver = tf.compat.v1.train.import_meta_graph(model_path + ".meta")
-        saver.restore(sess, model_path)
-        # Generate n handwritten words from the selected words
-        numw = len(words)
-        fig, ax = plt.subplots(numw, 1)
-        i = 0
+    # config = tf.compat.v1.ConfigProto(device_count={"GPU": 0})
+    # # Create session
+    # with tf.compat.v1.Session(config=config) as sess:
+    # saver = tf.compat.v1.train.import_meta_graph(model_path + ".meta")
+    # saver.restore(sess, model_path)
+    # Generate n handwritten words from the selected words
+    numw = len(words)
+    fig, ax = plt.subplots(numw, 1)
+    i = 0
 
-        # Iterate through the words and select style file
-        for text in words:
-            med_text = str(text)
+    # Iterate through the words and select style file
+    for text in words:
+        med_text = str(text)
+        style = None
+        if style is not None:
             style = None
-            if style is not None:
-                style = None
-                # with open(os.path.join(os.path.join("HandwrittenText", "data"), "styles.pkl"), "rb") as file:
-                #     styles = pickle.load(file)
-                styles = pickle.loads((HANDWRITTEN_TEXT_DIR / "data/styles.pkl").read_bytes())
-                if style > len(styles[0]):
-                    raise ValueError("Requested style is not in style list")
-                style = [styles[0][style], styles[1][style]]
-            phi_data, window_data, kappa_data, stroke_data, coords = sample_text(
-                sess, med_text, translation, force, bias, style
-            )
-            # Plot strokes of handwritten text
-            strokes = np.array(stroke_data)
-            strokes[:, :2] = np.cumsum(strokes[:, :2], axis=0)
+            if style > len(styles[0]):
+                raise ValueError("Requested style is not in style list")
+            style = [styles[0][style], styles[1][style]]
+        phi_data, window_data, kappa_data, stroke_data, coords = sample_text(sess, med_text, force, bias, style)
+        # Plot strokes of handwritten text
+        strokes = np.array(stroke_data)
+        strokes[:, :2] = np.cumsum(strokes[:, :2], axis=0)
 
-            # Generate subplots for each handwritten text
-            for stroke in split_strokes(cumsum(np.array(coords))):
-                ax[i].plot(stroke[:, 0], -stroke[:, 1])
-            ax[i].set_aspect("equal")
-            ax[i].set_axis_off()
-            i = i + 1
-        # Save the plot as HandwrittenText.png
-        hw_text_file = CACHE_DIR / "hw_text" / f"HandwrittenText-{uuid.uuid4()}{save_img_ext}"
-        fig.savefig(hw_text_file, dpi=1200)
-        img_path = filename
-        file_head, file_tail = os.path.splitext(filename)
-        boxed_file = file_head + "-boxed" + file_tail
+        # Generate subplots for each handwritten text
+        for stroke in split_strokes(cumsum(np.array(coords))):
+            ax[i].plot(stroke[:, 0], -stroke[:, 1])
+        ax[i].set_aspect("equal")
+        ax[i].set_axis_off()
+        i = i + 1
+    # Save the plot as HandwrittenText.png
+    hw_text_file = CACHE_DIR / "hw_text" / f"HandwrittenText-{uuid.uuid4()}{save_img_ext}"
+    fig.savefig(hw_text_file, dpi=1200)
+    img_path = filename
+    file_head, file_tail = os.path.splitext(filename)
+    boxed_file = file_head + "-boxed" + file_tail
 
-        # Load the ecg image
-        img_ecg = Image.open(img_path)
-        # Convert from RGBA to RGB
-        img_ecg = img_ecg.convert("RGB")
-        # Load the generated handwritten text image
-        img_handwritten = Image.open(hw_text_file)
-        # Convert the generated handwritten text image to RGB
-        img_handwritten = img_handwritten.convert("RGB")
-        # Resize the handwritten text image
-        img_length = int(np.floor(img_ecg.size[0] * handwriting_size_factor))
-        img_width = int(np.floor(img_ecg.size[1] * handwriting_size_factor))
+    # Load the ecg image
+    img_ecg = Image.open(img_path)
+    # Convert from RGBA to RGB
+    img_ecg = img_ecg.convert("RGB")
+    # Load the generated handwritten text image
+    img_handwritten = Image.open(hw_text_file)
+    # Convert the generated handwritten text image to RGB
+    img_handwritten = img_handwritten.convert("RGB")
+    # Resize the handwritten text image
+    img_length = int(np.floor(img_ecg.size[0] * handwriting_size_factor))
+    img_width = int(np.floor(img_ecg.size[1] * handwriting_size_factor))
 
-        # Load handwritten text image into a numpy array
-        img_handwritten = img_handwritten.resize((img_length, img_width))
-        img_handwritten = np.asarray(img_handwritten).copy()
-        # Convert to a black and white image mask
-        img_handwritten[img_handwritten[:, :, 1] != 255] = 0
-        img_handwritten[img_handwritten == 255] = 1
-        # Convert to an array
-        img_handwritten = np.asarray(img_handwritten).copy()
-        img_ecg = np.asarray(img_ecg).copy()
-        # Shift the handwritten text by specified offset
-        img_cropped = (
-            img_ecg[
-                x_offset : img_handwritten.shape[0] + x_offset,
-                y_offset : img_handwritten.shape[1] + y_offset,
-                : img_handwritten.shape[2],
-            ]
-            * img_handwritten
-        )
-        # Apply cropped image
+    # Load handwritten text image into a numpy array
+    img_handwritten = img_handwritten.resize((img_length, img_width))
+    img_handwritten = np.asarray(img_handwritten).copy()
+    # Convert to a black and white image mask
+    img_handwritten[img_handwritten[:, :, 1] != 255] = 0
+    img_handwritten[img_handwritten == 255] = 1
+    # Convert to an array
+    img_handwritten = np.asarray(img_handwritten).copy()
+    img_ecg = np.asarray(img_ecg).copy()
+    # Shift the handwritten text by specified offset
+    img_cropped = (
         img_ecg[
             x_offset : img_handwritten.shape[0] + x_offset,
             y_offset : img_handwritten.shape[1] + y_offset,
             : img_handwritten.shape[2],
-        ] = img_cropped
-        # Save final image
-        img_final = Image.fromarray(img_ecg)
-        head, tail = os.path.split(filename)
-        img_final.save(os.path.join(output_dir, tail))
+        ]
+        * img_handwritten
+    )
+    # Apply cropped image
+    img_ecg[
+        x_offset : img_handwritten.shape[0] + x_offset,
+        y_offset : img_handwritten.shape[1] + y_offset,
+        : img_handwritten.shape[2],
+    ] = img_cropped
+    # Save final image
+    img_final = Image.fromarray(img_ecg)
+    head, tail = os.path.split(filename)
+    img_final.save(os.path.join(output_dir, tail))
 
-        # Load the ecg image
-        plt.close("all")
-        plt.close(fig)
-        plt.clf()
-        plt.cla()
+    # Load the ecg image
+    plt.close("all")
+    plt.close(fig)
+    plt.clf()
+    plt.cla()
 
-        os.remove(hw_text_file)
-        outfile = os.path.join(output_dir, tail)
-        return outfile
+    os.remove(hw_text_file)
+    outfile = os.path.join(output_dir, tail)
+
+    if not use_default_sess:
+        sess.close()
+
+    return outfile
+
+
+def close_hw_text_default_session():
+    global default_sess
+    if not default_sess._closed:
+        default_sess.close()
+
+
+def load_hw_text_default_session():
+    global default_sess
+    global default_saver
+    global default_model_path
+    if default_sess._closed:
+        default_sess = tf.compat.v1.Session()
+        default_saver = tf.compat.v1.train.import_meta_graph(default_model_path + ".meta")
+        default_saver.restore(default_sess, default_model_path)

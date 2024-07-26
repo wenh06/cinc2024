@@ -13,7 +13,7 @@ jobs:
   build:
     if: contains(fromJson('["wenh06", "kjs11", "DeepPSP"]'), github.repository_owner)
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
@@ -24,7 +24,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: cache
       with:
         path: ~/.cache/pip
@@ -41,4 +41,4 @@ jobs:
       run: |
         python -m pip list
     - name: Check code format with pre-commit
-      uses: pre-commit/action@v3.0.0
+      uses: pre-commit/action@v3.0.1

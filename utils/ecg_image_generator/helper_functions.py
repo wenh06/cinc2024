@@ -232,6 +232,7 @@ def rotate_bounding_box(box, origin, angle):
     new_origin[0, 1] = -origin[0] * math.sin(angle) - origin[1] * math.cos(angle)
     origin = np.reshape(origin, (1, 2))
 
+    # box is of type imgaug.augmentables.bbs.BoundingBoxesOnImage
     transformed_box = np.matmul(box, transformation)
     transformed_box += origin + new_origin
 

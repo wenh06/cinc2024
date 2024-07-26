@@ -1,3 +1,11 @@
+"""
+According to the organizers,
+
+    Any rotation of the paper ECGs in the images is possible, but most are unlikely. The hidden validation and test sets are intended to be realistic, not adversarial or antagonistic.
+
+Therefore, we will not consider rotated bounding boxes for the detection task for simplicity.
+"""
+
 from dataclasses import asdict, dataclass
 from typing import Optional
 
