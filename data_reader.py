@@ -987,7 +987,7 @@ class CINC2024Reader(PhysioNetDataBase):
                             "acute_mi_classes": self._acute_mi_classes,
                         }
                     )
-                pool = mp.Pool(processes=max(1, mp.cpu_count() - 3))
+                pool = mp.Pool(processes=max(1, mp.cpu_count() - 3), maxtasksperchild=10)
                 # use tqdm to show progress
                 for _ in tqdm(pool.imap_unordered(_generate_synthetic_image, args_list), total=len(args_list)):
                     pass
