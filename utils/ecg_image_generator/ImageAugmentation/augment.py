@@ -47,7 +47,7 @@ def get_augment(
     filename = input_file
     image = Image.open(filename)
 
-    image = np.array(image)
+    image_arr = np.array(image)
 
     lead_bbs = []
     leadNames_bbs = []
@@ -55,12 +55,12 @@ def get_augment(
     lead_bbs, leadNames_bbs, lead_bbs_labels, startTime_bbs, endTime_bbs, plotted_pixels = read_leads(json_dict["leads"])
 
     if bbox:
-        lead_bbs = BoundingBoxesOnImage(lead_bbs, shape=image.shape)
+        lead_bbs = BoundingBoxesOnImage(lead_bbs, shape=image_arr.shape)
     if store_text_bounding_box:
-        leadNames_bbs = BoundingBoxesOnImage(leadNames_bbs, shape=image.shape)
+        leadNames_bbs = BoundingBoxesOnImage(leadNames_bbs, shape=image_arr.shape)
 
-    images = [image[:, :, :3]]
-    h, w, _ = image.shape
+    images = [image_arr[:, :, :3]]
+    h, w, _ = image_arr.shape
     rot = random.randint(-rotate, rotate)
     crop_sample = random.uniform(0, crop)
     # Augment in a sequential manner. Create an augmentation object
@@ -95,5 +95,7 @@ def get_augment(
 
     f = os.path.join(output_directory, tail)
     plt.imsave(fname=f, arr=images_aug[0])
+
+    image.close()
 
     return f

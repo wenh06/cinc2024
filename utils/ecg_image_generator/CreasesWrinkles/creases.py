@@ -121,8 +121,8 @@ def minCutPatch(patch, block_size, overlap, res, y, x):
 
 # Main function for image quilting
 def quilt(image_path, block_size, num_block, mode, sequence=False):
-    texture = Image.open(image_path)
-    texture = util.img_as_float(texture)
+    texture_img = Image.open(image_path)
+    texture = util.img_as_float(texture_img)
     overlap = block_size // 6
     num_blockHigh, num_blockWide = num_block
 
@@ -142,6 +142,7 @@ def quilt(image_path, block_size, num_block, mode, sequence=False):
             res[y : y + block_size, x : x + block_size] = patch
 
     image = (res * 255).astype(np.uint8)
+    texture_img.close()
     return image
 
 

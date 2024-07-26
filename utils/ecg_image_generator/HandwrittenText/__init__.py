@@ -1,5 +1,4 @@
-from .generate import download_en_core_sci_sm, en_core_sci_sm_model, get_handwritten
+from .generate import get_handwritten
+from .hw_text_models import download_en_core_sci_sm, en_core_sci_sm_model_dir, load_en_core_sci_sm
 
-# from .generate_custom import download_en_core_sci_sm, en_core_sci_sm_model, get_handwritten
-
-__all__ = ["get_handwritten", "download_en_core_sci_sm", "en_core_sci_sm_model"]
+__all__ = ["get_handwritten", "download_en_core_sci_sm", "en_core_sci_sm_model_dir", "load_en_core_sci_sm"]

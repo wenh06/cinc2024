@@ -18,9 +18,8 @@ import spacy
 import tensorflow as tf
 import validators
 from bs4 import BeautifulSoup, Comment
-from constants import CACHE_DIR, HANDWRITTEN_TEXT_DIR, en_core_sci_sm_url, save_img_ext
+from constants import CACHE_DIR, HANDWRITTEN_TEXT_DIR, save_img_ext
 from PIL import Image
-from torch_ecg.utils.download import http_get
 
 (CACHE_DIR / "hw_text").mkdir(exist_ok=True, parents=True)
 
@@ -63,26 +62,6 @@ def get_parser():
     return parser
 
 
-en_core_sci_sm_model_dir = None
-en_core_sci_sm_model = None
-
-(CACHE_DIR / "en_core_sci_sm").mkdir(exist_ok=True, parents=True)
-if len(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))) == 1:
-    en_core_sci_sm_model_dir = str(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))[0].parent)
-    en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
-
-
-def download_en_core_sci_sm():
-    global en_core_sci_sm_model_dir
-    global en_core_sci_sm_model
-    if en_core_sci_sm_model_dir is not None:
-        return
-    model_dir = http_get(en_core_sci_sm_url, dst_dir=CACHE_DIR / "en_core_sci_sm", extract=True)
-    # locate the model directory
-    en_core_sci_sm_model_dir = str(list(Path(model_dir).rglob("config.cfg"))[0].parent)
-    en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
-
-
 # Sample random from a multivariate normal
 def sample(e, mu1, mu2, std1, std2, rho):
     cov = np.array([[std1 * std1, std1 * std2 * rho], [std1 * std2 * rho, std2 * std2]])
@@ -114,24 +93,13 @@ def cumsum(points):
 
 # Code snippet from https://github.com/Grzego/handwriting-generation
 def sample_text(sess, args_text, translation, force, bias, style=None):
+    # fmt: off
     fields = [
-        "coordinates",
-        "sequence",
-        "bias",
-        "e",
-        "pi",
-        "mu1",
-        "mu2",
-        "std1",
-        "std2",
-        "rho",
-        "window",
-        "kappa",
-        "phi",
-        "finish",
-        "zero_states",
+        "coordinates", "sequence", "bias", "e", "pi", "mu1", "mu2", "std1", "std2",
+        "rho", "window", "kappa", "phi", "finish", "zero_states",
     ]
     vs = namedtuple("Params", fields)(*[tf.compat.v1.get_collection(name)[0] for name in fields])
+    # fmt: on
 
     text = np.array([translation.get(c, 0) for c in args_text])
     coord = np.array([0.0, 0.0, 1.0])
@@ -210,7 +178,11 @@ def get_handwritten(
     save=None,
     bbox=False,
 ):
-    global en_core_sci_sm_model
+    if len(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))) == 1:
+        en_core_sci_sm_model_dir = str(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))[0].parent)
+        en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
+    else:
+        en_core_sci_sm_model = None
     if en_core_sci_sm_model is None:
         warnings.warn("No spacy model named 'en_core_sci_sm', skipping handwritting text generation")
         if Path(input_file).parent.expanduser().resolve() != Path(output_dir).expanduser().resolve():
@@ -321,30 +293,30 @@ def get_handwritten(
 
         # Load handwritten text image into a numpy array
         img_handwritten = img_handwritten.resize((img_length, img_width))
-        img_handwritten = np.asarray(img_handwritten).copy()
+        img_handwritten_arr = np.asarray(img_handwritten).copy()
         # Convert to a black and white image mask
-        img_handwritten[img_handwritten[:, :, 1] != 255] = 0
-        img_handwritten[img_handwritten == 255] = 1
+        img_handwritten_arr[img_handwritten_arr[:, :, 1] != 255] = 0
+        img_handwritten_arr[img_handwritten_arr == 255] = 1
         # Convert to an array
-        img_handwritten = np.asarray(img_handwritten).copy()
-        img_ecg = np.asarray(img_ecg).copy()
+        img_handwritten_arr = np.asarray(img_handwritten_arr).copy()
+        img_ecg_arr = np.asarray(img_ecg).copy()
         # Shift the handwritten text by specified offset
         img_cropped = (
-            img_ecg[
-                x_offset : img_handwritten.shape[0] + x_offset,
-                y_offset : img_handwritten.shape[1] + y_offset,
-                : img_handwritten.shape[2],
+            img_ecg_arr[
+                x_offset : img_handwritten_arr.shape[0] + x_offset,
+                y_offset : img_handwritten_arr.shape[1] + y_offset,
+                : img_handwritten_arr.shape[2],
             ]
-            * img_handwritten
+            * img_handwritten_arr
         )
         # Apply cropped image
-        img_ecg[
-            x_offset : img_handwritten.shape[0] + x_offset,
-            y_offset : img_handwritten.shape[1] + y_offset,
-            : img_handwritten.shape[2],
+        img_ecg_arr[
+            x_offset : img_handwritten_arr.shape[0] + x_offset,
+            y_offset : img_handwritten_arr.shape[1] + y_offset,
+            : img_handwritten_arr.shape[2],
         ] = img_cropped
         # Save final image
-        img_final = Image.fromarray(img_ecg)
+        img_final = Image.fromarray(img_ecg_arr)
         head, tail = os.path.split(filename)
         img_final.save(os.path.join(output_dir, tail))
 
@@ -354,6 +326,18 @@ def get_handwritten(
         plt.clf()
         plt.cla()
 
+        img_ecg.close()
+        img_handwritten.close()
+
         os.remove(hw_text_file)
         outfile = os.path.join(output_dir, tail)
+
+        del sess, saver, en_core_sci_sm_model, nlp
+
+        # clear session and memory
+        # try:
+        #     tf.keras.backend.clear_session(free_memory=True)
+        # except Exception:
+        #     tf.keras.backend.clear_session()
+
         return outfile

@@ -536,6 +536,8 @@ def ecg_plot(
         plt.clf()
         plt.cla()
 
+        ecg_image.close()
+
     json_dict["leads"] = leads_ds
 
     return x_grid_dots, y_grid_dots

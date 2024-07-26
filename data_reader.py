@@ -941,9 +941,9 @@ class CINC2024Reader(PhysioNetDataBase):
         try:
             if parallel:
                 if kwargs.get("hw_text", self.__gen_img_default_config__["hw_text"]) is True:
-                    from utils.ecg_image_generator import en_core_sci_sm_model
+                    from utils.ecg_image_generator import en_core_sci_sm_model_dir
 
-                    if en_core_sci_sm_model is None:
+                    if en_core_sci_sm_model_dir is None:
                         self.logger.warning(
                             "The spaCy model en_core_sci_sm is not cached locally. Call the function `download_en_core_sci_sm` "
                             "from `utils.ecg_image_generator` to download the model. "
@@ -1535,6 +1535,8 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
         )
         metadata_file.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(metadata_file, lead_bbox=lead_bbox)
+
+    del metadata_array, lead_bbox, text_bbox, lead_name
 
 
 if __name__ == "__main__":
