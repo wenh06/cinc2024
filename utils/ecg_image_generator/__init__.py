@@ -25,3 +25,24 @@ __all__ = [
     "run_batch",
     "constants",
 ]
+
+
+def report_extra_libs():
+    not_installed = []
+    try:
+        from imgaug import augmenters as iaa  # noqa: F401
+    except ImportError:
+        not_installed.append("imgaug")
+    try:
+        import cv2  # noqa: F401
+    except ImportError:
+        not_installed.append("opencv-python")
+
+    if not_installed:
+        import warnings
+
+        not_installed = ", ".join(not_installed)
+        warnings.warn(f"The following libraries are not installed, but are required for some functions: {not_installed}")
+
+
+report_extra_libs()
