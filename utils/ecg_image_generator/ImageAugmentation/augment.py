@@ -72,6 +72,8 @@ def get_augment(
             iaa.ChangeColorTemperature(temperature),
         ]
     )
+    json_dict["rotate_indeed"] = rot
+    json_dict["crop_indeed"] = crop_sample
 
     images_aug = seq(images=images)
 

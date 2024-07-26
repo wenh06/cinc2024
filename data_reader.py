@@ -1,6 +1,7 @@
 """
 """
 
+import gzip
 import json
 import multiprocessing as mp
 import os
@@ -444,6 +445,34 @@ class CINC2024Reader(PhysioNetDataBase):
             return img
         else:
             raise ValueError(f"Invalid return format `{fmt}`")
+
+    def load_image_metadata(self, img: Union[str, int], items: Optional[Union[str, List[str]]] = None) -> Dict[str, Any]:
+        """Load the metadata of an image.
+
+        Parameters
+        ----------
+        img : str or int
+            The image name or the index of the image.
+        items : str or list of str, optional
+            The items to load.
+
+        Returns
+        -------
+        metadata : dict
+            The metadata of the image.
+
+        """
+        if isinstance(img, int):
+            img = self._all_images[img]
+        metadata_file = self._df_images.loc[img, "path"].with_suffix(".json.gz")
+        if not metadata_file.exists():
+            return {}
+        metadata = load_gzip_json(metadata_file)
+        if items is None:
+            return metadata
+        if isinstance(items, str):
+            items = [items]
+        return {item: metadata[item] for item in items if item in metadata}
 
     def view_image(
         self, img: Union[str, int], with_lead_bbox: bool = True, with_text_bbox: bool = True, with_matched_bbox: bool = True
@@ -952,7 +981,7 @@ class CINC2024Reader(PhysioNetDataBase):
                         return
                 if output_folder is None:
                     output_folder = self._synthetic_images_dir
-                output_folder = Path(output_folder)
+                output_folder = Path(output_folder).expanduser().resolve()
                 output_folder.mkdir(parents=True, exist_ok=True)
                 if fs is None:
                     if self.fs in [100, 500]:
@@ -1030,7 +1059,7 @@ class CINC2024Reader(PhysioNetDataBase):
             record = self._all_records[record]
         if output_folder is None:
             output_folder = self._synthetic_images_dir
-        output_folder = Path(output_folder)
+        output_folder = Path(output_folder).expanduser().resolve()
         output_folder.mkdir(parents=True, exist_ok=True)
         if fs is None:
             if self.fs in [100, 500]:
@@ -1536,7 +1565,53 @@ def _generate_synthetic_image(args: Dict[str, Any]) -> None:
         metadata_file.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(metadata_file, lead_bbox=lead_bbox)
 
+        # save the full metadata a gzip-compressed JSON file
+        if not ecg_img_gen_config["store_config"]:  # not stored by `ecg_image_generator.run_single_file`
+            metadata_file = image_file.with_suffix(".json.gz")
+            save_gzip_json(metadata, metadata_file)
+
     del metadata_array, lead_bbox, text_bbox, lead_name
+
+
+def save_gzip_json(data: Any, file_path: Union[str, bytes, os.PathLike], **kwargs: Any) -> None:
+    """Save the data to a gzip-compressed JSON file.
+
+    Parameters
+    ----------
+    data : any
+        The data to save.
+    file_path : str or bytes or os.PathLike
+        The file path.
+    kwargs : dict
+        The keyword arguments for `json.dump`.
+
+    Returns
+    -------
+    None
+
+    """
+    with gzip.open(file_path, "wt") as f:
+        json.dump(data, f, **kwargs)
+
+
+def load_gzip_json(file_path: Union[str, bytes, os.PathLike], **kwargs: Any) -> Any:
+    """Load the data from a gzip-compressed JSON file.
+
+    Parameters
+    ----------
+    file_path : str or bytes or os.PathLike
+        The file path.
+    kwargs : dict
+        The keyword arguments for `json.load`.
+
+    Returns
+    -------
+    any
+        The loaded data.
+
+    """
+    with gzip.open(file_path, "rt") as f:
+        return json.load(f, **kwargs)
 
 
 if __name__ == "__main__":

@@ -293,19 +293,19 @@ def convert_bounding_boxes_to_dict(
         if len(lead_bboxes) != 0:
             new_box = dict()
             box = lead_bboxes[i]
-            new_box[0] = [round(box[0][0]), round(box[0][1])]
-            new_box[1] = [round(box[1][0]), round(box[1][1])]
-            new_box[2] = [round(box[2][0]), round(box[2][1])]
-            new_box[3] = [round(box[3][0]), round(box[3][1])]
+            new_box["0"] = [round(box[0][0]), round(box[0][1])]
+            new_box["1"] = [round(box[1][0]), round(box[1][1])]
+            new_box["2"] = [round(box[2][0]), round(box[2][1])]
+            new_box["3"] = [round(box[3][0]), round(box[3][1])]
             current_lead_ds["lead_bounding_box"] = new_box
 
         if len(text_bboxes) != 0:
             new_box = dict()
             box = text_bboxes[i]
-            new_box[0] = [round(box[0][0]), round(box[0][1])]
-            new_box[1] = [round(box[1][0]), round(box[1][1])]
-            new_box[2] = [round(box[2][0]), round(box[2][1])]
-            new_box[3] = [round(box[3][0]), round(box[3][1])]
+            new_box["0"] = [round(box[0][0]), round(box[0][1])]
+            new_box["1"] = [round(box[1][0]), round(box[1][1])]
+            new_box["2"] = [round(box[2][0]), round(box[2][1])]
+            new_box["3"] = [round(box[3][0]), round(box[3][1])]
             current_lead_ds["text_bounding_box"] = new_box
 
         current_lead_ds["lead_name"] = labels[i]

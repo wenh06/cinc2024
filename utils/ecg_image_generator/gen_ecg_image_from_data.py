@@ -305,6 +305,14 @@ def run_single_file(args):
             json_dict["rotate"] = rotate
             json_dict["noise"] = noise
 
+            # custom information
+            json_dict["crop_indeed"] = json_dict.get("crop_indeed", 0)
+            json_dict["rotate_indeed"] = json_dict.get("rotate_indeed", 0)
+        else:
+            # remove the custom information
+            json_dict.pop("crop_indeed", None)
+            json_dict.pop("rotate_indeed", None)
+
         # if args.store_config:
         if original_store_config:
             json_object = json.dumps(json_dict, indent=4)
@@ -334,6 +342,9 @@ def run_single_file(args):
             img.save(out)
 
         out_array[idx] = out
+
+    # restore the original value for args
+    args.store_config = original_store_config
 
     return len(out_array), out_array, metadata_array
 
