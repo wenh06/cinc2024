@@ -24,6 +24,7 @@ from utils.misc import url_is_reachable
 from .backbone import ImageBackbone
 from .heads import ClassificationHead, DigitizationHead
 from .loss import get_loss_func
+from .ultralytics import YOLOv10  # noqa: F401
 
 __all__ = [
     "MultiHead_CINC2024",

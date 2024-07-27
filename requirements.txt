@@ -47,3 +47,4 @@ tensorflow
 keras
 pyyaml
 qrcode
+safetensors

@@ -44,3 +44,5 @@ tensorflow
 keras
 pyyaml
 qrcode
+safetensors
+timm
