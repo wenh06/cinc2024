@@ -203,6 +203,7 @@ class CINC2024Reader(PhysioNetDataBase):
         self._all_records = None
         self._all_subjects = None
         self._all_images = None
+        self._gen_img_config_current = None
         self._ls_rec()
 
     def _ls_rec(self) -> None:
@@ -326,19 +327,14 @@ class CINC2024Reader(PhysioNetDataBase):
             self._df_images["text_bbox_file"] = self._df_images["text_bbox_file"].apply(lambda x: x if x.exists() else None)
             self._df_images.set_index("image", inplace=True)
         else:
+            # fmt: off
             self._df_images = pd.DataFrame(
                 columns=[
-                    "path",
-                    "image",
-                    "image_header",
-                    "ecg_id",
-                    "patient_id",
-                    "strat_fold",
-                    "lead_bbox_file",
-                    "text_bbox_file",
-                    "bbox",
+                    "path", "image", "image_header", "ecg_id", "patient_id", "strat_fold",
+                    "lead_bbox_file", "text_bbox_file", "bbox",
                 ]
             )
+            # fmt: on
             self._df_images.set_index("image", inplace=True)
             self.logger.warning(f"no synthetic images found in {self._synthetic_images_dir}")
 
@@ -367,11 +363,13 @@ class CINC2024Reader(PhysioNetDataBase):
         # load the bounding boxes into self._df_images
         if not self._df_images.empty:
             self._df_images["bbox"] = None
+            # self._df_images["metadata"] = None
             with tqdm(
                 total=len(self._df_images), desc="Loading bounding boxes", dynamic_ncols=True, mininterval=1, leave=True
             ) as pbar:
                 for img_id in self._all_images:
                     self._df_images.at[img_id, "bbox"] = self._load_bbox(img_id)
+                    # self._df_images.at[img_id, "metadata"] = load_gzip_json(self._df_images.loc[img_id, "path"].with_suffix(".json.gz"))
                     pbar.update(1)
 
     def _create_synthetic_images_dir(self) -> None:
@@ -407,7 +405,29 @@ class CINC2024Reader(PhysioNetDataBase):
                     self.logger.warning(f"synthetic images directory `{self._synthetic_images_dir}` not writable.")
         self._synthetic_images_dir = Path(self._synthetic_images_dir).expanduser().resolve()
         self._synthetic_images_dir.mkdir(parents=True, exist_ok=True)
+        if (self._synthetic_images_dir / "ecg_img_gen_config.json").exists():
+            self._gen_img_config_current = CFG(json.loads((self._synthetic_images_dir / "ecg_img_gen_config.json").read_text()))
+        else:
+            self._gen_img_config_current = {}
         self.logger.info(f"Synthetic images directory set to: {self._synthetic_images_dir}")
+
+    def get_record_images(self, rec: Union[str, int]) -> List[str]:
+        """Get the image IDs of a record.
+
+        Parameters
+        ----------
+        rec : str or int
+            The record name (ecg_id) or the index of the record.
+
+        Returns
+        -------
+        list of str
+            The images of the record.
+
+        """
+        if isinstance(rec, int):
+            rec = self._all_records[rec]
+        return self._df_images[self._df_images["ecg_id"] == rec].index.tolist()
 
     def load_image(self, img: Union[str, int], fmt: str = "np") -> Union[np.ndarray, Image.Image]:
         """Load the image of a record.
@@ -475,7 +495,12 @@ class CINC2024Reader(PhysioNetDataBase):
         return {item: metadata[item] for item in items if item in metadata}
 
     def view_image(
-        self, img: Union[str, int], with_lead_bbox: bool = True, with_text_bbox: bool = True, with_matched_bbox: bool = True
+        self,
+        img: Union[str, int],
+        with_lead_bbox: bool = True,
+        with_text_bbox: bool = True,
+        with_matched_bbox: bool = True,
+        with_plotted_pixels: bool = False,
     ) -> Optional[Image.Image]:
         """View the image of a record.
 
@@ -489,6 +514,8 @@ class CINC2024Reader(PhysioNetDataBase):
             Whether to show the bounding boxes of the text.
         with_matched_bbox : bool, default True
             Whether to show the matched lead names for the waveforms bounding boxes.
+        with_plotted_pixels : bool, default False
+            Whether to plot the plotted pixels of the ECG waveforms.
 
         Returns
         -------
@@ -536,6 +563,24 @@ class CINC2024Reader(PhysioNetDataBase):
                 # "bbox" is in COCO format [x, y, width, height]
                 font = ImageFont.truetype("arial.ttf", 32)
                 draw.text((wb["bbox"][0], wb["bbox"][1]), wb["lead_name"], fill="red", font=font)
+        if with_plotted_pixels:
+            image_metadata = self.load_image_metadata(img)
+            if image_metadata:  # not empty
+                for leads_dict in image_metadata["leads"]:
+                    pp_arr = leads_dict["plotted_pixels"]
+                    if pp_arr:
+                        pp_arr = np.array(pp_arr)
+                        draw = ImageDraw.Draw(ecg_image, "RGBA")
+                        for y, x in pp_arr:
+                            # green, semi-transparent
+                            draw.point((x, y), fill=(0, 255, 0, 128))
+        # draw the dx annotations in upper right corner
+        ecg_id = self._df_images.loc[img, "ecg_id"]
+        dx_ann = self.load_dx_ann(ecg_id, class_map=False)
+        dx_ann_str = ", ".join(dx_ann)
+        draw = ImageDraw.Draw(ecg_image)
+        font = ImageFont.truetype("arial.ttf", 32)
+        draw.text((ecg_image.size[0] - 20, 20), dx_ann_str, align="right", anchor="rt", fill="red", font=font)
         # if is jupyter notebook, show the image inline
         if is_notebook():
             return ecg_image
@@ -1027,6 +1072,8 @@ class CINC2024Reader(PhysioNetDataBase):
 
         # save `ecg_img_gen_config` to the output folder
         Path(output_folder).joinpath("ecg_img_gen_config.json").write_text(json.dumps(ecg_img_gen_config, indent=4))
+        if output_folder == self._synthetic_images_dir:
+            self._gen_img_config_current = ecg_img_gen_config.copy()
 
     def _prepare_synthetic_image_from_record(
         self,
