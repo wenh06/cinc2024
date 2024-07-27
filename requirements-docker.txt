@@ -45,4 +45,3 @@ keras
 pyyaml
 qrcode
 safetensors
-timm

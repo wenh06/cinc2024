@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Union
 
 import numpy as np
-import PIL
+import PIL.Image
 import torch
 
 __all__ = [

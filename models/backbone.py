@@ -20,8 +20,10 @@ from torch_ecg.utils.utils_nn import SizeMixin
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
 from utils.misc import url_is_reachable
 
-if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable("https://huggingface.co")):
-    # workaround for using huggingface hub in China
+# workaround for using huggingface hub in China
+if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable(os.environ["HF_ENDPOINT"])):
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("https://huggingface.co")):
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 

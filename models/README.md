@@ -128,6 +128,8 @@ The second sub-task can be done by using a sequence generation model or segmenta
 | facebook/detr-resnet-50-dc5                                    | huggingface | 167 MB     | 43.26          |
 | facebook/detr-resnet-50                                        | huggingface | 167 MB     | 42.08          |
 
+The directory [`ultralytics`](ultralytics) contains the yolov10 models from the [yolov10 repository](https://github.com/THU-MIG/yolov10/tree/main/ultralytics).
+
 ### Segmentation models
 
 to be added....
