@@ -6,7 +6,7 @@ This folder (module) contains the models for the CINC 2024 Challenge. The models
 
 - **Classification head**: This part is responsible for making Dx classification predictions based on the features extracted by the image backbone. The classification head is trained (fine-tuned) on the CINC 2024 dataset.
 
-- **Digitization head**: This part is responsible for recovering the digitized ECG signal from the input image. The digitization head is trained (fine-tuned) on the CINC 2024 dataset.
+- **Digitization head (deprecated)**: This part is responsible for recovering the digitized ECG signal from the input image. The digitization head is trained (fine-tuned) on the CINC 2024 dataset.
 
 The two heads share the same image backbone and trained in an end-to-end manner.
 
@@ -54,7 +54,7 @@ There are typically 3 sources of pre-trained image backbones:
 
 Dx head is typically a multi-layer perceptron (MLP) that takes the features extracted by the image backbone and produces classification predictions.
 
-## Digitization head
+## Digitization head (deprecated)
 
 Digitization head can be considered as a generative model that takes the features extracted by the image backbone and produces the digitized ECG signal.
 A `max_len` parameter is used to determine the maximum length of the digitized ECG signal.
@@ -72,7 +72,7 @@ This is done by the following steps:
 
 3. The feature tensor is reshaped to get the final feature tensor of shape ``(batch_size, num_leads, max_len)``.
 
-## Loss functions for digitization head
+### Loss functions for digitization head
 
 - SNR loss: Signal-to-noise ratio loss.
   The signal-to-noise ratio (SNR) is defined as the ratio of the power of the signal to the power of the noise.
@@ -103,3 +103,31 @@ TODO: make a more balanced total loss (e.g. by scaling the two losses).
 Convolutioanl Neural Networks (CNNs) performed better on the classification task than Transformers.
 Possible reasons: curves of the ECG waveforms on the image are tiny compared to the whole image,
 where the subtle features are not well captured by the Transformers. (TODO: find literature to support this hypothesis)
+
+## Object (region of interest, ROI) detection
+
+The digitization task can be split into two sub-tasks: object (ROI) detection and sequence generation.
+The first sub-task can be simply done by using a pre-trained object detection model fine-tuned on the CINC 2024 dataset.
+The second sub-task can be done by using a sequence generation model or segmentation model on the detected ROI.
+
+### Object detection models
+
+[Huggingface leaderboard](https://huggingface.co/spaces/hf-vision/object_detection_leaderboard) | [Huggingface model list](https://huggingface.co/models?pipeline_tag=object-detection) | [Huggingface tutorials](https://huggingface.co/docs/transformers/en/tasks/object_detection) | [yolov10](https://github.com/THU-MIG/yolov10/)
+
+| Name                                                           | Source      | Model Size | AP on COCO val |
+| -------------------------------------------------------------- | ----------- | ---------- | -------------- |
+| jameslahm/yolov10x                                             | huggingface | 128 MB     |                |
+| jameslahm/yolov10l                                             | huggingface | 104 MB     |                |
+| jameslahm/yolov10b                                             | huggingface | 82.7 MB    |                |
+| jameslahm/yolov10m                                             | huggingface | 66.7 MB    |                |
+| jameslahm/yolov10s                                             | huggingface | 32.7 MB    |                |
+| jameslahm/yolov10n                                             | huggingface | 11.2 MB    |                |
+| jozhang97/deta-swin-large                                      | huggingface | 879 MB     | 55.64          |
+| jozhang97/deta-resnet-50-24-epochs                             | huggingface | 194 MB     | 49.35          |
+| jozhang97/deta-resnet-50-12-epochs                             | huggingface | 194 MB     | 48.77          |
+| facebook/detr-resnet-50-dc5                                    | huggingface | 167 MB     | 43.26          |
+| facebook/detr-resnet-50                                        | huggingface | 167 MB     | 42.08          |
+
+### Segmentation models
+
+to be added....

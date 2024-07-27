@@ -150,14 +150,14 @@ ModelCfg.classification_head.out_channels = [
     # containing just the intermediate features
     # not including the input features and the output features
     # 1024,
-    256,
+    512,
 ]
 ModelCfg.classification_head.dropouts = 0.3
 ModelCfg.classification_head.activation = "mish"
 
 ModelCfg.classification_head.classes = BaseCfg.classes
 ModelCfg.classification_head.num_classes = len(ModelCfg.classification_head.classes)
-ModelCfg.classification_head.criterion = "CrossEntropyLoss"
+ModelCfg.classification_head.criterion = "AsymmetricLoss"  # "FocalLoss", "BCEWithLogitsLoss"
 ModelCfg.classification_head.label_smoothing = 0.1
 ModelCfg.classification_head.threshold = 0.5  # threshold for multi-label classification
 

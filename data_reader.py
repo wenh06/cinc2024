@@ -561,8 +561,8 @@ class CINC2024Reader(PhysioNetDataBase):
             for wb in CINC2024Reader.match_bbox(self.load_bbox(img)):
                 # wb is a dict with keys "bbox" and "lead_name"
                 # "bbox" is in COCO format [x, y, width, height]
-                font = ImageFont.truetype("arial.ttf", 32)
-                draw.text((wb["bbox"][0], wb["bbox"][1]), wb["lead_name"], fill="red", font=font)
+                font = ImageFont.truetype("arial.ttf", int(min(ecg_image.size) * 0.025))
+                draw.text((wb["bbox"][0], wb["bbox"][1]), wb["lead_name"], fill="red", font=font, anchor="lb")
         if with_plotted_pixels:
             image_metadata = self.load_image_metadata(img)
             if image_metadata:  # not empty
@@ -579,7 +579,7 @@ class CINC2024Reader(PhysioNetDataBase):
         dx_ann = self.load_dx_ann(ecg_id, class_map=False)
         dx_ann_str = ", ".join(dx_ann)
         draw = ImageDraw.Draw(ecg_image)
-        font = ImageFont.truetype("arial.ttf", 32)
+        font = ImageFont.truetype("arial.ttf", int(min(ecg_image.size) * 0.05))
         draw.text((ecg_image.size[0] - 20, 20), dx_ann_str, align="right", anchor="rt", fill="red", font=font)
         # if is jupyter notebook, show the image inline
         if is_notebook():
@@ -1733,9 +1733,12 @@ if __name__ == "__main__":
         if args.gen_img_config is not None:
             gen_img_config = json.loads(Path(args.gen_img_config).read_text())
         if args.parallel:
-            from utils.ecg_image_generator import download_en_core_sci_sm, en_core_sci_sm_model
+            from utils.ecg_image_generator import download_en_core_sci_sm, en_core_sci_sm_model_dir
 
-            if en_core_sci_sm_model is None and gen_img_config.get("hw_text", dr.__gen_img_default_config__["hw_text"]) is True:
+            if (
+                en_core_sci_sm_model_dir is None
+                and gen_img_config.get("hw_text", dr.__gen_img_default_config__["hw_text"]) is True
+            ):
                 download_en_core_sci_sm()
         dr.prepare_synthetic_images(output_folder=args.output_folder, parallel=args.parallel, **gen_img_config)
 

@@ -38,6 +38,8 @@ imageio
 imutils
 imgaug
 html5lib
+albumentations
+pycocotools
 tensorflow
 keras
 pyyaml

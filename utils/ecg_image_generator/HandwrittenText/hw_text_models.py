@@ -16,10 +16,19 @@ if len(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))) == 1:
     # en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
 
 
+def find_en_core_sci_sm():
+    global en_core_sci_sm_model_dir
+    if en_core_sci_sm_model_dir is not None:
+        return en_core_sci_sm_model_dir
+    if len(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))) == 1:
+        en_core_sci_sm_model_dir = str(list((CACHE_DIR / "en_core_sci_sm").rglob("config.cfg"))[0].parent)
+        return en_core_sci_sm_model_dir
+    return None
+
+
 def download_en_core_sci_sm():
     global en_core_sci_sm_model_dir
-    # global en_core_sci_sm_model
-    if en_core_sci_sm_model_dir is not None:
+    if find_en_core_sci_sm() is not None:
         return
     model_dir = http_get(en_core_sci_sm_url, dst_dir=CACHE_DIR / "en_core_sci_sm", extract=True)
     # locate the model directory
@@ -27,7 +36,11 @@ def download_en_core_sci_sm():
     # en_core_sci_sm_model = spacy.load(en_core_sci_sm_model_dir)
 
 
-def load_en_core_sci_sm():
-    if en_core_sci_sm_model_dir is None:
-        return None
+def load_en_core_sci_sm(download: bool = False):
+    global en_core_sci_sm_model_dir
+    if find_en_core_sci_sm() is None:
+        if download:
+            download_en_core_sci_sm()
+        else:
+            return None
     return spacy.load(en_core_sci_sm_model_dir)
