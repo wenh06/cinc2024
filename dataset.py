@@ -72,6 +72,10 @@ class CinC2024Dataset(Dataset, ReprMixin):
 
         self.__cache = None
         self.reader = CINC2024Reader(db_dir=self.config.db_dir, **reader_kwargs)
+        # process the bounding boxes
+        self.reader._df_images["bbox_formatted"] = self.reader._df_images.index.map(
+            lambda img_id: self.reader.load_bbox(img_id, fmt=self.config.bbox_format)
+        )
 
         ecg_ids = self._train_test_split(train_ratio=self.config.train_ratio)
         self._df_data = self.reader._df_images[self.reader._df_images.ecg_id.isin(ecg_ids)]
@@ -144,6 +148,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
             "dx",  # classification
             "digitization", "mask",  # digitization
             "bbox", "category_id", "area"  # object detection
+            "mask",  # mask prediction
         ])
         # fmt: on
 
@@ -191,7 +196,8 @@ class FastDataReader(ReprMixin, Dataset):
         if self.config.predict_bbox:
             # load the bounding boxes
             # keys are "bbox", "category_id", "area"
-            raise NotImplementedError("data preparation for bbox prediction is not implemented yet")
+            # data["bbox"] = row["bbox"]
+            raise NotImplementedError("data preparation for object detection is not implemented yet")
 
         return data
 

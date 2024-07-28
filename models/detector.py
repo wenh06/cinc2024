@@ -70,9 +70,10 @@ class ECGWaveformDetector(CitationMixin, SizeMixin):
             self.augmentor = None
             self.detector = transformers.AutoModelForObjectDetection.from_pretrained(
                 name_or_path,
-                label2id=self.config.label2id,
-                id2label={v: k for k, v in self.config.label2id.items()},
+                label2id=self.config["label2id"],
+                id2label={v: k for k, v in self.config["label2id"].items()},
                 cache_dir=MODEL_CACHE_DIR,
+                ignore_mismatched_sizes=True,
             )
         elif self.source == "mm":
             raise NotImplementedError

@@ -102,10 +102,14 @@ TrainCfg.log_step = 10
 # https://pytorch.org/vision/stable/transforms.html
 
 
+TrainCfg.backbone_freeze = False  # whether to freeze the backbone
+
 # tasks to be performed
 TrainCfg.predict_dx = True
 TrainCfg.predict_digitization = False  # TODO: implement digitization prediction
-TrainCfg.predict_bbox = False  # TODO: implement bounding box prediction
+TrainCfg.predict_bbox = True
+TrainCfg.predict_mask = False  # TODO: implement mask prediction from ROI obtained by object detection
+TrainCfg.bbox_format = "coco"  # "coco", "pascal_voc", "yolo"
 
 TrainCfg.monitor = "dx_f_measure"
 
@@ -142,7 +146,7 @@ ModelCfg.checkpoints = BaseCfg.checkpoints
 # ModelCfg.backbone_name = "facebook/convnextv2-large-22k-384"
 ModelCfg.backbone_name = "facebook/convnextv2-atto-1k-224"
 ModelCfg.backbone_source = "hf"
-ModelCfg.backbone_freeze = True
+ModelCfg.backbone_freeze = TrainCfg.backbone_freeze
 
 ModelCfg.classification_head = deepcopy(linear)
 
