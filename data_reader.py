@@ -331,7 +331,7 @@ class CINC2024Reader(PhysioNetDataBase):
             self._df_images = pd.DataFrame(
                 columns=[
                     "path", "image", "image_header", "ecg_id", "patient_id", "strat_fold",
-                    "lead_bbox_file", "text_bbox_file", "bbox",
+                    "lead_bbox_file", "text_bbox_file", "bbox", "ROI",
                 ]
             )
             # fmt: on
@@ -363,6 +363,7 @@ class CINC2024Reader(PhysioNetDataBase):
         # load the bounding boxes into self._df_images
         if not self._df_images.empty:
             self._df_images["bbox"] = None
+            self._df_images["ROI"] = None
             # self._df_images["metadata"] = None
             with tqdm(
                 total=len(self._df_images), desc="Loading bounding boxes", dynamic_ncols=True, mininterval=1, leave=True
@@ -370,6 +371,8 @@ class CINC2024Reader(PhysioNetDataBase):
                 for img_id in self._all_images:
                     self._df_images.at[img_id, "bbox"] = self._load_bbox(img_id)
                     # self._df_images.at[img_id, "metadata"] = load_gzip_json(self._df_images.loc[img_id, "path"].with_suffix(".json.gz"))
+                    # via bounding boxes get the image-level region of interest
+                    self._df_images.at[img_id, "ROI"] = CINC2024Reader.get_roi(self._df_images.loc[img_id, "bbox"], padding=0)
                     pbar.update(1)
 
     def _create_synthetic_images_dir(self) -> None:
@@ -429,7 +432,9 @@ class CINC2024Reader(PhysioNetDataBase):
             rec = self._all_records[rec]
         return self._df_images[self._df_images["ecg_id"] == rec].index.tolist()
 
-    def load_image(self, img: Union[str, int], fmt: str = "np") -> Union[np.ndarray, Image.Image]:
+    def load_image(
+        self, img: Union[str, int], fmt: str = "np", roi_only: bool = False, roi_padding: float = 0.1
+    ) -> Union[np.ndarray, Image.Image]:
         """Load the image of a record.
 
         Parameters
@@ -459,6 +464,17 @@ class CINC2024Reader(PhysioNetDataBase):
             img = self._all_images[img]
         img_path = self._df_images.loc[img, "path"]
         img = Image.open(img_path).convert("RGB")  # png images are RGBA
+        if roi_only:
+            xmin, ymin, xmax, ymax = self._df_images.loc[img, "ROI"]  # no padding
+            if roi_padding > 0:
+                width, height = xmax - xmin, ymax - ymin
+                pad_x = int(width * roi_padding)
+                pad_y = int(height * roi_padding)
+                xmin = max(0, xmin - pad_x)
+                ymin = max(0, ymin - pad_y)
+                xmax = min(img.size[0], xmax + pad_x)
+                ymax = min(img.size[1], ymax + pad_y)
+            img = img.crop((xmin, ymin, xmax, ymax))
         if fmt.lower() == "np":
             return np.asarray(img)
         elif fmt.lower() == "pil":
@@ -500,7 +516,9 @@ class CINC2024Reader(PhysioNetDataBase):
         with_lead_bbox: bool = True,
         with_text_bbox: bool = True,
         with_matched_bbox: bool = True,
-        with_plotted_pixels: bool = False,
+        with_plotted_pixels: bool = True,
+        roi_only: bool = False,
+        roi_padding: float = 0.2,
     ) -> Optional[Image.Image]:
         """View the image of a record.
 
@@ -516,6 +534,10 @@ class CINC2024Reader(PhysioNetDataBase):
             Whether to show the matched lead names for the waveforms bounding boxes.
         with_plotted_pixels : bool, default False
             Whether to plot the plotted pixels of the ECG waveforms.
+        roi_only : bool, default False
+            Whether to show only the region of interest.
+        roi_padding : float, default 0.1
+            The padding ratio of the region of interest.
 
         Returns
         -------
@@ -558,7 +580,7 @@ class CINC2024Reader(PhysioNetDataBase):
         else:
             text_bbox = None
         if with_matched_bbox:
-            for wb in CINC2024Reader.match_bbox(self.load_bbox(img)):
+            for wb in CINC2024Reader.match_bbox(bbox):
                 # wb is a dict with keys "bbox" and "lead_name"
                 # "bbox" is in COCO format [x, y, width, height]
                 font = ImageFont.truetype("arial.ttf", int(min(ecg_image.size) * 0.025))
@@ -574,6 +596,17 @@ class CINC2024Reader(PhysioNetDataBase):
                         for y, x in pp_arr:
                             # green, semi-transparent
                             draw.point((x, y), fill=(0, 255, 0, 128))
+        if roi_only:
+            xmin, ymin, xmax, ymax = self._df_images.loc[img, "ROI"]  # no padding
+            if roi_padding > 0:
+                width, height = xmax - xmin, ymax - ymin
+                pad_x = int(width * roi_padding)
+                pad_y = int(height * roi_padding)
+                xmin = max(0, xmin - pad_x)
+                ymin = max(0, ymin - pad_y)
+                xmax = min(ecg_image.size[0], xmax + pad_x)
+                ymax = min(ecg_image.size[1], ymax + pad_y)
+            ecg_image = ecg_image.crop((xmin, ymin, xmax, ymax))
         # draw the dx annotations in upper right corner
         ecg_id = self._df_images.loc[img, "ecg_id"]
         dx_ann = self.load_dx_ann(ecg_id, class_map=False)
@@ -1398,6 +1431,35 @@ class CINC2024Reader(PhysioNetDataBase):
                         text_bbox=new_text_bbox,
                         lead_name=new_lead_name,
                     )
+
+    @staticmethod
+    def get_roi(bbox: Sequence[BBox], padding: Union[int, float] = 0.0) -> Tuple[int, int, int, int]:
+        """Get the region of interest (ROI) from the bounding boxes.
+
+        Parameters
+        ----------
+        bbox : sequence of BBox
+            The bounding boxes.
+        padding : int or float, default 0.0
+            The padding ratio to the bounding boxes.
+
+        Returns
+        -------
+        tuple
+            The region of interest in the form ``(x0, y0, x1, y1)``.
+
+        """
+        xmin = min([box.left for box in bbox])
+        ymin = min([box.top for box in bbox])
+        xmax = max([box.right for box in bbox])
+        ymax = max([box.bottom for box in bbox])
+        width = xmax - xmin
+        height = ymax - ymin
+        pad_x = int(width * padding)
+        pad_y = int(height * padding)
+        img_width = bbox[0].img_width
+        img_height = bbox[0].img_height
+        return max(0, xmin - pad_x), max(0, ymin - pad_y), min(img_width, xmax + pad_x), min(img_height, ymax + pad_y)
 
 
 def get_record_labels(row: pd.Series, df_12sl_statements: pd.DataFrame, acute_mi_classes: Set[str]) -> List[str]:
