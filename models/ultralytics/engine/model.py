@@ -83,7 +83,7 @@ class Model(nn.Module):
 
     def __init__(
         self,
-        model: Union[str, Path] = "yolov8n.pt",
+        model: Union[str, Path, dict] = "yolov8n.pt",
         task: str = None,
         verbose: bool = False,
     ) -> None:
@@ -95,7 +95,7 @@ class Model(nn.Module):
         important attributes of the model and prepares it for operations like training, prediction, or export.
 
         Args:
-            model (Union[str, Path], optional): The path or model file to load or create. This can be a local
+            model (Union[str, Path, dict], optional): The path or model config (file) to load or create. This can be a local
                 file path, a model name from Ultralytics HUB, or a Triton Server model. Defaults to 'yolov8n.pt'.
             task (Any, optional): The task type associated with the YOLO model, specifying its application domain.
                 Defaults to None.
@@ -119,6 +119,11 @@ class Model(nn.Module):
         self.metrics = None  # validation/training metrics
         self.session = None  # HUB session
         self.task = task  # task type
+
+        if isinstance(model, dict):
+            self._new(model, task=task, verbose=verbose)
+            return
+
         model = str(model).strip()
 
         # Check if Ultralytics HUB model from https://hub.ultralytics.com
@@ -192,17 +197,20 @@ class Model(nn.Module):
             )
         )
 
-    def _new(self, cfg: str, task=None, model=None, verbose=False) -> None:
+    def _new(self, cfg: Union[str, dict], task=None, model=None, verbose=False) -> None:
         """
         Initializes a new model and infers the task type from the model definitions.
 
         Args:
-            cfg (str): model configuration file
-            task (str | None): model task
+            cfg (str | dict): model configuration (file).
+            task (str | None): model task.
             model (BaseModel): Customized model.
-            verbose (bool): display model info on load
+            verbose (bool): display model info on load.
         """
-        cfg_dict = yaml_model_load(cfg)
+        if isinstance(cfg, dict):
+            cfg_dict = cfg.copy()
+        else:
+            cfg_dict = yaml_model_load(cfg)
         self.cfg = cfg
         self.task = task or guess_model_task(cfg_dict)
         self.model = (model or self._smart_load("model"))(cfg_dict, verbose=verbose and RANK == -1)  # build model

@@ -206,6 +206,8 @@ ModelCfg.digitization_head.include = TrainCfg.predict_digitization
 ModelCfg.object_detection = CFG()
 ModelCfg.object_detection.model_name = "facebook/detr-resnet-50"
 ModelCfg.object_detection.source = "hf"
+ModelCfg.object_detection.freeze = False
+ModelCfg.object_detection.scale = "n"
 
 ModelCfg.object_detection.class_names = BaseCfg.lead_names + ["waveform"]
 ModelCfg.object_detection.num_classes = len(ModelCfg.object_detection.class_names)

@@ -841,6 +841,7 @@ def parse_backbone(d, ch, verbose=True):
         if not scale:
             scale = tuple(scales.keys())[0]
             LOGGER.warning(f"WARNING ⚠️ no model scale passed. Assuming scale='{scale}'.")
+        print(f"scale: {scale}, scales: {scales}")
         depth, width, max_channels = scales[scale]
 
     if act:
@@ -960,6 +961,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         if not scale:
             scale = tuple(scales.keys())[0]
             LOGGER.warning(f"WARNING ⚠️ no model scale passed. Assuming scale='{scale}'.")
+        print(f"scale: {scale}, scales: {scales}")
         depth, width, max_channels = scales[scale]
 
     if act:

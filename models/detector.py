@@ -9,10 +9,11 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import PIL
 import torch
+import torch.nn as nn
 import transformers
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import CitationMixin
-from torch_ecg.utils.utils_nn import SizeMixin
+from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from cfg import ModelCfg
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
@@ -27,7 +28,7 @@ elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("http
 os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 
-class ECGWaveformDetector(CitationMixin, SizeMixin):
+class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
     """Waveform detector model, which detects the bounding boxes of the waveforms in the ECG images.
 
     Parameters

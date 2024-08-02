@@ -141,6 +141,7 @@ checkpoints
 log
 saved_models
 eval_res
+runs/
 
 
 *.ipynb

@@ -14,7 +14,7 @@ import torch.nn as nn
 from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.utils.download import http_get
 from torch_ecg.utils.misc import CitationMixin, add_docstring
-from torch_ecg.utils.utils_nn import SizeMixin
+from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from cfg import ModelCfg
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
@@ -24,7 +24,6 @@ from utils.misc import url_is_reachable
 from .backbone import ImageBackbone
 from .heads import ClassificationHead, DigitizationHead
 from .loss import get_loss_func
-from .ultralytics import YOLOv10  # noqa: F401
 
 __all__ = [
     "MultiHead_CINC2024",
@@ -43,7 +42,7 @@ elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("http
 os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 
-class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
+class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin, CkptMixin):
     """Multi-head model for CINC2024.
 
     Parameters
@@ -62,6 +61,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin):
         self.__config = deepcopy(ModelCfg)
         if config is not None:
             self.__config.update(deepcopy(config))
+        self.__config.update(kwargs)
         self.image_backbone = ImageBackbone(
             self.__config.backbone_name,
             source=self.__config.backbone_source,
