@@ -736,16 +736,16 @@ class CINC2024Reader(PhysioNetDataBase):
         bbox_type : {"lead", "text"}, optional
             The type of the bounding box.
             If is ``None``, both types of bounding boxes will be loaded.
-        fmt : {"coco", "pascal_voc", "yolo", "yolon"}, default "coco"
+        fmt : {"coco", "pascal_voc", "yolo", "albumentations"}, default "coco"
             The format of the bounding boxes to be returned.
             - If is "coco", the bounding boxes will be in COCO format:
               ``[x, y, width, height]``.
             - If is "pascal_voc", the bounding boxes will be in Pascal VOC format:
               ``[xmin, ymin, xmax, ymax]``.
             - If is "yolo", the bounding boxes will be in YOLO format:
-              ``[x_center, y_center, width, height]``
-            - If is "yolon", the bounding boxes will be in normalized YOLO format:
               ``[x_center, y_center, width, height]`` (normalized to [0, 1]).
+            - If is "albumentations", the bounding boxes will be in Albumentations format:
+                ``[x_min, y_min, x_max, y_max]`` (normalized to [0, 1]).
 
         Returns
         -------
@@ -790,8 +790,8 @@ class CINC2024Reader(PhysioNetDataBase):
             bbox = [wb.to_pascal_voc_format() for wb in bbox]
         elif fmt.lower() == "yolo":
             bbox = [wb.to_yolo_format() for wb in bbox]
-        elif fmt.lower() == "yolon":
-            bbox = [wb.to_yolon_format() for wb in bbox]
+        elif fmt.lower() == "albumentations":
+            bbox = [wb.to_albumentations_format() for wb in bbox]
         else:
             raise ValueError(f"Invalid format `{fmt}`")
         return bbox
@@ -1325,13 +1325,12 @@ class CINC2024Reader(PhysioNetDataBase):
         ----------
         bbox : list of dict
             The bounding boxes. Each dict has the keys "bbox", "category_id", "category_name", etc.
-        fmt : {"coco", "pascal_voc", "yolo", "yolon"}, default "coco"
+        fmt : {"coco", "pascal_voc", "yolo", "albumentations"}, default "coco"
             The format of the bounding boxes, case insensitive.
             If is "coco", the bounding boxes will be in COCO format: ``[xmin, ymin, width, height]``.
             If is "pascal_voc", the bounding boxes will be in Pascal VOC format: ``[xmin, ymin, xmax, ymax]``.
-            If is "yolo", the bounding boxes will be in YOLO format: ``[x_center, y_center, width, height]``.
-            If is "yolon", the bounding boxes will be in normalized YOLO format: ``[x_center, y_center, width, height]``
-            (normalized to [0, 1]).
+            If is "yolo", the bounding boxes will be in YOLO format: ``[x_center, y_center, width, height]`` (normalized to [0, 1]).
+            If is "albumentations", the bounding boxes will be in Albumentations format: ``[x_min, y_min, x_max, y_max]`` (normalized to [0, 1]).
             The coordinates have the origin at the upper left corner of the image.
 
         Returns
@@ -1352,9 +1351,12 @@ class CINC2024Reader(PhysioNetDataBase):
             elif fmt.lower() == "pascal_voc":
                 dist_x = [np.abs(wb["bbox"][0] - lb["bbox"][0]) for lb in lead_name_boxes]
                 dist_y = [np.abs(wb["bbox"][3] - lb["bbox"][1]) for lb in lead_name_boxes]
-            elif fmt.lower() in ["yolo", "yolon"]:
+            elif fmt.lower() == "yolo":
                 dist_x = [np.abs(wb["bbox"][0] - lb["bbox"][0]) for lb in lead_name_boxes]
                 dist_y = [np.abs(wb["bbox"][1] + wb["bbox"][3] / 2 - lb["bbox"][1]) for lb in lead_name_boxes]
+            elif fmt.lower() == "albumentations":
+                dist_x = [np.abs(wb["bbox"][0] - lb["bbox"][0]) for lb in lead_name_boxes]
+                dist_y = [np.abs(wb["bbox"][3] - lb["bbox"][1]) for lb in lead_name_boxes]
             else:
                 raise ValueError(f"Invalid bbox format `{fmt}`")
             min_dist_idx = np.argmin(np.array(dist_x) ** 2 + np.array(dist_y) ** 2)

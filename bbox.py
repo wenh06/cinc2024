@@ -107,10 +107,10 @@ class BBox:
         }
 
     def to_yolo_format(self) -> dict:
-        x_center = (self.left + self.right) // 2
-        y_center = (self.top + self.bottom) // 2
-        width = self.width
-        height = self.height
+        x_center = (self.left + self.right) / 2 / self.img_width
+        y_center = (self.top + self.bottom) / 2 / self.img_height
+        width = self.width / self.img_width
+        height = self.height / self.img_height
         return {
             "bbox": [x_center, y_center, width, height],
             "category_id": self.category_id,
@@ -118,13 +118,14 @@ class BBox:
             "area": self.area,
         }
 
-    def to_yolon_format(self) -> dict:
-        x_center = (self.left + self.right) / 2 / self.img_width
-        y_center = (self.top + self.bottom) / 2 / self.img_height
-        width = self.width / self.img_width
-        height = self.height / self.img_height
+    def to_albumentations_format(self) -> dict:
         return {
-            "bbox": [x_center, y_center, width, height],
+            "bbox": [
+                self.xmin / self.img_width,
+                self.ymin / self.img_height,
+                self.right / self.img_width,
+                self.bottom / self.img_height,
+            ],
             "category_id": self.category_id,
             "category_name": self.category_name,
             "area": self.area,
@@ -256,8 +257,8 @@ class RotatedBBox:
     def to_yolo_format(self) -> dict:
         return self.bbox.to_yolo_format()
 
-    def to_yolon_format(self) -> dict:
-        return self.bbox.to_yolon_format()
+    def to_albumentations_format(self) -> dict:
+        return self.bbox.to_albumentations_format()
 
     def to_matplotlib_format(self) -> dict:
         return self.bbox.to_matplotlib_format()
