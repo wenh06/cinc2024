@@ -171,7 +171,7 @@ class CINC2024Trainer(BaseTrainer):
 
         """
         for epoch_step, input_tensors in enumerate(self.train_loader):
-            input_tensors["image"] = self._model.get_input_tensors(input_tensors["image"])
+            input_tensors["image"] = self._model.get_input_tensors(input_tensors["image"])["image"]
             self.global_step += 1
             n_samples = input_tensors["image"].shape[self.batch_dim]
 

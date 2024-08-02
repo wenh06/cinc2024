@@ -187,7 +187,7 @@ ModelCfg.digitization_head.kernel_size = 51
 ModelCfg.digitization_head.dilation = 1
 
 ModelCfg.digitization_head.num_leads = ModelCfg.num_leads
-ModelCfg.digitization_head.fs = 100
+ModelCfg.digitization_head.fs = 500
 ModelCfg.digitization_head.max_len = 12 * ModelCfg.digitization_head.fs
 ModelCfg.digitization_head.criterion = CFG()
 ModelCfg.digitization_head.criterion.name = "snr_loss"
@@ -204,7 +204,7 @@ ModelCfg.digitization_head.include = TrainCfg.predict_digitization
 
 # model config for object detection
 ModelCfg.object_detection = CFG()
-ModelCfg.object_detection.model_name = "facebook/detr-resnet-50"
+ModelCfg.object_detection.model_name = "jozhang97/deta-resnet-50-12-epochs"  # "facebook/detr-resnet-50"
 ModelCfg.object_detection.source = "hf"
 ModelCfg.object_detection.freeze = False
 ModelCfg.object_detection.scale = "n"

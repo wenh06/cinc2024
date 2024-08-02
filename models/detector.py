@@ -84,13 +84,13 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
             raise ValueError(f"Unsupported source: {source}")
 
     def get_input_tensors(
-        self, x: INPUT_IMAGE_TYPES, labels: Optional[Union[Dict[str, torch.Tensor], List[Dict[str, torch.Tensor]]]] = None
+        self, img: INPUT_IMAGE_TYPES, labels: Optional[Union[Dict[str, torch.Tensor], List[Dict[str, torch.Tensor]]]] = None
     ) -> Union[torch.Tensor, transformers.BatchFeature]:
         """Get input tensors for the model.
 
         Parameters
         ----------
-        x : numpy.ndarray or torch.Tensor or PIL.Image.Image or list
+        img : numpy.ndarray or torch.Tensor or PIL.Image.Image or list
             Input image(s).
         labels : Dict[str, torch.Tensor] or List[Dict[str, torch.Tensor]], optional
             The bbox labels.
@@ -117,33 +117,33 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
 
         """
         assert self.preprocessor is not None, "Set up the preprocessor first."
-        if isinstance(x, (np.ndarray, torch.Tensor)):
-            x_ndim = x.ndim
-        elif isinstance(x, (PIL.Image.Image)):
-            x_ndim = 3
-        elif isinstance(x, (list, tuple)):
-            x_ndim = 4
+        if isinstance(img, (np.ndarray, torch.Tensor)):
+            img_ndim = img.ndim
+        elif isinstance(img, (PIL.Image.Image)):
+            img_ndim = 3
+        elif isinstance(img, (list, tuple)):
+            img_ndim = 4
         else:
-            raise ValueError(f"Input tensor has invalid type: {type(x)}")
+            raise ValueError(f"Input tensor has invalid type: {type(img)}")
         if self.source == "hf":
             if labels is not None:
-                x = self.preprocessor(x, labels, return_tensors="pt")
+                img = self.preprocessor(img, labels, return_tensors="pt")
                 # move the tensors to the device of the model
-                self.move_to_model_device(x)
+                self.move_to_model_device(img)
             else:
-                x = self.preprocessor(x).convert_to_tensors("pt")["pixel_values"].to(self.device)
+                img = self.preprocessor(img).convert_to_tensors("pt")["pixel_values"].to(self.device)
         elif self.source == "timm":
-            if x_ndim == 3:
-                x = self.preprocessor(x).to(self.device)
-            elif x_ndim == 4:
-                x = torch.stack([self.preprocessor(img).to(self.device) for img in x])
+            if img_ndim == 3:
+                img = self.preprocessor(img).to(self.device)
+            elif img_ndim == 4:
+                img = torch.stack([self.preprocessor(item).to(self.device) for item in img])
             else:
-                raise ValueError(f"Input tensor has invalid shape: {x.shape}")
+                raise ValueError(f"Input tensor has invalid shape: {img.shape}")
             raise NotImplementedError
         elif self.source == "tv":
-            x = self.preprocessor(x).to(self.device)
+            img = self.preprocessor(img).to(self.device)
             raise NotImplementedError
-        return x
+        return img
 
     def forward(
         self,

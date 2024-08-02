@@ -14,6 +14,7 @@ from .ultralytics.models.yolov10.predict import YOLOv10DetectionPredictor
 from .ultralytics.models.yolov10.train import YOLOv10DetectionTrainer
 from .ultralytics.models.yolov10.val import YOLOv10DetectionValidator
 from .ultralytics.nn.tasks import YOLOv10DetectionModel
+from .ultralytics.utils.loss import v8ClassificationLoss, v8DetectionLoss, v8SegmentationLoss, v10DetectLoss  # noqa: F401
 
 _ULTRALYTICS_DIR = Path(__file__).parent / "ultralytics"
 YOLOV10_CONFIGS = {
@@ -21,10 +22,10 @@ YOLOV10_CONFIGS = {
 }
 
 
-__all__ = ["YOLOv10_CINC2024"]
+__all__ = ["YOLOv10_Detector"]
 
 
-class YOLOv10_CINC2024(Model, SizeMixin, CkptMixin, CitationMixin):
+class YOLOv10_Detector(Model, SizeMixin, CkptMixin, CitationMixin):
 
     __DEFAULT_CONFIGS__ = deepcopy(YOLOV10_CONFIGS)
 
@@ -34,13 +35,15 @@ class YOLOv10_CINC2024(Model, SizeMixin, CkptMixin, CitationMixin):
             self.__config.update(deepcopy(config))
         verbose = kwargs.get("verbose", False)
         self.__config.update(kwargs)
-        self.__yolov_cfg = self.__config.get("yolo_cfg", self.__DEFAULT_CONFIGS__)[self.config["scale"]]
-        self.yolo_cfg["nc"] = self.config["num_classes"]
+        self.__yolo_cfg = self.__config.get("yolo_cfg", self.__DEFAULT_CONFIGS__)[self.config["scale"]]
+        self.__yolo_cfg["nc"] = self.config["num_classes"]
+        self.__yolo_cfg["scale"] = self.config["scale"]
         super().__init__(model=self.yolo_cfg, task="detect", verbose=verbose)
         setattr(self.model, "names", self.config["class_names"])
+        setattr(self.model, "criterion", v10DetectLoss(self.model))
 
     @property
-    def task_map(self):
+    def task_map(self) -> dict:
         """Map head to model, trainer, validator, and predictor classes."""
         return {
             "detect": {
@@ -52,9 +55,13 @@ class YOLOv10_CINC2024(Model, SizeMixin, CkptMixin, CitationMixin):
         }
 
     @property
-    def config(self):
+    def config(self) -> CFG:
         return self.__config
 
     @property
-    def yolo_cfg(self):
-        return self.__yolov_cfg
+    def yolo_cfg(self) -> dict:
+        return self.__yolo_cfg
+
+    @property
+    def doi(self) -> str:
+        return "10.48550/ARXIV.2405.14458"

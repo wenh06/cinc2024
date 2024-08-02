@@ -178,7 +178,7 @@ def test_models() -> None:
         if idx <= 1:
             continue
         input_images = input_tensors.pop("image")
-        forward_output = model(model.get_input_tensors(input_images), labels=input_tensors)
+        forward_output = model(model.get_input_tensors(input_images)["image"], labels=input_tensors)
         print(forward_output)
         if idx > 2:
             break

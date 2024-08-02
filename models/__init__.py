@@ -22,8 +22,10 @@ from outputs import CINC2024Outputs
 from utils.misc import url_is_reachable
 
 from .backbone import ImageBackbone
+from .detector import ECGWaveformDetector
 from .heads import ClassificationHead, DigitizationHead
 from .loss import get_loss_func
+from .yolov10 import YOLOv10_Detector
 
 __all__ = [
     "MultiHead_CINC2024",
@@ -31,6 +33,8 @@ __all__ = [
     "ClassificationHead",
     "DigitizationHead",
     "get_loss_func",
+    "ECGWaveformDetector",
+    "YOLOv10_Detector",
 ]
 
 
@@ -150,9 +154,29 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin, CkptMixin):
             "total_loss": total_loss,
         }
 
-    @add_docstring(ImageBackbone.get_input_tensors.__doc__)
-    def get_input_tensors(self, x: INPUT_IMAGE_TYPES) -> torch.Tensor:
-        return self.image_backbone.get_input_tensors(x)
+    def get_input_tensors(
+        self,
+        img: torch.Tensor,
+        labels: Optional[Dict[str, torch.Tensor]] = None,
+    ) -> Dict[str, torch.Tensor]:
+        """Get input tensors for the model.
+
+        Parameters
+        ----------
+        img : torch.Tensor
+            Input image tensor.
+        labels : dict, optional
+            Not used, but kept for compatibility with other models.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Input tensors for the image backbone model.
+            The key for input image tensor is "image".
+            items in `labels` are unchanged.
+
+        """
+        return {"image": self.image_backbone.get_input_tensors(img), **(labels or {})}
 
     @add_docstring(ImageBackbone.list_backbones.__doc__)
     @staticmethod
@@ -185,7 +209,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin, CkptMixin):
             threshold = self.config.classification_head.threshold
         original_mode = self.training
         self.eval()
-        output = self.forward(self.image_backbone.get_input_tensors(img))
+        output = self.forward(self.get_input_tensors(img)["image"])
         dx_probs = output["dx_probs"]
         dx = [[self.config.classification_head.classes[idx] for idx, prob in enumerate(dx_probs) if prob >= threshold]]
         self.train(original_mode)

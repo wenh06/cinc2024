@@ -184,7 +184,7 @@ class FastDataReader(ReprMixin, Dataset):
         # load the image
         image = self.reader.load_image(row.name)  # numpy array, of shape (H, W, C)
         # image_id (of `int` type) required by some object detection models
-        data = {"image": image, "image_id": index}
+        data = {"image": image, "image_id": row.name}
         if self.config.predict_dx:
             data["dx"] = row["dx"]  # int
         if self.config.predict_digitization:
