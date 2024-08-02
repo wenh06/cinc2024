@@ -107,6 +107,18 @@ class BBox:
         }
 
     def to_yolo_format(self) -> dict:
+        x_center = (self.left + self.right) // 2
+        y_center = (self.top + self.bottom) // 2
+        width = self.width
+        height = self.height
+        return {
+            "bbox": [x_center, y_center, width, height],
+            "category_id": self.category_id,
+            "category_name": self.category_name,
+            "area": self.area,
+        }
+
+    def to_yolon_format(self) -> dict:
         x_center = (self.left + self.right) / 2 / self.img_width
         y_center = (self.top + self.bottom) / 2 / self.img_height
         width = self.width / self.img_width
@@ -235,16 +247,19 @@ class RotatedBBox:
         corners = np.dot(rot_mat, (self.corners - center).T).T + center
         return RotatedBBox(corners, self.img_width, self.img_height, self.category_name)
 
-    def to_coco_format(self) -> list:
+    def to_coco_format(self) -> dict:
         return self.bbox.to_coco_format()
 
-    def to_voc_format(self) -> list:
+    def to_voc_format(self) -> dict:
         return self.bbox.to_voc_format()
 
-    def to_yolo_format(self) -> list:
+    def to_yolo_format(self) -> dict:
         return self.bbox.to_yolo_format()
 
-    def to_matplotlib_format(self) -> list:
+    def to_yolon_format(self) -> dict:
+        return self.bbox.to_yolon_format()
+
+    def to_matplotlib_format(self) -> dict:
         return self.bbox.to_matplotlib_format()
 
     def asdict(self) -> dict:
