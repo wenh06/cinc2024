@@ -21,7 +21,7 @@ from tqdm.auto import tqdm
 
 from cfg import ModelCfg, TrainCfg
 from const import MODEL_CACHE_DIR
-from dataset import CinC2024Dataset, collate_fn
+from dataset import CinC2024Dataset, collate_fn, naive_collate_fn
 from models import MultiHead_CINC2024
 from utils.scoring_metrics import compute_challenge_metrics
 
@@ -136,7 +136,7 @@ class CINC2024Trainer(BaseTrainer):
             num_workers=num_workers,
             pin_memory=True,
             drop_last=False,
-            collate_fn=collate_fn,
+            collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
         )
 
         if self.train_config.debug:
@@ -147,7 +147,7 @@ class CINC2024Trainer(BaseTrainer):
                 num_workers=num_workers,
                 pin_memory=True,
                 drop_last=False,
-                collate_fn=collate_fn,
+                collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
             )
         else:
             self.val_train_loader = None
@@ -158,7 +158,7 @@ class CINC2024Trainer(BaseTrainer):
             num_workers=num_workers,
             pin_memory=True,
             drop_last=False,
-            collate_fn=collate_fn,
+            collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
         )
 
     def train_one_epoch(self, pbar: tqdm) -> None:
@@ -171,7 +171,8 @@ class CINC2024Trainer(BaseTrainer):
 
         """
         for epoch_step, input_tensors in enumerate(self.train_loader):
-            input_tensors["image"] = self._model.get_input_tensors(input_tensors["image"])["image"]
+            input_images = input_tensors.pop("image")
+            input_tensors = self._model.get_input_tensors(input_images, labels=input_tensors)
             self.global_step += 1
             n_samples = input_tensors["image"].shape[self.batch_dim]
 
@@ -229,6 +230,7 @@ class CINC2024Trainer(BaseTrainer):
                 - "dx" (optional): the Dx classification labels
                 - "digitization" (optional): the signal reconstruction labels
                 - "mask" (optional): the mask for the signal reconstruction
+                - "
 
         Returns
         -------

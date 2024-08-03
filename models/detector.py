@@ -4,7 +4,7 @@ Waveform detector model, which detects the bounding boxes of the waveforms in th
 
 import os
 from copy import deepcopy
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import PIL
@@ -49,62 +49,62 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
 
     """
 
-    def __init__(
-        self,
-        name_or_path: Union[str, bytes, os.PathLike],
-        source: str = "hf",
-        pretrained: bool = True,
-        config: Optional[CFG] = None,
-        **kwargs,
-    ) -> None:
+    def __init__(self, config: Optional[CFG] = None, **kwargs: Any) -> None:
         super().__init__()
-        self.__config = deepcopy(ModelCfg.object_detection.copy())
+        self.__config = deepcopy(ModelCfg.object_detection)
         if config is not None:
             self.__config.update(deepcopy(config))
-        self.name_or_path = name_or_path
-        self.source = source.lower()
-        if self.source == "hf":
+        self.__config.update(kwargs)
+        if self.config.source.lower() == "hf":
+            # The preprocessor typically expects the annotations to be in the following format:
+            #  {'image_id': int, 'annotations': List[Dict]}, where each dictionary is a COCO object annotation
             self.preprocessor = transformers.AutoImageProcessor.from_pretrained(
-                name_or_path,
+                self.config.model_name,
                 cache_dir=MODEL_CACHE_DIR,
             )
             self.augmentor = None
             self.detector = transformers.AutoModelForObjectDetection.from_pretrained(
-                name_or_path,
+                self.config.model_name,
                 label2id=self.config["label2id"],
                 id2label={v: k for k, v in self.config["label2id"].items()},
                 cache_dir=MODEL_CACHE_DIR,
                 ignore_mismatched_sizes=True,
             )
-        elif self.source == "mm":
+        elif self.config.source == "mm":
             raise NotImplementedError
-        elif self.source == "de":
+        elif self.config.source == "de":
             raise NotImplementedError
         else:
-            raise ValueError(f"Unsupported source: {source}")
+            raise ValueError(f"Unsupported source: {self.config.source}")
 
     def get_input_tensors(
-        self, img: INPUT_IMAGE_TYPES, labels: Optional[Union[Dict[str, torch.Tensor], List[Dict[str, torch.Tensor]]]] = None
-    ) -> Union[torch.Tensor, transformers.BatchFeature]:
+        self, img: INPUT_IMAGE_TYPES, labels: Optional[Union[Dict[str, list], List[Dict[str, torch.Tensor]]]] = None
+    ) -> Union[Dict[str, torch.Tensor], transformers.BatchFeature]:
         """Get input tensors for the model.
 
         Parameters
         ----------
         img : numpy.ndarray or torch.Tensor or PIL.Image.Image or list
             Input image(s).
-        labels : Dict[str, torch.Tensor] or List[Dict[str, torch.Tensor]], optional
-            The bbox labels.
-            If the source is "hf", the label dictionaries should have the following keys:
+        labels : Dict[str, list] or List[Dict[str, torch.Tensor]], optional
+            The bounding box labels.
+            If the source is "hf", the label dictionary should have the following keys:
             - "image_id" (`int`): The image id.
-            - "annotations" (`List[Dict]`): List of annotations for an image.
-              The annotations are typically of COCO format (https://cocodataset.org/#format-data):
-              Each annotation should be a dictionary. An image can have no annotations, in which case the list should be empty.
-              The annotation dictionary can have the following keys:
+            - "bbox" (`List[Dict]`): List of bounding boxes for an image.
+              The bounding boxes are typically of COCO format (https://cocodataset.org/#format-data):
+              Each bounding boxes annotation should be a dictionary.
+              An image can have no annotations, in which case the list should be empty.
+              The bounding boxes annotation dictionary can have the following keys:
+              - "annotations" (`List[Dict]`, required): List of annotations for an image.
+                Each annotation is a dictionary with the following keys:
                 - "bbox" (`List[float]`, required): The bounding box of the object, of the form
                   [top left x, top left y, width, height]
                 - "category_id" (`int`, required): The category id, the same as the category id in the label2id mapping.
                 - "iscrowd" (`int`, optional): The iscrowd flag. NOT used in this project.
                 - "area" (`float`, required): The area of the object, can be pre-calculated as width * height.
+              - "iamge_id" (`int`): The image id.
+            If is a list of dictionaries, if should have the same structure as the "bbox" key
+            in the dictionary mentioned above.
 
         Returns
         -------
@@ -117,38 +117,44 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
 
         """
         assert self.preprocessor is not None, "Set up the preprocessor first."
-        if isinstance(img, (np.ndarray, torch.Tensor)):
-            img_ndim = img.ndim
-        elif isinstance(img, (PIL.Image.Image)):
-            img_ndim = 3
-        elif isinstance(img, (list, tuple)):
-            img_ndim = 4
-        else:
-            raise ValueError(f"Input tensor has invalid type: {type(img)}")
-        if self.source == "hf":
+        if self.config.source == "hf":
             if labels is not None:
-                img = self.preprocessor(img, labels, return_tensors="pt")
-                # move the tensors to the device of the model
-                self.move_to_model_device(img)
+                if "annotations" in labels:
+                    output = self.preprocessor(images=img, annotations=labels, return_tensors="pt")
+                else:
+                    output = self.preprocessor(images=img, annotations=labels["bbox"], return_tensors="pt")
+                output.pop("pixel_mask")
+                output = self.move_to_model_device(output)
+                # rename "pixel_values" to "image"
+                output["image"] = output.pop("pixel_values")
             else:
-                img = self.preprocessor(img).convert_to_tensors("pt")["pixel_values"].to(self.device)
-        elif self.source == "timm":
+                output = {"image": self.preprocessor(img).convert_to_tensors("pt")["pixel_values"].to(self.device)}
+        elif self.config.source == "timm":
+            # not tested
+            if isinstance(img, (np.ndarray, torch.Tensor)):
+                img_ndim = img.ndim
+            elif isinstance(img, (PIL.Image.Image)):
+                img_ndim = 3
+            elif isinstance(img, (list, tuple)):
+                img_ndim = 4
+            else:
+                raise ValueError(f"Input tensor has invalid type: {type(img)}")
             if img_ndim == 3:
-                img = self.preprocessor(img).to(self.device)
+                output = self.preprocessor(img).to(self.device)
             elif img_ndim == 4:
-                img = torch.stack([self.preprocessor(item).to(self.device) for item in img])
+                output = torch.stack([self.preprocessor(item).to(self.device) for item in img])
             else:
                 raise ValueError(f"Input tensor has invalid shape: {img.shape}")
             raise NotImplementedError
-        elif self.source == "tv":
-            img = self.preprocessor(img).to(self.device)
+        elif self.config.source == "tv":
+            output = self.preprocessor(img).to(self.device)
             raise NotImplementedError
-        return img
+        return output
 
     def forward(
         self,
         img: torch.Tensor,
-        labels: Optional[List[Dict[str, torch.Tensor]]] = None,
+        labels: Optional[Union[List[Dict[str, torch.Tensor]], Dict[str, list], transformers.BatchFeature]] = None,
     ) -> Dict[str, torch.Tensor]:
         """Forward pass of the model.
 
@@ -158,12 +164,14 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
         ----------
         img : torch.Tensor
             The input image tensor.
-        labels : Dict[str, torch.Tensor], optional
+        labels : List[Dict[str, torch.Tensor]] or Dict[str, list] or transformers.BatchFeature, optional
             The bbox labels.
             Labels for computing the bipartite matching loss. List of dicts, each dictionary containing at least the
             following 2 keys: 'class_labels' and 'boxes' (the class labels and bounding boxes of an image in the batch
             respectively). The class labels themselves should be a `torch.LongTensor` of len `(number of bounding boxes
             in the image,)` and the boxes a `torch.FloatTensor` of shape `(number of bounding boxes in the image, 4)`.
+            If is a dictionary or `BatchFeature`,
+            it should have a "labels" key, whose value is a list of dictionaries mentioned above.
 
         Returns
         -------
@@ -171,11 +179,13 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
             The output of the model.
 
         """
-        if self.source == "hf":
+        if self.config.source == "hf":
+            if isinstance(labels, (transformers.BatchFeature, dict)):
+                labels = labels["labels"]
             outputs = self.detector(img, labels=labels)
-        elif self.source == "mm":
+        elif self.config.source == "mm":
             raise NotImplementedError
-        elif self.source == "de":
+        elif self.config.source == "de":
             raise NotImplementedError
         return outputs
 
@@ -196,7 +206,7 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
         """
         original_mode = self.training
         self.eval()
-        output = self.forward(self.image_backbone.get_input_tensors(img))
+        output = self.forward(self.get_input_tensors(img)["image"])
         self.train(original_mode)
         # outputs converted to a list of dictionaries with keys: "scores", "labels", "boxes"
         output = self.preprocessor.post_process_object_detection(output, threshold=self.config.bbox_thr)
@@ -205,18 +215,11 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
             for k in list_item:
                 if isinstance(list_item[k], torch.Tensor):
                     list_item[k] = list_item[k].cpu().detach().numpy()
-        return CINC2024Outputs(
-            bbox={
-                "xmin": output["boxes"][:, 0],
-                "ymin": output["boxes"][:, 1],
-                "xmax": output["boxes"][:, 2],
-                "ymax": output["boxes"][:, 3],
-                "class": [self.config.class_names[i] for i in output["labels"]],
-                "score": output["scores"],
-            }
-        )
+        return CINC2024Outputs(bbox=output)
 
-    def move_to_model_device(self, input_tensors: Union[torch.Tensor, transformers.BatchFeature, list, dict]) -> None:
+    def move_to_model_device(
+        self, input_tensors: Union[torch.Tensor, transformers.BatchFeature, list, dict]
+    ) -> Union[torch.Tensor, transformers.BatchFeature, list, dict]:
         """Move the input tensors to the device of the model.
 
         Parameters
@@ -226,7 +229,8 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
 
         Returns
         -------
-        None
+        torch.Tensor or transformers.BatchFeature or list or dict
+            The input tensors moved to the device of the model.
 
         """
         if isinstance(input_tensors, torch.Tensor):
@@ -239,6 +243,7 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
                 input_tensors[k] = self.move_to_model_device(input_tensors[k])
         else:
             pass  # do nothing
+        return input_tensors
 
     @property
     def config(self) -> CFG:

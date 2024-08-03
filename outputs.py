@@ -2,7 +2,7 @@
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Sequence, Union
+from typing import Dict, Optional, Sequence
 
 import numpy as np
 import torch
@@ -37,9 +37,9 @@ class CINC2024Outputs:
         Loss for the digitization.
     total_loss : Sequence[float]
         Total loss, sum of the `dx_loss` and `digitization_loss`.
-    bbox : Sequence[Dict[str, Union[float, int, str]]]
+    bbox : Sequence[Dict[str, np.ndarray]]
         Bounding boxes of the detected objects,
-        keys are "xmin", "ymin, "xmax, "ymax", "class", "score".
+        keys are "boxes", "labels", "scores".
     bbox_loss : Sequence[float], optional
 
     """
@@ -53,13 +53,19 @@ class CINC2024Outputs:
     digitization: Optional[Sequence[np.ndarray]] = None
     digitization_loss: Optional[Sequence[float]] = None
     total_loss: Optional[Sequence[float]] = None
-    bbox: Optional[Sequence[Dict[str, Union[float, int, str]]]] = None
+    bbox: Optional[Sequence[Dict[str, np.ndarray]]] = None
     bbox_loss: Optional[Sequence[float]] = None
 
     def __post_init__(self) -> None:
         assert any(
-            [self.dx is not None, self.dx_logits, self.dx_prob, self.digitization is not None]
-        ), "at least one of `dx`, `digitization` prediction should be provided"
+            [
+                self.dx is not None,
+                self.dx_logits is not None,
+                self.dx_prob is not None,
+                self.digitization is not None,
+                self.bbox is not None,
+            ]
+        ), "at least one of `dx`, `digitization`, `bbox` prediction should be provided"
         if self.dx is not None:
             assert self.dx_classes is not None, "dx_classes should be provided if `dx` is provided"
             idx2class = {idx: cl for idx, cl in enumerate(self.dx_classes)}

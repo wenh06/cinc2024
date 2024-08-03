@@ -124,7 +124,7 @@ The second sub-task can be done by using a sequence generation model or segmenta
 | jameslahm/yolov10n                                             | huggingface | 11.2 MB    |                |
 | jozhang97/deta-swin-large                                      | huggingface | 879 MB     | 55.64          |
 | jozhang97/deta-resnet-50-24-epochs                             | huggingface | 194 MB     | 49.35          |
-| jozhang97/deta-resnet-50-12-epochs                             | huggingface | 194 MB     | 48.77          |
+| jozhang97/deta-resnet-50                                       | huggingface | 194 MB     | 48.77          |
 | facebook/detr-resnet-50-dc5                                    | huggingface | 167 MB     | 43.26          |
 | facebook/detr-resnet-50                                        | huggingface | 167 MB     | 42.08          |
 
