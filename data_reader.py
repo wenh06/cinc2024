@@ -727,7 +727,12 @@ class CINC2024Reader(PhysioNetDataBase):
         return diagnostic_superclasses
 
     def load_bbox(
-        self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco", return_dict: bool = False
+        self,
+        img: Union[str, int],
+        bbox_type: Optional[str] = None,
+        fmt: str = "coco",
+        return_dict: bool = False,
+        clip: bool = True,
     ) -> List[Dict[str, Any]]:
         """Load the bounding boxes of the image.
 
@@ -752,6 +757,8 @@ class CINC2024Reader(PhysioNetDataBase):
             If False, return the bounding boxes as a list of dictionaries.
             If True, return the bounding boxes (and category_id, etc.) as a dictionary of lists.
             This is useful for feeding data into augmentation libraries (e.g. `albumentations`).
+        clip: bool, default True
+            Whether to clip the bounding boxes to the image boundaries.
 
         Returns
         -------
@@ -783,7 +790,10 @@ class CINC2024Reader(PhysioNetDataBase):
         """
         if isinstance(img, int):
             img = self._all_images[img]
-        bbox = self._df_images.loc[img, "bbox"]
+        if clip:
+            bbox = self._df_images.loc[img, "bbox"]
+        else:
+            bbox = self._load_bbox(img, clip=False)
         if bbox_type == "lead":
             bbox = [wb for wb in bbox if wb.category_name == "waveform"]
         elif bbox_type == "text":
@@ -806,7 +816,7 @@ class CINC2024Reader(PhysioNetDataBase):
         return bbox
 
     @add_docstring(remove_parameters_returns_from_docstring(load_bbox.__doc__, parameters=["bbox_type", "fmt", "return_dict"]))
-    def _load_bbox(self, img: Union[str, int]) -> List[Union[BBox, RotatedBBox]]:
+    def _load_bbox(self, img: Union[str, int], clip: bool = True) -> List[Union[BBox, RotatedBBox]]:
         if isinstance(img, int):
             img = self._all_images[img]
         img_path = self._df_images.loc[img, "path"]
@@ -825,6 +835,8 @@ class CINC2024Reader(PhysioNetDataBase):
             for l_bbox in lead_bbox:
                 # convert to the PIL coordinate system
                 x1, y1, x2, y2 = l_bbox[:, 1].min(), l_bbox[:, 0].min(), l_bbox[:, 1].max(), l_bbox[:, 0].max()
+                if clip:
+                    x1, y1, x2, y2 = max(0, x1), max(0, y1), min(img_width, x2), min(img_height, y2)
                 bbox.append(
                     BBox(
                         xmin=x1,
@@ -845,6 +857,8 @@ class CINC2024Reader(PhysioNetDataBase):
             for t_bbox, ln in zip(text_bbox, lead_name):
                 # convert to the PIL coordinate system
                 x1, y1, x2, y2 = t_bbox[:, 1].min(), t_bbox[:, 0].min(), t_bbox[:, 1].max(), t_bbox[:, 0].max()
+                if clip:
+                    x1, y1, x2, y2 = max(0, x1), max(0, y1), min(img_width, x2), min(img_height, y2)
                 bbox.append(
                     BBox(
                         xmin=x1,
