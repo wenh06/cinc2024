@@ -1049,6 +1049,13 @@ class CINC2024Reader(PhysioNetDataBase):
         parallel: bool = False,
         **kwargs: Any,
     ) -> None:
+        random_resolution = kwargs.get("random_resolution", self.__gen_img_default_config__["random_resolution"])
+        if random_resolution:
+            self.logger.warning(
+                "In order to make the training process easier, it is recommended to generate the synthetic images "
+                "with fixed resolution so that all images have the same size. In this way, the images can be "
+                "processed in batches without resizing."
+            )
         try:
             if parallel:
                 if kwargs.get("hw_text", self.__gen_img_default_config__["hw_text"]) is True:
