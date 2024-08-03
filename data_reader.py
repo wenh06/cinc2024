@@ -176,6 +176,7 @@ class CINC2024Reader(PhysioNetDataBase):
         self.header_ext = "hea"
         self.img_ext = ecg_img_gen_constants.save_img_ext.strip(".")
         self.bbox_ext = "npz"
+        self.bbox_min_size = 2 * max(kwargs.pop("bbox_min_size", 12) // 2, 1)  # pixels
         self.record_pattern = "[\\d]{5}_[lh]r"
 
         assert os.access(self.db_dir, os.W_OK) or os.access(
@@ -733,6 +734,7 @@ class CINC2024Reader(PhysioNetDataBase):
         fmt: str = "coco",
         return_dict: bool = False,
         clip: bool = True,
+        min_size: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Load the bounding boxes of the image.
 
@@ -759,6 +761,9 @@ class CINC2024Reader(PhysioNetDataBase):
             This is useful for feeding data into augmentation libraries (e.g. `albumentations`).
         clip: bool, default True
             Whether to clip the bounding boxes to the image boundaries.
+        min_size: int, optional
+            The minimum size of the bounding box.
+            If is None, the default value of the reader will be used.
 
         Returns
         -------
@@ -790,10 +795,12 @@ class CINC2024Reader(PhysioNetDataBase):
         """
         if isinstance(img, int):
             img = self._all_images[img]
-        if clip:
+        if min_size is None:
+            min_size = self.bbox_min_size
+        if clip and min_size == self.bbox_min_size:
             bbox = self._df_images.loc[img, "bbox"]
         else:
-            bbox = self._load_bbox(img, clip=False)
+            bbox = self._load_bbox(img, clip=clip, min_size=min_size)
         if bbox_type == "lead":
             bbox = [wb for wb in bbox if wb.category_name == "waveform"]
         elif bbox_type == "text":
@@ -816,10 +823,14 @@ class CINC2024Reader(PhysioNetDataBase):
         return bbox
 
     @add_docstring(remove_parameters_returns_from_docstring(load_bbox.__doc__, parameters=["bbox_type", "fmt", "return_dict"]))
-    def _load_bbox(self, img: Union[str, int], clip: bool = True) -> List[Union[BBox, RotatedBBox]]:
+    def _load_bbox(
+        self, img: Union[str, int], clip: bool = True, min_size: Optional[int] = None
+    ) -> List[Union[BBox, RotatedBBox]]:
         if isinstance(img, int):
             img = self._all_images[img]
         img_path = self._df_images.loc[img, "path"]
+        if min_size is None:
+            min_size = self.bbox_min_size
 
         # get image width and height without loading the image
         pil_img = Image.open(img_path)
@@ -837,6 +848,24 @@ class CINC2024Reader(PhysioNetDataBase):
                 x1, y1, x2, y2 = l_bbox[:, 1].min(), l_bbox[:, 0].min(), l_bbox[:, 1].max(), l_bbox[:, 0].max()
                 if clip:
                     x1, y1, x2, y2 = max(0, x1), max(0, y1), min(img_width, x2), min(img_height, y2)
+                if (x2 - x1) < min_size:
+                    if x1 < min_size / 2:
+                        x1, x2 = 0, min_size
+                    elif x2 > img_width - min_size / 2:
+                        x1, x2 = img_width - min_size, img_width
+                    else:
+                        pad_left = (min_size - (x2 - x1)) // 2
+                        pad_right = min_size - (x2 - x1) - pad_left
+                        x1, x2 = x1 - pad_left, x2 + pad_right
+                if (y2 - y1) < min_size:
+                    if y1 < min_size / 2:
+                        y1, y2 = 0, min_size
+                    elif y2 > img_height - min_size / 2:
+                        y1, y2 = img_height - min_size, img_height
+                    else:
+                        pad_top = (min_size - (y2 - y1)) // 2
+                        pad_bottom = min_size - (y2 - y1) - pad_top
+                        y1, y2 = y1 - pad_top, y2 + pad_bottom
                 bbox.append(
                     BBox(
                         xmin=x1,
