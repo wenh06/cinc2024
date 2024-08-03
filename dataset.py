@@ -5,6 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Sequence, Set, Union
 
+import albumentations as A
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
@@ -53,6 +54,25 @@ class CinC2024Dataset(Dataset, ReprMixin):
         self.training = training
         self.lazy = lazy
 
+        A_kw = {}
+        if self.config.predict_bbox:
+            A_kw["bbox_params"] = A.BboxParams(format=self.config.bbox_format, label_fields=["category_id"])
+        if self.training:
+            self.transform = A.Compose(
+                [
+                    A.RandomBrightnessContrast(p=0.5),
+                    A.HueSaturationValue(p=0.1),
+                ],
+                **A_kw,
+            )
+        else:
+            self.transform = A.Compose(
+                [
+                    A.NoOp(),
+                ],
+                **A_kw,
+            )
+
         if self.config.get("db_dir", None) is None:
             self.config.db_dir = reader_kwargs.pop("db_dir", None)
             assert self.config.db_dir is not None, "db_dir must be specified"
@@ -74,7 +94,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
         self.reader = CINC2024Reader(db_dir=self.config.db_dir, **reader_kwargs)
         # process the bounding boxes
         self.reader._df_images["bbox_formatted"] = self.reader._df_images.index.map(
-            lambda img_id: self.reader.load_bbox(img_id, fmt=self.config.bbox_format)
+            lambda img_id: self.reader.load_bbox(img_id, fmt=self.config.bbox_format, return_dict=True)
         )
 
         ecg_ids = self._train_test_split(train_ratio=self.config.train_ratio)
@@ -84,7 +104,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
             lambda x: self.reader.load_dx_ann(x, class_map={k: i for i, k in enumerate(self.config.classes)})
         )
 
-        self.fdr = FastDataReader(self.reader, self._df_data, self.config)
+        self.fdr = FastDataReader(self.reader, self._df_data, self.config, self.transform)
 
         if not self.lazy:
             self._load_all_data()
@@ -147,7 +167,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
             "image", "image_id",  # basic fields
             "dx",  # classification
             "digitization", "mask",  # digitization
-            "bbox", "category_id", "area"  # object detection
+            "bbox",  # object detection
             "mask",  # mask prediction
         ])
         # fmt: on
@@ -162,11 +182,13 @@ class FastDataReader(ReprMixin, Dataset):
         reader: CINC2024Reader,
         df_data: Sequence[str],
         config: CFG,
+        transform: A.Compose,
     ) -> None:
         self.reader = reader
         self.df_data = df_data
         self.images = self.df_data.index.tolist()
         self.config = config
+        self.transform = transform
         if self.config.torch_dtype == torch.float64:
             self.dtype = np.float64
         else:
@@ -179,12 +201,25 @@ class FastDataReader(ReprMixin, Dataset):
         if isinstance(index, slice):
             # note that the images are of the same size
             # return default_collate_fn([self[i] for i in range(*index.indices(len(self)))])
+            if self.config.predict_bbox:
+                return naive_collate_fn([self[i] for i in range(*index.indices(len(self)))])
             return collate_fn([self[i] for i in range(*index.indices(len(self)))])
         row = self.df_data.loc[self.images[index]]
         # load the image
         image = self.reader.load_image(row.name)  # numpy array, of shape (H, W, C)
+
         # image_id (of `int` type) required by some object detection models
-        data = {"image": image, "image_id": row.name}
+        # `str` type is not supported by pytorch
+        # data = {"image_id": index, "image_name": row.name}
+        data = {"image_id": index}
+
+        A_kw = {}
+        if self.config.predict_bbox:
+            A_kw["bboxes"] = row["bbox_formatted"]["bbox"]
+            A_kw["category_id"] = row["bbox_formatted"]["category_id"]
+        A_out = self.transform(image=image, **A_kw)
+        data["image"] = A_out.pop("image")
+
         if self.config.predict_dx:
             data["dx"] = row["dx"]  # int
         if self.config.predict_digitization:
@@ -195,9 +230,20 @@ class FastDataReader(ReprMixin, Dataset):
             raise NotImplementedError("data preparation for digitization prediction is not implemented yet")
         if self.config.predict_bbox:
             # load the bounding boxes
-            # keys are "bbox", "category_id", "area"
-            # data["bbox"] = row["bbox"]
-            raise NotImplementedError("data preparation for object detection is not implemented yet")
+            if self.config.bbox_format == "coco":
+                data["bbox"] = format_image_annotations_as_coco(
+                    image_id=index,
+                    bboxes=A_out["bboxes"],
+                    categories=A_out["category_id"],
+                    # the area should be the original area or the area after augmentation?
+                    areas=row["bbox_formatted"]["area"],
+                    # areas=[(bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) for bbox in A_out["bboxes"]],
+                )
+            else:
+                raise NotImplementedError(f"bbox format {self.config.bbox_format} is not implemented yet")
+        if self.config.predict_mask:
+            # load the mask
+            raise NotImplementedError("mask prediction is not implemented yet")
 
         return data
 
@@ -208,6 +254,19 @@ class FastDataReader(ReprMixin, Dataset):
 
 
 def collate_fn(batch: List[Dict[str, np.ndarray]]) -> Dict[str, Union[torch.Tensor, List[np.ndarray]]]:
+    """Collate function for the dataset.
+
+    Parameters
+    ----------
+    batch : List[Dict[str, np.ndarray]]
+        The batch of data.
+
+    Returns
+    -------
+    Dict[str, Union[torch.Tensor, List[np.ndarray]]]
+        The collated data.
+
+    """
     out_tensors = {}
     for k in batch[0].keys():
         if k == "image":
@@ -215,3 +274,69 @@ def collate_fn(batch: List[Dict[str, np.ndarray]]) -> Dict[str, Union[torch.Tens
         out_tensors[k] = torch.from_numpy(np.concatenate([[b[k]] for b in batch], axis=0))
     out_tensors["image"] = [b["image"] for b in batch]
     return out_tensors
+
+
+def naive_collate_fn(batch: List[Dict[str, np.ndarray]]) -> Dict[str, list]:
+    """Naive collate function for the dataset.
+
+    This function only concatenates the data into a list, typically used for
+    object detection tasks. (Pre)Processors of the Huggingface object detection
+    models can handle the data in this format.
+
+    Parameters
+    ----------
+    batch : List[Dict[str, np.ndarray]]
+        The batch of data.
+
+    Returns
+    -------
+    Dict[str, list]
+        The collated data.
+
+    """
+    batched_data = {}
+    for k in batch[0].keys():
+        batched_data[k] = [b[k] for b in batch]
+    return batched_data
+
+
+def format_image_annotations_as_coco(
+    image_id: Union[int, str], bboxes: Sequence[Sequence[float]], categories: Sequence[int], areas: Sequence[float]
+) -> Dict[str, List[Dict[str, Union[int, float]]]]:
+    """Format the image annotations as COCO format.
+
+    Parameters
+    ----------
+    image_id : Union[int, str]
+        The image ID.
+    bboxes : Sequence[Sequence[float]]
+        The bounding boxes.
+    categories : Sequence[int]
+        The category IDs.
+    areas : Sequence[float]
+        The areas of the bounding boxes.
+
+    Returns
+    -------
+    Dict[str, List[Dict[str, Union[int, float]]]]
+        The formatted annotations, keys are "annotations" and "image_id".
+        "annotations" is a list of dictionaries, each of which contains the following keys:
+        - "image_id" : int
+        - "is_crowd" : 0
+        - "bbox" : List[float]
+        - "category_id" : int
+        - "area" : float
+
+    """
+    annotations = []
+    for bbox, area, category_id in zip(bboxes, areas, categories):
+        annotations.append(
+            {
+                "image_id": image_id,
+                "is_crowd": 0,
+                "bbox": list(bbox),
+                "category_id": category_id,
+                "area": area,
+            }
+        )
+    return {"annotations": annotations, "image_id": image_id}

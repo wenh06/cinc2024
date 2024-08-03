@@ -204,7 +204,7 @@ ModelCfg.digitization_head.include = TrainCfg.predict_digitization
 
 # model config for object detection
 ModelCfg.object_detection = CFG()
-ModelCfg.object_detection.model_name = "jozhang97/deta-resnet-50-12-epochs"  # "facebook/detr-resnet-50"
+ModelCfg.object_detection.model_name = "facebook/detr-resnet-50"  # "jozhang97/deta-resnet-50-24-epochs"
 ModelCfg.object_detection.source = "hf"
 ModelCfg.object_detection.freeze = False
 ModelCfg.object_detection.scale = "n"

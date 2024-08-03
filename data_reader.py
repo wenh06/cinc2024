@@ -726,7 +726,9 @@ class CINC2024Reader(PhysioNetDataBase):
             diagnostic_superclasses = [class_map[diag_sc] for diag_sc in diagnostic_superclasses]
         return diagnostic_superclasses
 
-    def load_bbox(self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco") -> List[Dict[str, Any]]:
+    def load_bbox(
+        self, img: Union[str, int], bbox_type: Optional[str] = None, fmt: str = "coco", return_dict: bool = False
+    ) -> List[Dict[str, Any]]:
         """Load the bounding boxes of the image.
 
         Parameters
@@ -746,6 +748,10 @@ class CINC2024Reader(PhysioNetDataBase):
               ``[x_center, y_center, width, height]`` (normalized to [0, 1]).
             - If is "albumentations", the bounding boxes will be in Albumentations format:
                 ``[x_min, y_min, x_max, y_max]`` (normalized to [0, 1]).
+        return_dict: bool, default False
+            If False, return the bounding boxes as a list of dictionaries.
+            If True, return the bounding boxes (and category_id, etc.) as a dictionary of lists.
+            This is useful for feeding data into augmentation libraries (e.g. `albumentations`).
 
         Returns
         -------
@@ -794,9 +800,12 @@ class CINC2024Reader(PhysioNetDataBase):
             bbox = [wb.to_albumentations_format() for wb in bbox]
         else:
             raise ValueError(f"Invalid format `{fmt}`")
+        if return_dict:
+            keys = bbox[0].keys()
+            bbox = {key: [b[key] for b in bbox] for key in keys}
         return bbox
 
-    @add_docstring(remove_parameters_returns_from_docstring(load_bbox.__doc__, parameters=["bbox_type", "fmt"]))
+    @add_docstring(remove_parameters_returns_from_docstring(load_bbox.__doc__, parameters=["bbox_type", "fmt", "return_dict"]))
     def _load_bbox(self, img: Union[str, int]) -> List[Union[BBox, RotatedBBox]]:
         if isinstance(img, int):
             img = self._all_images[img]
