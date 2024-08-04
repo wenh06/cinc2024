@@ -14,6 +14,7 @@ import transformers
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import CitationMixin, list_sum
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
+from torchvision.ops import batched_nms
 
 from cfg import ModelCfg
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
@@ -48,6 +49,8 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
     .. [1] https://huggingface.co/docs/transformers/en/tasks/object_detection
 
     """
+
+    __name__ = "ECGWaveformDetector"
 
     def __init__(self, config: Optional[CFG] = None, **kwargs: Any) -> None:
         super().__init__()
@@ -190,16 +193,23 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
         return outputs
 
     @torch.no_grad()
-    def inference(self, img: INPUT_IMAGE_TYPES, threshold: Optional[float] = None) -> CINC2024Outputs:
+    def inference(
+        self, img: INPUT_IMAGE_TYPES, bbox_thr: Optional[float] = None, nms_thr: Optional[float] = None, show: bool = False
+    ) -> CINC2024Outputs:
         """Inference on a single image or a batch of images.
 
         Parameters
         ----------
         img : numpy.ndarray, or torch.Tensor, or PIL.Image.Image, or list or tuple
             Input image.
-        threshold : float, optional
+        bbox_thr : float, optional
             The threshold for filtering the bounding boxes.
             If None, the threshold is set to the value of `self.config.bbox_thr`.
+        nms_thr : float, default 0.4
+            The threshold for non-maximum suppression.
+            If None, the threshold is set to the value of `self.config.nms_thr`.
+        show : bool, default False
+            Whether to show the image with the bounding boxes.
 
         Returns
         -------
@@ -213,8 +223,15 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
         self.train(original_mode)
         target_sizes = get_target_sizes(img)
         # outputs converted to a list of dictionaries with keys: "scores", "labels", "boxes"
-        threshold = threshold if threshold is not None else self.config.bbox_thr
-        output = self.preprocessor.post_process_object_detection(output, threshold=threshold, target_sizes=target_sizes)
+        bbox_thr = bbox_thr if bbox_thr is not None else self.config.bbox_thr
+        output = self.preprocessor.post_process_object_detection(output, threshold=bbox_thr, target_sizes=target_sizes)
+        # apply non-maximum suppression
+        for idx, item in enumerate(output):
+            boxes = item["boxes"]
+            scores = item["scores"]
+            labels = item["labels"]
+            keep = batched_nms(boxes, scores, labels, nms_thr)
+            output[idx] = {key: item[key][keep] for key in item}
         # dictionary values to numpy array
         for idx, list_item in enumerate(output):
             for key in list_item:
@@ -224,7 +241,36 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
             list_item["image_size"] = target_sizes[idx]
             list_item["category_id"] = list_item.pop("labels")
             list_item["category_name"] = [self.detector.config.id2label[cl] for cl in list_item["category_id"]]
-        return CINC2024Outputs(bbox=output)
+
+        if show:
+            import matplotlib.pyplot as plt
+            from PIL import Image, ImageDraw, ImageFont
+
+            if isinstance(img, (list, tuple)):
+                img = img[0]
+            if isinstance(img, torch.Tensor):
+                img = img.cpu().detach().numpy()
+            if isinstance(img, np.ndarray):
+                if img.ndim == 4:
+                    img = img[0]
+                if img.shape[0] == 3:
+                    img = np.moveaxis(img, 0, -1)
+            img = Image.fromarray(img)
+            img_width, img_height = img.size
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.truetype("arial.ttf", int(min(img.size) * 0.02))
+            for score, label, box in zip(output[0]["scores"], output[0]["category_name"], output[0]["boxes"]):
+                draw.rectangle(box.tolist(), outline="green", width=3)
+                draw.text((box[0], box[1]), f"{label} {score:.2f}", fill="green", font=font, anchor="lb")
+            # plt.imshow(img)
+            if img_width < img_height:
+                figsize = (10, 10 * img_height / img_width)
+            else:
+                figsize = (10 * img_width / img_height, 10)
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.imshow(img)
+
+        return CINC2024Outputs(bbox=output, bbox_classes=self.config.class_names)
 
     def move_to_model_device(
         self, input_tensors: Union[torch.Tensor, transformers.BatchFeature, list, dict]

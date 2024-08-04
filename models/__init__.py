@@ -151,7 +151,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin, CkptMixin):
             "dx_loss": dx_pred.get("loss", None),
             "digitization": digitization_pred.get("preds", None),
             "digitization_loss": digitization_pred.get("loss", None),
-            "total_loss": total_loss,
+            "loss": total_loss,
         }
 
     def get_input_tensors(

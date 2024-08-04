@@ -215,5 +215,6 @@ ModelCfg.object_detection.num_classes = len(ModelCfg.object_detection.class_name
 ModelCfg.object_detection.num_queries = 100
 ModelCfg.object_detection.label2id = {label: i for i, label in enumerate(ModelCfg.object_detection.class_names)}
 ModelCfg.object_detection.bbox_thr = 0.5
+ModelCfg.object_detection.nms_thr = 0.4
 
 ModelCfg.object_detection.monitor = "detection_map"
