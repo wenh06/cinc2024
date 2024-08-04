@@ -4,7 +4,7 @@ Waveform detector model, which detects the bounding boxes of the waveforms in th
 
 import os
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import PIL
@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 import transformers
 from torch_ecg.cfg import CFG
-from torch_ecg.utils.misc import CitationMixin
+from torch_ecg.utils.misc import CitationMixin, list_sum
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from cfg import ModelCfg
@@ -84,7 +84,7 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
 
         Parameters
         ----------
-        img : numpy.ndarray or torch.Tensor or PIL.Image.Image or list
+        img : numpy.ndarray, or torch.Tensor, or PIL.Image.Image, or list or tuple
             Input image(s).
         labels : Dict[str, list] or List[Dict[str, torch.Tensor]], optional
             The bounding box labels.
@@ -190,31 +190,40 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
         return outputs
 
     @torch.no_grad()
-    def inference(self, img: INPUT_IMAGE_TYPES) -> CINC2024Outputs:
+    def inference(self, img: INPUT_IMAGE_TYPES, threshold: Optional[float] = None) -> CINC2024Outputs:
         """Inference on a single image or a batch of images.
 
         Parameters
         ----------
-        img : numpy.ndarray or torch.Tensor or PIL.Image.Image, or list
+        img : numpy.ndarray, or torch.Tensor, or PIL.Image.Image, or list or tuple
             Input image.
+        threshold : float, optional
+            The threshold for filtering the bounding boxes.
+            If None, the threshold is set to the value of `self.config.bbox_thr`.
 
         Returns
         -------
         CINC2024Outputs
-            Predictions, including "boxes".
+            Predictions, including "bbox".
 
         """
         original_mode = self.training
         self.eval()
         output = self.forward(self.get_input_tensors(img)["image"])
         self.train(original_mode)
+        target_sizes = get_target_sizes(img)
         # outputs converted to a list of dictionaries with keys: "scores", "labels", "boxes"
-        output = self.preprocessor.post_process_object_detection(output, threshold=self.config.bbox_thr)
+        threshold = threshold if threshold is not None else self.config.bbox_thr
+        output = self.preprocessor.post_process_object_detection(output, threshold=threshold, target_sizes=target_sizes)
         # dictionary values to numpy array
-        for list_item in output:
-            for k in list_item:
-                if isinstance(list_item[k], torch.Tensor):
-                    list_item[k] = list_item[k].cpu().detach().numpy()
+        for idx, list_item in enumerate(output):
+            for key in list_item:
+                if isinstance(list_item[key], torch.Tensor):
+                    list_item[key] = list_item[key].cpu().detach().numpy()
+            list_item["boxes"] = np.round(list_item["boxes"]).astype(int)
+            list_item["image_size"] = target_sizes[idx]
+            list_item["category_id"] = list_item.pop("labels")
+            list_item["category_name"] = [self.detector.config.id2label[cl] for cl in list_item["category_id"]]
         return CINC2024Outputs(bbox=output)
 
     def move_to_model_device(
@@ -248,3 +257,35 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
     @property
     def config(self) -> CFG:
         return self.__config
+
+
+def get_target_sizes(img: INPUT_IMAGE_TYPES, channels: int = 3) -> List[Tuple[int, int]]:
+    """Get the target sizes of the input image(s).
+
+    Parameters
+    ----------
+    img : numpy.ndarray, or torch.Tensor, or PIL.Image.Image, or list or tuple
+        Input image.
+    channels : int, default 3
+        The number of channels of the input image.
+        Used to determine the channel dimension of the input image.
+
+    Returns
+    -------
+    List[Tuple[int, int]]
+        The list containing the target size `(height, width)` of each image.
+
+    """
+    if isinstance(img, (list, tuple)):
+        target_sizes = list_sum(get_target_sizes(item, channels) for item in img)
+    elif isinstance(img, (np.ndarray, torch.Tensor)):
+        if img.ndim == 3:
+            if img.shape[0] == channels:  # channels first
+                target_sizes = [tuple(img.shape[1:])]
+            else:  # channels last
+                target_sizes = [tuple(img.shape[:-1])]
+        elif img.ndim == 4:
+            target_sizes = list_sum(get_target_sizes(item, channels) for item in img)
+    elif isinstance(img, PIL.Image.Image):
+        target_sizes = [img.size[::-1]]
+    return target_sizes

@@ -39,7 +39,7 @@ class CINC2024Outputs:
         Total loss, sum of the `dx_loss` and `digitization_loss`.
     bbox : Sequence[Dict[str, np.ndarray]]
         Bounding boxes of the detected objects,
-        keys are "boxes", "labels", "scores".
+        keys are "boxes", "category_id", "category_name", "scores".
     bbox_loss : Sequence[float], optional
 
     """
