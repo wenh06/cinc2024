@@ -88,6 +88,8 @@ class CINC2024Trainer(BaseTrainer):
             device=device,
             lazy=lazy,
         )
+        if hasattr(self._model.config, "monitor") and self._model.config.monitor is not None:
+            self._train_config["monitor"] = self._model.config.monitor
 
     def _setup_dataloaders(
         self,
@@ -179,7 +181,7 @@ class CINC2024Trainer(BaseTrainer):
             out_tensors = self.run_one_step(input_tensors)
 
             # NOTE: loss is computed in the model, and kept in the out_tensors
-            loss = out_tensors["total_loss"]
+            loss = out_tensors["loss"]
 
             if self.train_config.flooding_level > 0:
                 flood = (loss - self.train_config.flooding_level).abs() + self.train_config.flooding_level
@@ -241,7 +243,9 @@ class CINC2024Trainer(BaseTrainer):
             - "dx_loss": the Dx classification loss
             - "digitization": the signal reconstruction predictions, of shape ``(batch_size, n_leads, n_samples)``.
             - "digitization_loss": the signal reconstruction loss
-            - "total_loss": the total loss for the training step
+            - "loss": the total loss for the training step
+            - "bbox": the bounding box predictions
+            - "bbox_loss": the bounding box loss
 
         """
         image = input_tensors.pop("image")
@@ -260,7 +264,7 @@ class CINC2024Trainer(BaseTrainer):
         with tqdm(
             total=len(data_loader.dataset),
             desc="Evaluation",
-            unit="signals",
+            unit="image",
             dynamic_ncols=True,
             mininterval=1.0,
             leave=False,
@@ -270,10 +274,11 @@ class CINC2024Trainer(BaseTrainer):
                 # "image" (required): the input image list
                 # "dx" (optional): the Dx classification labels
                 # "digitization" (optional): the signal reconstruction labels
+                # "bbox" (optional): the bounding box labels
                 # "mask" (optional): the mask for the signal reconstruction
                 # image = self._model.get_input_tensors(input_tensors.pop("image"))
                 image = input_tensors.pop("image")
-                labels = {k: v.numpy() for k, v in input_tensors.items() if v is not None}
+                labels = {k: v.numpy() if isinstance(v, torch.Tensor) else v for k, v in input_tensors.items() if v is not None}
                 if "dx" in labels:
                     # convert numeric labels to string labels
                     labels["dx"] = np.array([self._model.config.classification_head.classes[i] for i in labels["dx"]])
@@ -308,6 +313,8 @@ class CINC2024Trainer(BaseTrainer):
             metrics_keeps.append("dx")
         if self.train_config.predict_digitization:
             metrics_keeps.append("digitization")
+        if self.train_config.predict_bbox:
+            metrics_keeps.append("detection")
         eval_res = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)
 
         # in case possible memeory leakage?
@@ -328,27 +335,37 @@ class CINC2024Trainer(BaseTrainer):
 
     @property
     def extra_required_train_config_fields(self) -> List[str]:
-        return ["predict_dx", "predict_digitization"]
+        return ["predict_dx", "predict_digitization", "predict_bbox"]
 
     @property
     def save_prefix(self) -> str:
-        prefix = f"""{self.model_config.backbone_source}-{self.model_config.backbone_name.replace("/", "-")}"""
-        if self.model_config.classification_head.include:
-            prefix = f"{prefix}-dx"
-        if self.model_config.digitization_head.include:
-            prefix = f"{prefix}-digitization"
-        if self.model_config.backbone_freeze:
-            prefix = f"{prefix}-headonly"
+        if self.train_config.predict_dx:
+            prefix = f"""{self.model_config.backbone_source}-{self.model_config.backbone_name.replace("/", "-")}"""
+            if self.model_config.classification_head.include:
+                prefix = f"{prefix}-dx"
+            if self.model_config.digitization_head.include:
+                prefix = f"{prefix}-digitization"
+            if self.model_config.backbone_freeze:
+                prefix = f"{prefix}-headonly"
+        elif self.train_config.predict_bbox:
+            prefix = f"""{self._model.config.model_name.replace("/", "-")}"""
+        else:
+            raise ValueError("either `predict_dx` or `predict_bbox` should be True")
         return prefix + "_"
 
     def extra_log_suffix(self) -> str:
-        suffix = f"""{self.model_config.backbone_source}-{self.model_config.backbone_name.replace("/", "-")}"""
-        if self.model_config.classification_head.include:
-            suffix = f"{suffix}-dx"
-        if self.model_config.digitization_head.include:
-            suffix = f"{suffix}-digitization"
-        if self.model_config.backbone_freeze:
-            suffix = f"{suffix}-headonly"
+        if self.train_config.predict_dx:
+            suffix = f"""{self.model_config.backbone_source}-{self.model_config.backbone_name.replace("/", "-")}"""
+            if self.model_config.classification_head.include:
+                suffix = f"{suffix}-dx"
+            if self.model_config.digitization_head.include:
+                suffix = f"{suffix}-digitization"
+            if self.model_config.backbone_freeze:
+                suffix = f"{suffix}-headonly"
+        elif self.train_config.predict_bbox:
+            suffix = f"""{self._model.config.model_name.replace("/", "-")}"""
+        else:
+            raise ValueError("either `predict_dx` or `predict_bbox` should be True")
         suffix = f"{suffix}-{super().extra_log_suffix()}"
         return suffix
 
