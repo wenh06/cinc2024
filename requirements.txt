@@ -48,3 +48,4 @@ keras
 pyyaml
 qrcode
 safetensors
+torchmetrics

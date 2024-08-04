@@ -40,7 +40,7 @@ class CINC2024Outputs:
     bbox : Sequence[Dict[str, np.ndarray]]
         Bounding boxes of the detected objects,
         keys are "boxes", "category_id", "category_name", "scores".
-    bbox_loss : Sequence[float], optional
+    bbox_loss : Sequence[Dict[str, float]], optional
 
     """
 
@@ -54,7 +54,8 @@ class CINC2024Outputs:
     digitization_loss: Optional[Sequence[float]] = None
     total_loss: Optional[Sequence[float]] = None
     bbox: Optional[Sequence[Dict[str, np.ndarray]]] = None
-    bbox_loss: Optional[Sequence[float]] = None
+    bbox_classes: Optional[Sequence[str]] = None
+    bbox_loss: Optional[Sequence[Dict[str, float]]] = None
 
     def __post_init__(self) -> None:
         assert any(

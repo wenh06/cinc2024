@@ -171,6 +171,7 @@ ModelCfg.classification_head.remote_checkpoints = {
 ModelCfg.classification_head.remote_checkpoints_name = None  # None for not loading from remote checkpoints
 
 ModelCfg.classification_head.include = TrainCfg.predict_dx
+ModelCfg.classification_head.monitor = "dx_f_measure"
 
 # ModelCfg.digitization_head = deepcopy(linear)
 # ModelCfg.digitization_head.out_channels = [
@@ -214,3 +215,5 @@ ModelCfg.object_detection.num_classes = len(ModelCfg.object_detection.class_name
 ModelCfg.object_detection.num_queries = 100
 ModelCfg.object_detection.label2id = {label: i for i, label in enumerate(ModelCfg.object_detection.class_names)}
 ModelCfg.object_detection.bbox_thr = 0.5
+
+ModelCfg.object_detection.monitor = "detection_map"

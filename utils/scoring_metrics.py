@@ -1,7 +1,10 @@
-from typing import Dict, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 import numpy as np
+import torch
 from torch_ecg.utils.misc import list_sum
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
+from transformers.image_transforms import corners_to_center_format
 
 from helper_code import compute_f_measure
 from outputs import CINC2024Outputs
@@ -12,7 +15,7 @@ __all__ = [
 
 
 def compute_challenge_metrics(
-    labels: Sequence[Dict[str, np.ndarray]],
+    labels: Sequence[Dict[str, Union[np.ndarray, List[dict]]]],
     outputs: Sequence[CINC2024Outputs],
     keeps: Optional[Union[str, Sequence[str]]] = None,
 ) -> Dict[str, float]:
@@ -20,8 +23,9 @@ def compute_challenge_metrics(
 
     Parameters
     ----------
-    labels : Sequence[Dict[str, np.ndarray]]
+    labels : Sequence[Dict[str, Union[np.ndarray, List[dict]]]]
         The labels for the records.
+        `labels` is produced by the dataset class (ref. dataset.py).
     outputs : Sequence[CINC2024Outputs]
         The outputs for the records.
     keeps : Union[str, Sequence[str]], optional
@@ -55,7 +59,7 @@ def compute_challenge_metrics(
     """
     metrics = {}
     if keeps is None:
-        keeps = ["dx", "digitization"]
+        keeps = ["dx", "digitization", "detection"]
     elif isinstance(keeps, str):
         keeps = [keeps]
     keeps = [keep.lower() for keep in keeps]
@@ -65,11 +69,13 @@ def compute_challenge_metrics(
         metrics.update(
             {f"digitization_{metric}": value for metric, value in compute_digitization_metrics(labels, outputs).items()}
         )
+    if "detection" in keeps:
+        metrics.update({f"detection_{metric}": value for metric, value in compute_detection_metrics(labels, outputs).items()})
     return metrics
 
 
 def compute_classification_metrics(
-    labels: Sequence[Dict[str, np.ndarray]],
+    labels: Sequence[Dict[str, Union[np.ndarray, List[dict]]]],
     outputs: Sequence[CINC2024Outputs],
     classes: Optional[Sequence[str]] = None,
 ) -> Dict[str, float]:
@@ -77,7 +83,7 @@ def compute_classification_metrics(
 
     Parameters
     ----------
-    labels : Sequence[Dict[str, np.ndarray]]
+    labels : Sequence[Dict[str, Union[np.ndarray, List[dict]]]]
         The labels for the records, containing the "dx" field.
         The "dx" field is a 1D numpy array of shape `(num_samples,)` with binary values,
         or a 2D numpy array of shape `(num_samples, num_classes)` with probabilities (0 or 1).
@@ -131,14 +137,14 @@ def compute_classification_metrics(
 
 
 def compute_digitization_metrics(
-    labels: Sequence[Dict[str, np.ndarray]],
+    labels: Sequence[Dict[str, Union[np.ndarray, List[dict]]]],
     outputs: Sequence[CINC2024Outputs],
 ) -> Dict[str, float]:
     """Compute the metrics for the "digitization" task.
 
     Parameters
     ----------
-    labels : Sequence[Dict[str, np.ndarray]]
+    labels : Sequence[Dict[str, Union[np.ndarray, List[dict]]]]
         The labels for the records.
     outputs : Sequence[CINC2024Outputs]
         The outputs for the records.
@@ -157,3 +163,93 @@ def compute_digitization_metrics(
     ), "The number of 'digitization' labels and outputs should be the same"
     # TODO: implement the computation of the digitization metrics
     raise NotImplementedError("compute_digitization_metrics is not implemented")
+
+
+def compute_detection_metrics(
+    labels: Sequence[Dict[str, Union[np.ndarray, List[dict]]]],
+    outputs: Sequence[CINC2024Outputs],
+) -> Dict[str, float]:
+    """Compute the metrics for the detection task.
+
+    Parameters
+    ----------
+    labels : Sequence[Dict[str, Union[np.ndarray, List[dict]]]]
+        The labels for the records.
+    outputs : Sequence[CINC2024Outputs]
+        The outputs for the records.
+
+    Returns
+    -------
+    Dict[str, float]
+        The computed challenge metrics for the detection task.
+
+    """
+    assert len(labels) == len(outputs), "The number of labels and outputs should be the same"
+    if not all([item.bbox is not None for item in outputs]):
+        return {"mAP": np.nan}
+    assert all(
+        [len(label["bbox"]) == len(output.bbox) for label, output in zip(labels, outputs)]
+    ), "The number of 'bbox' labels and outputs should be the same"
+
+    metric = MeanAveragePrecision(box_format="xyxy", class_metrics=True)
+    classes = outputs[0].bbox_classes
+
+    post_processed_targets = []  # A list consisting of dictionaries with keys "boxes", "labels"
+    post_processed_predictions = []  # A list consisting of dictionaries with keys "boxes", "labels", "scores"
+    for label, output in zip(labels, outputs):
+        # label is a dictionary with keys "bbox" and other fields (not used here)
+        for lb, op in zip(label["bbox"], output.bbox):
+            # convert the labels to the required format ("voc", i.e. "xyxy")
+            converted_targets = dict()
+            converted_targets["labels"] = torch.Tensor([bbox_dict["category_id"] for bbox_dict in lb["annotations"]]).long()
+            if lb["format"] == "coco":
+                converted_targets["boxes"] = coco_to_voc_format(
+                    torch.Tensor([bbox_dict["bbox"] for bbox_dict in lb["annotations"]])
+                )
+            elif lb["format"] == "voc":
+                converted_targets["boxes"] = torch.Tensor([bbox_dict["bbox"] for bbox_dict in lb["annotations"]])
+            else:  # yolo format
+                height, width = lb["image_size"]
+                converted_targets["boxes"] = corners_to_center_format(
+                    torch.Tensor([bbox_dict["bbox"] for bbox_dict in lb["annotations"]])
+                )
+                converted_targets["boxes"] *= torch.Tensor([[width, height, width, height]])
+            post_processed_targets.append(converted_targets)
+            post_processed_predictions.append(
+                {
+                    "boxes": torch.Tensor(op["boxes"]),
+                    "labels": torch.Tensor(op["category_id"]).long(),
+                    "scores": torch.Tensor(op["scores"]),
+                }
+            )
+
+    metric.update(post_processed_predictions, post_processed_targets)
+    result = metric.compute()
+
+    map_per_class = result.pop("map_per_class")
+    mar_100_per_class = result.pop("mar_100_per_class")
+    for class_id, class_map, class_mar in zip(result.pop("classes"), map_per_class, mar_100_per_class):
+        class_name = classes[class_id.item()]
+        result[f"map_{class_name}"] = class_map
+        result[f"mar_100_{class_name}"] = class_mar
+    result = {k: v.item() for k, v in result.items()}
+    return result
+
+
+def coco_to_voc_format(boxes: torch.Tensor) -> torch.Tensor:
+    """Convert the bounding boxes from COCO format to VOC format.
+
+    Parameters
+    ----------
+    boxes : torch.Tensor
+        The bounding boxes in COCO format (x1, y1, w, h).
+
+    Returns
+    -------
+    torch.Tensor
+        The bounding boxes in VOC format (x1, y1, x2, y2).
+
+    """
+    boxes_voc = boxes.clone()
+    boxes_voc[:, [2, 3]] += boxes_voc[:, [0, 1]]
+    return boxes_voc

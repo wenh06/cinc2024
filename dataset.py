@@ -239,6 +239,8 @@ class FastDataReader(ReprMixin, Dataset):
                     areas=row["bbox_formatted"]["area"],
                     # areas=[(bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) for bbox in A_out["bboxes"]],
                 )
+                data["bbox"]["image_size"] = list(image.shape[:2])  # H, W
+                data["bbox"]["format"] = self.config.bbox_format
             else:
                 raise NotImplementedError(f"bbox format {self.config.bbox_format} is not implemented yet")
         if self.config.predict_mask:
