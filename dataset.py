@@ -8,7 +8,6 @@ from typing import Dict, List, Sequence, Set, Union
 import albumentations as A
 import numpy as np
 import torch
-from PIL import Image, ImageDraw, ImageFont
 from torch.utils.data.dataset import Dataset
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import ReprMixin
@@ -528,61 +527,3 @@ def merge_horizontal_bbox(bbox: Dict[str, list], fmt: str) -> Dict[str, list]:
         new_bbox["category_name"].append(bbox["category_name"][waveform_bbox_indices[0]])
 
     return new_bbox
-
-
-def view_image_with_bbox(image: Union[np.ndarray, torch.Tensor, Image.Image], bbox: Dict[str, list], fmt: str) -> Image.Image:
-    """View the image with bounding boxes.
-
-    Parameters
-    ----------
-    image : Union[np.ndarray, torch.Tensor, Image.Image]
-        The image to be viewed.
-    bbox : Dict[str, list]
-        The bounding boxes, which is a dictionary consisting of
-        - "bbox" : list of shape `(n, 4)`.
-        - "category_id" : list of shape `(n,)`.
-        - "category_name" : list of shape `(n,)`.
-        - "area" : list of shape `(n,)`.
-    fmt : {"coco", "voc", "yolo"}
-        Format of the bounding boxes in `bbox`.
-
-    Returns
-    -------
-    Image.Image
-        The image with bounding boxes.
-
-    """
-    if isinstance(image, torch.Tensor):
-        image = image.numpy().transpose(1, 2, 0)
-    if isinstance(image, np.ndarray):
-        img = Image.fromarray(image)
-        assert img.ndim == 3 and img.shape[-1] == 3, f"unsupported shape {img.shape}"
-    elif isinstance(image, Image.Image):
-        img = image
-    else:
-        raise ValueError(f"unsupported type {type(image)}")
-    img_width, img_height = img.size
-    if fmt == "coco":
-        # (x, y, w, h)
-        # to voc format (xmin, ymin, xmax, ymax)
-        bbox["bbox"] = np.array(bbox["bbox"])
-        bbox["bbox"][..., [2, 3]] = bbox["bbox"][..., [2, 3]] + bbox["bbox"][..., [0, 1]]
-    elif fmt == "voc":
-        # (xmin, ymin, xmax, ymax)
-        pass
-    elif fmt == "yolo":
-        # (x_center, y_center, w, h)
-        # to voc format (xmin, ymin, xmax, ymax)
-        bbox["bbox"] = np.array(bbox["bbox"])
-        bbox["bbox"][..., [0, 1]] = bbox["bbox"][..., [0, 1]] - bbox["bbox"][..., [2, 3]] / 2
-        bbox["bbox"][..., [2, 3]] = bbox["bbox"][..., [0, 1]] + bbox["bbox"][..., [2, 3]]
-        bbox["bbox"][..., [0, 2]] *= img_width
-        bbox["bbox"][..., [1, 3]] *= img_height
-    else:
-        raise ValueError(f"unsupported format {fmt}")
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype("arial.ttf", int(min(img.size) * 0.025))
-    for box, cat_name in zip(bbox["bbox"], bbox["category_name"]):
-        draw.rectangle(box.tolist(), outline="red")
-        draw.text((box[0], box[1]), cat_name, fill="red", font=font, anchor="lb")
-    return img
