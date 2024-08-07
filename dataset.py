@@ -8,6 +8,7 @@ from typing import Dict, List, Sequence, Set, Union
 import albumentations as A
 import numpy as np
 import torch
+from PIL import Image, ImageDraw, ImageFont
 from torch.utils.data.dataset import Dataset
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import ReprMixin
@@ -97,6 +98,24 @@ class CinC2024Dataset(Dataset, ReprMixin):
             lambda img_id: self.reader.load_bbox(img_id, fmt=self.config.bbox_format, return_dict=True)
         )
 
+        # register `pandas.progress_apply` with `tqdm`
+        tqdm.pandas(desc="Processing bounding boxes", dynamic_ncols=True, mininterval=1.0)
+        # process the bounding boxes
+        if self.config.bbox_mode.lower() == "full":
+            pass  # make no change to "bbox_formatted"
+        elif self.config.bbox_mode.lower() == "roi_only":
+            # merge all waveform boxes into one ROI box
+            self.reader._df_images["bbox_formatted"] = self.reader._df_images["bbox_formatted"].progress_apply(
+                lambda x: bbox2roi(x, fmt=self.config.bbox_format)
+            )
+        elif self.config.bbox_mode.lower() == "merge_horizontal":
+            # merge the waveform bounding boxes that are horizontally adjacent
+            self.reader._df_images["bbox_formatted"] = self.reader._df_images["bbox_formatted"].progress_apply(
+                lambda x: merge_horizontal_bbox(x, fmt=self.config.bbox_format)
+            )
+        else:
+            raise ValueError(f"unsupported bbox_mode {self.config.bbox_mode}")
+
         ecg_ids = self._train_test_split(train_ratio=self.config.train_ratio)
         self._df_data = self.reader._df_images[self.reader._df_images.ecg_id.isin(ecg_ids)]
         self._df_data["ecg_path"] = self._df_data["ecg_id"].apply(lambda x: self.reader._df_records.loc[x, "path"])
@@ -166,7 +185,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
         return set([
             "image", "image_id",  # basic fields
             "dx",  # classification
-            "digitization", "mask",  # digitization
+            "digitization",  # digitization
             "bbox",  # object detection
             "mask",  # mask prediction
         ])
@@ -342,3 +361,228 @@ def format_image_annotations_as_coco(
             }
         )
     return {"annotations": annotations, "image_id": image_id}
+
+
+def bbox2roi(bbox: Dict[str, list], fmt: str) -> Dict[str, List]:
+    """Merge all waveform bounding boxes into one ROI box.
+
+    Parameters
+    ----------
+    bbox : Dict[str, list]
+        The bounding boxes, which is a dictionary consisting of
+        - "bbox" : list of shape `(n, 4)`.
+        - "category_id" : list of shape `(n,)`.
+        - "category_name" : list of shape `(n,)`.
+        - "area" : list of shape `(n,)`.
+    fmt : {"coco", "voc", "yolo"}
+        Format of the bounding boxes in `bbox`.
+
+    Returns
+    -------
+    Dic[str, List]
+        The bounding boxes with all waveform bounding boxes merged into one ROI box,
+        "category_name" and "category_id" left unchanged.
+
+    """
+    indices = np.where(np.array(bbox["category_name"]) == "waveform")[0]
+    roi_bbox = np.array(bbox["bbox"])[indices]
+    if fmt == "coco":  # (x, y, w, h)
+        # to voc format (xmin, ymin, xmax, ymax)
+        roi_bbox[..., [2, 3]] = roi_bbox[..., [2, 3]] + roi_bbox[..., [0, 1]]
+        roi_bbox = [
+            roi_bbox[..., 0].min(),
+            roi_bbox[..., 1].min(),
+            roi_bbox[..., 2].max() - roi_bbox[..., 0].min(),
+            roi_bbox[..., 3].max() - roi_bbox[..., 1].min(),
+        ]
+        roi_area = roi_bbox[2] * roi_bbox[3]
+    elif fmt == "voc":  # (xmin, ymin, xmax, ymax)
+        roi_bbox = [roi_bbox[..., 0].min(), roi_bbox[..., 1].min(), roi_bbox[..., 2].max(), roi_bbox[..., 3].max()]
+        roi_area = (roi_bbox[2] - roi_bbox[0]) * (roi_bbox[3] - roi_bbox[1])
+    elif fmt == "yolo":  # (x_center, y_center, w, h)
+        # to voc format (xmin, ymin, xmax, ymax)
+        roi_bbox[..., [0, 1]] = roi_bbox[..., [0, 1]] - roi_bbox[..., [2, 3]] / 2
+        roi_bbox[..., [2, 3]] = roi_bbox[..., [0, 1]] + roi_bbox[..., [2, 3]]
+        roi_bbox = [
+            (roi_bbox[..., 0].min() + roi_bbox[..., 2].max()) / 2,
+            (roi_bbox[..., 1].min() + roi_bbox[..., 3].max()) / 2,
+            roi_bbox[..., 2].max() - roi_bbox[..., 0].min(),
+            roi_bbox[..., 3].max() - roi_bbox[..., 1].min(),
+        ]
+        roi_area = roi_bbox[2] * roi_bbox[3] * (bbox["area"][0] / bbox["bbox"][0][2] / bbox["bbox"][0][3])
+    else:
+        raise ValueError(f"unsupported format {fmt}")
+
+    return {
+        "bbox": np.array(bbox["bbox"])[~indices].tolist() + [roi_bbox],
+        "category_id": np.array(bbox["category_id"])[~indices].tolist() + [bbox["category_id"][indices[0]]],
+        "category_name": np.array(bbox["category_name"])[~indices].tolist() + [bbox["category_name"][indices[0]]],
+        "area": np.array(bbox["area"])[~indices].tolist() + [roi_area],
+    }
+
+
+def merge_horizontal_bbox(bbox: Dict[str, list], fmt: str) -> Dict[str, list]:
+    """Merge all waveform bounding boxes that are horizontally adjacent.
+
+    Adjacent bounding boxes are merged into one bounding box:
+    - I, aVR, V1, V4
+    - II, aVL, V2, V5
+    - III, aVF, V3, V6
+
+    Parameters
+    ----------
+    bbox : Dict[str, list]
+        The bounding boxes, which is a dictionary consisting of
+        - "bbox" : list of shape `(n, 4)`.
+        - "category_id" : list of shape `(n,)`.
+        - "category_name" : list of shape `(n,)`.
+        - "area" : list of shape `(n,)`.
+    fmt : {"coco", "voc", "yolo"}
+        Format of the bounding boxes in `bbox`.
+
+    Returns
+    -------
+    Dict[str, list]
+        The bounding boxes with horizontally adjacent bounding boxes merged.
+
+    """
+    # convert to list of dictionaries
+    waveform_boxes = CINC2024Reader.match_bbox(
+        [
+            {"bbox": b, "category_id": c, "category_name": n, "area": a}
+            for b, c, n, a in zip(bbox["bbox"], bbox["category_id"], bbox["category_name"], bbox["area"])
+        ],
+        fmt=fmt,
+    )
+    # after `match_bbox`, an item with key "lead_name" will be added to each dict.
+
+    # full waveform has the largest width
+    if fmt == "coco":
+        full_waveform_idx = np.argmax([box["bbox"][2] for box in waveform_boxes])
+    elif fmt == "voc":
+        full_waveform_idx = np.argmax([box["bbox"][2] - box["bbox"][0] for box in waveform_boxes])
+    elif fmt == "yolo":
+        full_waveform_idx = np.argmax([box["bbox"][2] for box in waveform_boxes])
+        area_ratio = bbox["area"][0] / bbox["bbox"][0][2] / bbox["bbox"][0][3]
+    else:
+        raise ValueError(f"unsupported format {fmt}")
+
+    lead_name_bbox_indices = np.append(np.where(np.array(bbox["category_name"]) != "waveform")[0], full_waveform_idx)
+    waveform_bbox_indices = np.where(np.array(bbox["category_name"]) == "waveform")[0]
+
+    new_bbox = {
+        "bbox": np.array(bbox["bbox"])[lead_name_bbox_indices].tolist(),
+        "category_id": np.array(bbox["category_id"])[lead_name_bbox_indices].tolist(),
+        "category_name": np.array(bbox["category_name"])[lead_name_bbox_indices].tolist(),
+        "area": np.array(bbox["area"])[lead_name_bbox_indices].tolist(),
+    }
+
+    # merge horizontally adjacent leads
+    waveform_lead_names = np.array([box["lead_name"] for box in waveform_boxes])
+    for set_of_lead_names in [["I", "aVR", "V1", "V4"], ["II", "aVL", "V2", "V5"], ["III", "aVF", "V3", "V6"]]:
+        indices = np.where(np.isin(waveform_lead_names, set_of_lead_names))[0]
+        # remove full_waveform_idx from indices if it is in the set
+        indices = indices[indices != full_waveform_idx]
+        boxes = np.array([box["bbox"] for box in waveform_boxes])[indices]
+        if fmt == "coco":
+            # (x, y, w, h)
+            # to voc format (xmin, ymin, xmax, ymax)
+            boxes[..., [2, 3]] = boxes[..., [2, 3]] + boxes[..., [0, 1]]
+            new_bbox["bbox"].append(
+                [
+                    boxes[..., 0].min(),
+                    boxes[..., 1].min(),
+                    boxes[..., 2].max() - boxes[..., 0].min(),
+                    boxes[..., 3].max() - boxes[..., 1].min(),
+                ]
+            )
+            new_bbox["area"].append((boxes[..., 2].max() - boxes[..., 0].min()) * (boxes[..., 3].max() - boxes[..., 1].min()))
+        elif fmt == "voc":
+            # (xmin, ymin, xmax, ymax)
+            new_bbox["bbox"].append(
+                [
+                    boxes[..., 0].min(),
+                    boxes[..., 1].min(),
+                    boxes[..., 2].max(),
+                    boxes[..., 3].max(),
+                ]
+            )
+            new_bbox["area"].append((boxes[..., 2].max() - boxes[..., 0].min()) * (boxes[..., 3].max() - boxes[..., 1].min()))
+        elif fmt == "yolo":
+            # (x_center, y_center, w, h)
+            # to voc format (xmin, ymin, xmax, ymax)
+            boxes[..., [0, 1]] = boxes[..., [0, 1]] - boxes[..., [2, 3]] / 2
+            boxes[..., [2, 3]] = boxes[..., [0, 1]] + boxes[..., [2, 3]]
+            new_bbox["bbox"].append(
+                [
+                    (boxes[..., 0].min() + boxes[..., 2].max()) / 2,
+                    (boxes[..., 1].min() + boxes[..., 3].max()) / 2,
+                    boxes[..., 2].max() - boxes[..., 0].min(),
+                    boxes[..., 3].max() - boxes[..., 1].min(),
+                ]
+            )
+            new_bbox["area"].append(
+                (boxes[..., 2].max() - boxes[..., 0].min()) * (boxes[..., 3].max() - boxes[..., 1].min()) * area_ratio
+            )
+        new_bbox["category_id"].append(bbox["category_id"][waveform_bbox_indices[0]])
+        new_bbox["category_name"].append(bbox["category_name"][waveform_bbox_indices[0]])
+
+    return new_bbox
+
+
+def view_image_with_bbox(image: Union[np.ndarray, torch.Tensor, Image.Image], bbox: Dict[str, list], fmt: str) -> Image.Image:
+    """View the image with bounding boxes.
+
+    Parameters
+    ----------
+    image : Union[np.ndarray, torch.Tensor, Image.Image]
+        The image to be viewed.
+    bbox : Dict[str, list]
+        The bounding boxes, which is a dictionary consisting of
+        - "bbox" : list of shape `(n, 4)`.
+        - "category_id" : list of shape `(n,)`.
+        - "category_name" : list of shape `(n,)`.
+        - "area" : list of shape `(n,)`.
+    fmt : {"coco", "voc", "yolo"}
+        Format of the bounding boxes in `bbox`.
+
+    Returns
+    -------
+    Image.Image
+        The image with bounding boxes.
+
+    """
+    if isinstance(image, torch.Tensor):
+        image = image.numpy().transpose(1, 2, 0)
+    if isinstance(image, np.ndarray):
+        img = Image.fromarray(image)
+        assert img.ndim == 3 and img.shape[-1] == 3, f"unsupported shape {img.shape}"
+    elif isinstance(image, Image.Image):
+        img = image
+    else:
+        raise ValueError(f"unsupported type {type(image)}")
+    img_width, img_height = img.size
+    if fmt == "coco":
+        # (x, y, w, h)
+        # to voc format (xmin, ymin, xmax, ymax)
+        bbox["bbox"] = np.array(bbox["bbox"])
+        bbox["bbox"][..., [2, 3]] = bbox["bbox"][..., [2, 3]] + bbox["bbox"][..., [0, 1]]
+    elif fmt == "voc":
+        # (xmin, ymin, xmax, ymax)
+        pass
+    elif fmt == "yolo":
+        # (x_center, y_center, w, h)
+        # to voc format (xmin, ymin, xmax, ymax)
+        bbox["bbox"] = np.array(bbox["bbox"])
+        bbox["bbox"][..., [0, 1]] = bbox["bbox"][..., [0, 1]] - bbox["bbox"][..., [2, 3]] / 2
+        bbox["bbox"][..., [2, 3]] = bbox["bbox"][..., [0, 1]] + bbox["bbox"][..., [2, 3]]
+        bbox["bbox"][..., [0, 2]] *= img_width
+        bbox["bbox"][..., [1, 3]] *= img_height
+    else:
+        raise ValueError(f"unsupported format {fmt}")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("arial.ttf", int(min(img.size) * 0.025))
+    for box, cat_name in zip(bbox["bbox"], bbox["category_name"]):
+        draw.rectangle(box.tolist(), outline="red")
+        draw.text((box[0], box[1]), cat_name, fill="red", font=font, anchor="lb")
+    return img

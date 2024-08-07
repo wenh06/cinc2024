@@ -111,6 +111,8 @@ TrainCfg.predict_bbox = True
 TrainCfg.predict_mask = False  # TODO: implement mask prediction from ROI obtained by object detection
 TrainCfg.bbox_format = "coco"  # "coco", "pascal_voc", "yolo"
 
+TrainCfg.bbox_mode = "full"  # "roi_only", "merge_horizontal", "full"
+
 TrainCfg.monitor = "dx_f_measure"
 
 TrainCfg.debug = True
@@ -209,11 +211,14 @@ ModelCfg.object_detection.model_name = "facebook/detr-resnet-50"  # "jozhang97/d
 ModelCfg.object_detection.source = "hf"
 ModelCfg.object_detection.freeze = False
 ModelCfg.object_detection.scale = "n"
+ModelCfg.object_detection.mode = TrainCfg.bbox_mode
 
 ModelCfg.object_detection.class_names = BaseCfg.lead_names + ["waveform"]
 ModelCfg.object_detection.num_classes = len(ModelCfg.object_detection.class_names)
-ModelCfg.object_detection.num_queries = 100
 ModelCfg.object_detection.label2id = {label: i for i, label in enumerate(ModelCfg.object_detection.class_names)}
+
+ModelCfg.object_detection.num_queries = 30
+
 ModelCfg.object_detection.bbox_thr = 0.5
 ModelCfg.object_detection.nms_thr = 0.4
 
