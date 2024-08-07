@@ -6,6 +6,7 @@ import json
 import multiprocessing as mp
 import os
 import re
+import shutil
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +23,7 @@ from torch_ecg.utils.download import _unzip_file, http_get
 from torch_ecg.utils.misc import add_docstring, remove_parameters_returns_from_docstring
 from tqdm.auto import tqdm
 
-from bbox import BBox, RotatedBBox  # noqa: F401
+from bbox import BBox, RotatedBBox
 from cfg import BaseCfg, ModelCfg
 from const import DATA_CACHE_DIR
 from helper_code import cast_int_float_unknown, find_records
@@ -156,7 +157,7 @@ class CINC2024Reader(PhysioNetDataBase):
     __synthetic_images_url__ = {
         "full": None,
         "full-alt": None,
-        "subset": "https://drive.google.com/u/0/uc?id=13VtUMQxvQSSG6rolzg7yXsMRrpo9XwXU",
+        "subset": "https://drive.google.com/u/0/uc?id=1plrp_G6_1nlpMslaOFEz9cEozYwLovmu",
         "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset-tiny.zip",
     }
     __acute_mi_statements__ = set([821, 822, 823, 827, 829, 902, 903, 904, 963, 964, 965, 966, 967, 968])
@@ -1527,6 +1528,52 @@ class CINC2024Reader(PhysioNetDataBase):
         img_width = bbox[0].img_width
         img_height = bbox[0].img_height
         return max(0, xmin - pad_x), max(0, ymin - pad_y), min(img_width, xmax + pad_x), min(img_height, ymax + pad_y)
+
+    def select_image_subset(self, dst_dir: Union[str, bytes, os.PathLike], ratio: float = 0.01) -> None:
+        """Select a subset of the synthetic images.
+
+        Parameters
+        ----------
+        dst_dir : str or bytes or os.PathLike
+            The destination directory to save the selected images.
+        ratio : float, default 0.01
+            The ratio of the selected images.
+
+        Returns
+        -------
+        None
+
+        """
+        dst_dir = Path(dst_dir).expanduser().resolve()
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        selected_images = {
+            "train": self._df_images[self._df_images["strat_fold"] < 9].sample(frac=ratio).index.tolist(),
+            "val": self._df_images[self._df_images["strat_fold"] == 9].sample(frac=ratio).index.tolist(),
+            "test": self._df_images[self._df_images["strat_fold"] == 10].sample(frac=ratio).index.tolist(),
+        }
+        selected_images = self._df_images.loc[selected_images["train"] + selected_images["val"] + selected_images["test"]]
+        for _, row in tqdm(
+            selected_images.iterrows(),
+            total=len(selected_images),
+            desc="Copying ECG images",
+            dynamic_ncols=True,
+            mininterval=1.0,
+        ):
+            image_file = row["path"]
+            (dst_dir / image_file.parent.relative_to(self._synthetic_images_dir)).mkdir(parents=True, exist_ok=True)
+            shutil.copy(image_file, dst_dir / image_file.parent.relative_to(self._synthetic_images_dir))
+            header_file = row["image_header"]
+            (dst_dir / header_file.parent.relative_to(self._synthetic_images_dir)).mkdir(parents=True, exist_ok=True)
+            shutil.copy(header_file, dst_dir / header_file.parent.relative_to(self._synthetic_images_dir))
+            image_metadata_file = image_file.with_suffix(".json.gz")
+            (dst_dir / image_metadata_file.parent.relative_to(self._synthetic_images_dir)).mkdir(parents=True, exist_ok=True)
+            shutil.copy(image_metadata_file, dst_dir / image_metadata_file.parent.relative_to(self._synthetic_images_dir))
+            lead_bbox_file = row["lead_bbox_file"]
+            (dst_dir / lead_bbox_file.parent.relative_to(self._synthetic_images_dir)).mkdir(parents=True, exist_ok=True)
+            shutil.copy(lead_bbox_file, dst_dir / lead_bbox_file.parent.relative_to(self._synthetic_images_dir))
+            text_bbox_file = row["text_bbox_file"]
+            (dst_dir / text_bbox_file.parent.relative_to(self._synthetic_images_dir)).mkdir(parents=True, exist_ok=True)
+            shutil.copy(text_bbox_file, dst_dir / text_bbox_file.parent.relative_to(self._synthetic_images_dir))
 
 
 def get_record_labels(row: pd.Series, df_12sl_statements: pd.DataFrame, acute_mi_classes: Set[str]) -> List[str]:
