@@ -113,6 +113,9 @@ TrainCfg.bbox_format = "coco"  # "coco", "pascal_voc", "yolo"
 
 TrainCfg.bbox_mode = "full"  # "roi_only", "merge_horizontal", "full"
 
+TrainCfg.roi_only = False
+TrainCfg.roi_padding = 0.0
+
 TrainCfg.monitor = "dx_f_measure"
 
 TrainCfg.debug = True
@@ -217,7 +220,7 @@ ModelCfg.object_detection.class_names = BaseCfg.lead_names + ["waveform"]
 ModelCfg.object_detection.num_classes = len(ModelCfg.object_detection.class_names)
 ModelCfg.object_detection.label2id = {label: i for i, label in enumerate(ModelCfg.object_detection.class_names)}
 
-ModelCfg.object_detection.num_queries = 30
+ModelCfg.object_detection.num_queries = 50
 
 ModelCfg.object_detection.bbox_thr = 0.5
 ModelCfg.object_detection.nms_thr = 0.4

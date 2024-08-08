@@ -374,7 +374,10 @@ class CINC2024Reader(PhysioNetDataBase):
                     self._df_images.at[img_id, "bbox"] = self._load_bbox(img_id)
                     # self._df_images.at[img_id, "metadata"] = load_gzip_json(self._df_images.loc[img_id, "path"].with_suffix(".json.gz"))
                     # via bounding boxes get the image-level region of interest
-                    self._df_images.at[img_id, "ROI"] = CINC2024Reader.get_roi(self._df_images.loc[img_id, "bbox"], padding=0)
+                    if len(self._df_images.loc[img_id, "bbox"]) > 0:
+                        self._df_images.at[img_id, "ROI"] = CINC2024Reader.get_roi(
+                            self._df_images.loc[img_id, "bbox"], padding=0
+                        )
                     pbar.update(1)
 
     def _create_synthetic_images_dir(self) -> None:

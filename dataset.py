@@ -11,7 +11,6 @@ import torch
 from torch.utils.data.dataset import Dataset
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import ReprMixin
-from torch_ecg.utils.utils_nn import default_collate_fn  # noqa: F401
 from tqdm.auto import tqdm
 
 from cfg import TrainCfg
@@ -54,6 +53,9 @@ class CinC2024Dataset(Dataset, ReprMixin):
         self.training = training
         self.lazy = lazy
 
+        if self.config.predict_bbox:
+            assert self.config.roi_only is False, "predict_bbox and roi_only cannot be True at the same time"
+
         A_kw = {}
         if self.config.predict_bbox:
             A_kw["bbox_params"] = A.BboxParams(format=self.config.bbox_format, label_fields=["category_id"])
@@ -92,28 +94,30 @@ class CinC2024Dataset(Dataset, ReprMixin):
 
         self.__cache = None
         self.reader = CINC2024Reader(db_dir=self.config.db_dir, **reader_kwargs)
-        # process the bounding boxes
-        self.reader._df_images["bbox_formatted"] = self.reader._df_images.index.map(
-            lambda img_id: self.reader.load_bbox(img_id, fmt=self.config.bbox_format, return_dict=True)
-        )
 
-        # register `pandas.progress_apply` with `tqdm`
-        tqdm.pandas(desc="Processing bounding boxes", dynamic_ncols=True, mininterval=1.0)
-        # process the bounding boxes
-        if self.config.bbox_mode.lower() == "full":
-            pass  # make no change to "bbox_formatted"
-        elif self.config.bbox_mode.lower() == "roi_only":
-            # merge all waveform boxes into one ROI box
-            self.reader._df_images["bbox_formatted"] = self.reader._df_images["bbox_formatted"].progress_apply(
-                lambda x: bbox2roi(x, fmt=self.config.bbox_format)
+        if self.config.predict_bbox:
+            # process the bounding boxes
+            self.reader._df_images["bbox_formatted"] = self.reader._df_images.index.map(
+                lambda img_id: self.reader.load_bbox(img_id, fmt=self.config.bbox_format, return_dict=True)
             )
-        elif self.config.bbox_mode.lower() == "merge_horizontal":
-            # merge the waveform bounding boxes that are horizontally adjacent
-            self.reader._df_images["bbox_formatted"] = self.reader._df_images["bbox_formatted"].progress_apply(
-                lambda x: merge_horizontal_bbox(x, fmt=self.config.bbox_format)
-            )
-        else:
-            raise ValueError(f"unsupported bbox_mode {self.config.bbox_mode}")
+
+            # register `pandas.progress_apply` with `tqdm`
+            tqdm.pandas(desc="Processing bounding boxes", dynamic_ncols=True, mininterval=1.0)
+            # process the bounding boxes
+            if self.config.bbox_mode.lower() == "full":
+                pass  # make no change to "bbox_formatted"
+            elif self.config.bbox_mode.lower() == "roi_only":
+                # merge all waveform boxes into one ROI box
+                self.reader._df_images["bbox_formatted"] = self.reader._df_images["bbox_formatted"].progress_apply(
+                    lambda x: bbox2roi(x, fmt=self.config.bbox_format)
+                )
+            elif self.config.bbox_mode.lower() == "merge_horizontal":
+                # merge the waveform bounding boxes that are horizontally adjacent
+                self.reader._df_images["bbox_formatted"] = self.reader._df_images["bbox_formatted"].progress_apply(
+                    lambda x: merge_horizontal_bbox(x, fmt=self.config.bbox_format)
+                )
+            else:
+                raise ValueError(f"unsupported bbox_mode {self.config.bbox_mode}")
 
         ecg_ids = self._train_test_split(train_ratio=self.config.train_ratio)
         self._df_data = self.reader._df_images[self.reader._df_images.ecg_id.isin(ecg_ids)]
@@ -121,6 +125,8 @@ class CinC2024Dataset(Dataset, ReprMixin):
         self._df_data["dx"] = self._df_data["ecg_id"].apply(
             lambda x: self.reader.load_dx_ann(x, class_map={k: i for i, k in enumerate(self.config.classes)})
         )
+        # one-hot encode the dx
+        self._df_data["dx"] = self._df_data["dx"].apply(lambda x: one_hot_encode(x, num_classes=len(self.config.classes)))
 
         self.fdr = FastDataReader(self.reader, self._df_data, self.config, self.transform)
 
@@ -222,9 +228,10 @@ class FastDataReader(ReprMixin, Dataset):
             if self.config.predict_bbox:
                 return naive_collate_fn([self[i] for i in range(*index.indices(len(self)))])
             return collate_fn([self[i] for i in range(*index.indices(len(self)))])
+
         row = self.df_data.loc[self.images[index]]
-        # load the image
-        image = self.reader.load_image(row.name)  # numpy array, of shape (H, W, C)
+        # load the image, of type numpy ndarray, of shape (H, W, C)
+        image = self.reader.load_image(row.name, fmt="np", roi_only=self.config.roi_only, roi_padding=self.config.roi_padding)
 
         # image_id (of `int` type) required by some object detection models
         # `str` type is not supported by pytorch
@@ -527,3 +534,24 @@ def merge_horizontal_bbox(bbox: Dict[str, list], fmt: str) -> Dict[str, list]:
         new_bbox["category_name"].append(bbox["category_name"][waveform_bbox_indices[0]])
 
     return new_bbox
+
+
+def one_hot_encode(dx: List[int], num_classes: int) -> np.ndarray:
+    """One-hot encode the diagnostic classes.
+
+    Parameters
+    ----------
+    dx : List[int]
+        The diagnostic classes.
+    num_classes : int
+        The number of classes.
+
+    Returns
+    -------
+    np.ndarray
+        The one-hot encoded diagnostic classes.
+
+    """
+    one_hot = np.zeros(num_classes, dtype=np.float32)
+    one_hot[dx] = 1
+    return one_hot
