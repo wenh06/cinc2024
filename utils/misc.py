@@ -205,7 +205,10 @@ def download_from_google_drive(url: str, output: Union[str, Path], quiet: bool =
 
 
 def view_image_with_bbox(
-    image: Union[np.ndarray, torch.Tensor, Image.Image], bbox: Dict[str, list], fmt: str
+    image: Union[np.ndarray, torch.Tensor, Image.Image],
+    bbox: Optional[Union[List[dict], Dict[str, list]]] = None,
+    fmt: str = "coco",
+    cat_names: Optional[List[str]] = None,
 ) -> Optional[Image.Image]:
     """View the image with bounding boxes.
 
@@ -213,13 +216,16 @@ def view_image_with_bbox(
     ----------
     image : Union[np.ndarray, torch.Tensor, Image.Image]
         The image to be viewed.
-    bbox : Dict[str, list]
+    bbox : Dict[str, list] or List[dict], optional
         The bounding boxes, which is a dictionary consisting of
         - "bbox" : list of shape `(n, 4)`.
         - "category_id" : list of shape `(n,)`.
         - "category_name" : list of shape `(n,)`.
         - "area" : list of shape `(n,)`.
-    fmt : {"coco", "voc", "yolo"}
+        Or a list of dictionaries, each dictionary consists of
+        - "bbox" : list of shape `(4,)`.
+        - "category_id" : int.
+    fmt : {"coco", "voc", "yolo"}, default "coco"
         Format of the bounding boxes in `bbox`.
 
     Returns
@@ -231,34 +237,56 @@ def view_image_with_bbox(
     if isinstance(image, torch.Tensor):
         image = image.numpy().transpose(1, 2, 0)
     if isinstance(image, np.ndarray):
+        assert image.ndim == 3 and image.shape[-1] == 3, f"unsupported shape {image.shape}"
         img = Image.fromarray(image)
-        assert img.ndim == 3 and img.shape[-1] == 3, f"unsupported shape {img.shape}"
     elif isinstance(image, Image.Image):
         img = image
     else:
         raise ValueError(f"unsupported type {type(image)}")
+
+    if bbox is None:
+        if is_notebook():
+            return img
+        img.show()
+        return
+
+    if isinstance(bbox, list):
+        # convert to dictionary
+        bbox_dict = {
+            "bbox": [item["bbox"] for item in bbox],
+            "category_id": [item["category_id"] for item in bbox],
+        }
+        if cat_names is not None:
+            bbox_dict["category_name"] = [cat_names[item["category_id"]] for item in bbox]
+        else:
+            bbox_dict["category_name"] = [str(item["category_id"]) for item in bbox]
+    elif isinstance(bbox, dict):
+        bbox_dict = bbox
+    else:
+        raise ValueError(f"unsupported type {type(bbox)}")
+
     img_width, img_height = img.size
     if fmt == "coco":
         # (x, y, w, h)
         # to voc format (xmin, ymin, xmax, ymax)
-        bbox["bbox"] = np.array(bbox["bbox"])
-        bbox["bbox"][..., [2, 3]] = bbox["bbox"][..., [2, 3]] + bbox["bbox"][..., [0, 1]]
+        bbox_dict["bbox"] = np.array(bbox_dict["bbox"])
+        bbox_dict["bbox"][..., [2, 3]] = bbox_dict["bbox"][..., [2, 3]] + bbox_dict["bbox"][..., [0, 1]]
     elif fmt == "voc":
         # (xmin, ymin, xmax, ymax)
         pass
     elif fmt == "yolo":
         # (x_center, y_center, w, h)
         # to voc format (xmin, ymin, xmax, ymax)
-        bbox["bbox"] = np.array(bbox["bbox"])
-        bbox["bbox"][..., [0, 1]] = bbox["bbox"][..., [0, 1]] - bbox["bbox"][..., [2, 3]] / 2
-        bbox["bbox"][..., [2, 3]] = bbox["bbox"][..., [0, 1]] + bbox["bbox"][..., [2, 3]]
-        bbox["bbox"][..., [0, 2]] *= img_width
-        bbox["bbox"][..., [1, 3]] *= img_height
+        bbox_dict["bbox"] = np.array(bbox_dict["bbox"])
+        bbox_dict["bbox"][..., [0, 1]] = bbox_dict["bbox"][..., [0, 1]] - bbox_dict["bbox"][..., [2, 3]] / 2
+        bbox_dict["bbox"][..., [2, 3]] = bbox_dict["bbox"][..., [0, 1]] + bbox_dict["bbox"][..., [2, 3]]
+        bbox_dict["bbox"][..., [0, 2]] *= img_width
+        bbox_dict["bbox"][..., [1, 3]] *= img_height
     else:
         raise ValueError(f"unsupported format {fmt}")
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("arial.ttf", int(min(img.size) * 0.025))
-    for box, cat_name in zip(bbox["bbox"], bbox["category_name"]):
+    for box, cat_name in zip(bbox_dict["bbox"], bbox_dict["category_name"]):
         draw.rectangle(box.tolist(), outline="red")
         draw.text((box[0], box[1]), cat_name, fill="red", font=font, anchor="lb")
 

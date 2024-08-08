@@ -8,7 +8,6 @@ import textwrap
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import torch
 from torch import nn
 from torch.nn.parallel import DataParallel as DP
@@ -281,7 +280,11 @@ class CINC2024Trainer(BaseTrainer):
                 labels = {k: v.numpy() if isinstance(v, torch.Tensor) else v for k, v in input_tensors.items() if v is not None}
                 if "dx" in labels:
                     # convert numeric labels to string labels
-                    labels["dx"] = np.array([self._model.config.classification_head.classes[i] for i in labels["dx"]])
+                    # the labels are (multi-label) one-hot encoded, perhaps with label smoothing
+                    labels["dx"] = [
+                        [self._model.config.classification_head.classes[idx] for idx, item in enumerate(label) if item > 0.5]
+                        for label in labels["dx"]
+                    ]
 
                 all_labels.append(labels)
 
@@ -349,6 +352,8 @@ class CINC2024Trainer(BaseTrainer):
                 prefix = f"{prefix}-headonly"
         elif self.train_config.predict_bbox:
             prefix = f"""{self._model.config.model_name.replace("/", "-")}"""
+            if self.train_config.bbox_mode != "full":  # roi_only, merge_horizontal
+                prefix = f"{prefix}-{self.train_config.bbox_mode}"
         else:
             raise ValueError("either `predict_dx` or `predict_bbox` should be True")
         return prefix + "_"
@@ -364,6 +369,8 @@ class CINC2024Trainer(BaseTrainer):
                 suffix = f"{suffix}-headonly"
         elif self.train_config.predict_bbox:
             suffix = f"""{self._model.config.model_name.replace("/", "-")}"""
+            if self.train_config.bbox_mode != "full":  # roi_only, merge_horizontal
+                suffix = f"{suffix}-{self.train_config.bbox_mode}"
         else:
             raise ValueError("either `predict_dx` or `predict_bbox` should be True")
         suffix = f"{suffix}-{super().extra_log_suffix()}"

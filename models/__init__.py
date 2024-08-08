@@ -211,7 +211,11 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin, CkptMixin):
         self.eval()
         output = self.forward(self.get_input_tensors(img)["image"])
         dx_probs = output["dx_probs"]
-        dx = [[self.config.classification_head.classes[idx] for idx, prob in enumerate(dx_probs) if prob >= threshold]]
+        # dx = [[self.config.classification_head.classes[idx] for idx, prob in enumerate(dx_probs) if prob >= threshold]]
+        dx = [
+            [self.config.classification_head.classes[idx] for idx, item in enumerate(probs) if item > threshold]
+            for probs in dx_probs
+        ]
         self.train(original_mode)
         return CINC2024Outputs(
             dx=dx,
