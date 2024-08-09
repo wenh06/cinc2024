@@ -39,7 +39,7 @@ class CINC2024Outputs:
         Total loss, sum of the `dx_loss` and `digitization_loss`.
     bbox : Sequence[Dict[str, np.ndarray]]
         Bounding boxes of the detected objects,
-        keys are "boxes", "category_id", "category_name", "scores".
+        keys are "bbox", "category_id", "category_name", "scores".
     bbox_loss : Sequence[Dict[str, float]], optional
 
     """
@@ -114,4 +114,6 @@ class CINC2024Outputs:
         # one should assign the lead names to the detected waveform bounding boxes
         # based on spatial relations of the waveform boxes and the lead names boxes
         if self.bbox is not None:
-            pass
+            for b_dict in self.bbox:
+                if "boxes" in b_dict:
+                    b_dict["bbox"] = b_dict.pop("boxes")

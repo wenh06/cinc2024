@@ -95,7 +95,7 @@ TrainCfg.keep_checkpoint_max = 10
 TrainCfg.flooding_level = 0.0  # flooding performed if positive,
 
 # configs of logging
-TrainCfg.log_step = 10
+TrainCfg.log_step = 40
 # TrainCfg.eval_every = 20
 
 # data augmentation
@@ -111,7 +111,7 @@ TrainCfg.predict_bbox = True
 TrainCfg.predict_mask = False  # TODO: implement mask prediction from ROI obtained by object detection
 TrainCfg.bbox_format = "coco"  # "coco", "pascal_voc", "yolo"
 
-TrainCfg.bbox_mode = "full"  # "roi_only", "merge_horizontal", "full"
+TrainCfg.bbox_mode = "merge_horizontal"  # "roi_only", "merge_horizontal", "full"
 
 TrainCfg.roi_only = False
 TrainCfg.roi_padding = 0.0

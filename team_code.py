@@ -12,10 +12,11 @@
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.nn.parallel import DataParallel as DP
 from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
 from torch_ecg.utils.misc import str2bool
@@ -36,7 +37,7 @@ from helper_code import (  # noqa: F401
     load_labels,
     load_text,
 )
-from models import MultiHead_CINC2024
+from models import ECGWaveformDetector, MultiHead_CINC2024  # noqa: F401
 from trainer import CINC2024Trainer
 from utils.ecg_simulator import evolve_ecg, evolve_standard_12_lead_ecg  # noqa: F401
 from utils.misc import url_is_reachable
@@ -114,7 +115,7 @@ CINC2024Trainer.__DEBUG__ = False
 def train_models(
     data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
 ) -> None:
-    """Train the digitization and classification models.
+    """Train the models.
 
     Parameters
     ----------
@@ -241,10 +242,10 @@ def train_models(
     print(msg)
 
 
-# Load your trained models. This function is *required*. You should edit this function to add your code, but do *not* change the
-# arguments of this function. If you do not train one of the models, then you can return None for the model.
-def load_models(model_folder: Union[str, bytes, os.PathLike], verbose: bool) -> MultiHead_CINC2024:
-    """Load the trained digitization and classification models.
+def load_models(
+    model_folder: Union[str, bytes, os.PathLike], verbose: bool
+) -> Tuple[Dict[str, nn.Module], Dict[str, nn.Module]]:
+    """Load the trained models.
 
     Parameters
     ----------
@@ -255,8 +256,10 @@ def load_models(model_folder: Union[str, bytes, os.PathLike], verbose: bool) -> 
 
     Returns
     -------
-    MultiHead_CINC2024
-        The trained digitization model.
+    digitization_model : Dict[str, nn.Module]
+        The trained digitization models.
+    classification_model : Dict[str, nn.Module]
+        The trained classification models.
 
     """
     key = f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"
@@ -274,10 +277,13 @@ def load_models(model_folder: Union[str, bytes, os.PathLike], verbose: bool) -> 
     return model
 
 
-# Run your trained models. This function is *required*. You should edit this function to add your code, but do *not*
+# Run your trained digitization model. This function is *required*. You should edit this function to add your code, but do *not*
 # change the arguments of this function. If you did not train one of the models, then you can return None for the model.
 def run_models(
-    digitization_model: MultiHead_CINC2024, record: Union[str, bytes, os.PathLike], verbose: bool
+    record: Union[str, bytes, os.PathLike],
+    digitization_model: Dict[str, nn.Module],
+    classification_model: Dict[str, nn.Module],
+    verbose: bool,
 ) -> Tuple[Optional[np.ndarray], Optional[List[str]]]:
     """Run the digitization model on a record.
 
@@ -351,7 +357,7 @@ def run_models(
         else:
             signal = None
 
-    labels = output.dx
+    labels = output.dx[0]
 
     return signal, labels
 

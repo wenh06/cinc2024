@@ -205,7 +205,7 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
         bbox_thr : float, optional
             The threshold for filtering the bounding boxes.
             If None, the threshold is set to the value of `self.config.bbox_thr`.
-        nms_thr : float, default 0.4
+        nms_thr : float, default optional
             The threshold for non-maximum suppression.
             If None, the threshold is set to the value of `self.config.nms_thr`.
         show : bool, default False
@@ -224,6 +224,7 @@ class ECGWaveformDetector(nn.Module, CitationMixin, SizeMixin, CkptMixin):
         target_sizes = get_target_sizes(img)
         # outputs converted to a list of dictionaries with keys: "scores", "labels", "boxes"
         bbox_thr = bbox_thr if bbox_thr is not None else self.config.bbox_thr
+        nms_thr = nms_thr if nms_thr is not None else self.config.nms_thr
         output = self.preprocessor.post_process_object_detection(output, threshold=bbox_thr, target_sizes=target_sizes)
         # apply non-maximum suppression
         for idx, item in enumerate(output):
