@@ -477,6 +477,7 @@ def evaluate_dx_model(
     for threshold in thresholds[1:]:
         for output in all_outputs:
             output.dx = [[output.dx_classes[idx] for idx, p in enumerate(probs) if p > threshold] for probs in output.dx_prob]
+            output.dx_threshold = threshold
             if restrict_labels:
                 output.dx = [[label for label in labels if label != TrainCfg.default_class] for labels in output.dx]
         eval_res[threshold] = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)

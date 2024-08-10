@@ -13,6 +13,7 @@ __all__ = [
     "MODEL_CACHE_DIR",
     "DATA_CACHE_DIR",
     "REMOTE_HEADS_URLS",
+    "REMOTE_MODELS",
 ]
 
 
@@ -87,5 +88,30 @@ REMOTE_HEADS_URLS = {
             "https://deep-psp.tech/Models/CinC2024/"
             "hf-microsoft-swinv2-base-patch4-window12to24-192to384-22kto1k-ft-dx-headonly__1_04-05_11-30_epochloss_395.73687_metric_0.75.pth.tar"
         ),
+    },
+}
+
+
+REMOTE_MODELS = {
+    "hf--facebook/convnextv2-nano-22k-384": {
+        "url": {
+            "google-drive": ("https://drive.google.com/u/0/uc?id=1KKioeOkUYHNXPGRhnXHWz9nmjudVjNEq"),
+            "deep-psp": (
+                "https://deep-psp.tech/Models/CinC2024/"
+                "BestModel_hf-facebook-convnextv2-nano-22k-384-dx_20_08-09_13-18_metric_0.32.pth.tar"
+            ),
+        },
+        "threshold": 0.9,
+        "filename": "BestModel_hf-facebook-convnextv2-nano-22k-384-dx_20_08-09_13-18_metric_0.32.pth.tar",
+    },
+    "hf--facebook/detr-resnet-50": {
+        "url": {
+            "google-drive": ("https://drive.google.com/u/0/uc?id=19bt05pNy7u-6uKz2WPyP3OYdTS9f3mrB"),
+            "deep-psp": (
+                "https://deep-psp.tech/Models/CinC2024/"
+                "BestModel_facebook-detr-resnet-50-merge_horizontal_3_08-09_07-18_metric_0.90.pth.tar"
+            ),
+        },
+        "filename": "BestModel_facebook-detr-resnet-50-merge_horizontal_3_08-09_07-18_metric_0.90.pth.tar",
     },
 }
