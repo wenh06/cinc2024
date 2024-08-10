@@ -12,14 +12,13 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 import torch
 import torch.nn as nn
 from torch_ecg.cfg import CFG, DEFAULTS
-from torch_ecg.utils.download import http_get
+from torch_ecg.utils.download import http_get, url_is_reachable
 from torch_ecg.utils.misc import CitationMixin, add_docstring
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from cfg import ModelCfg
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
 from outputs import CINC2024Outputs
-from utils.misc import url_is_reachable
 
 from .backbone import ImageBackbone
 from .detector import ECGWaveformDetector

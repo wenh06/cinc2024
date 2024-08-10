@@ -251,7 +251,7 @@ def train_models(
 
 def load_models(
     model_folder: Union[str, bytes, os.PathLike], verbose: bool
-) -> Tuple[Dict[str, nn.Module], Dict[str, nn.Module]]:
+) -> Tuple[Dict[str, Union[dict, nn.Module]], Dict[str, Union[dict, nn.Module]]]:
     """Load the trained models.
 
     Parameters
@@ -263,10 +263,10 @@ def load_models(
 
     Returns
     -------
-    digitization_model : Dict[str, nn.Module]
-        The trained digitization models.
-    classification_model : Dict[str, nn.Module]
-        The trained classification models.
+    digitization_model : Dict[str, Union[dict, nn.Module]]
+        The trained digitization models and their training configurations.
+    classification_model : Dict[str, Union[dict, nn.Module]]
+        The trained classification models and their training configurations.
 
     """
     if SubmissionCfg.digitalizer is not None:
@@ -276,16 +276,18 @@ def load_models(
 
     classification_model = {}
     if SubmissionCfg.detector is not None:
-        detector, _ = ECGWaveformDetector.from_checkpoint(
+        detector, detector_train_cfg = ECGWaveformDetector.from_checkpoint(
             Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
         )
         classification_model["detector"] = detector
+        classification_model["detector_train_cfg"] = detector_train_cfg
 
     if SubmissionCfg.classifier is not None:
-        classifier, _ = MultiHead_CINC2024.from_checkpoint(
+        classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(
             Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
         )
         classification_model["classifier"] = classifier
+        classification_model["classifier_train_cfg"] = classifier_train_cfg
 
     return digitization_model, classification_model
 
@@ -364,6 +366,18 @@ def run_models(
         bbox = detector.inference(input_images).bbox  # a list of dict
         # crop the input images using the "roi" of each dict in the bbox
         # the "roi" is a list of 4 integers [xmin, ymin, xmax, ymax]
+        if classification_model.get("classifier_train_cfg", None) is not None:
+            if classification_model["classifier_train_cfg"].roi_padding > 0:
+                # adjust the roi by padding
+                for img, b_dict in zip(input_images, bbox):
+                    roi_width = b_dict["roi"][2] - b_dict["roi"][0]
+                    roi_height = b_dict["roi"][3] - b_dict["roi"][1]
+                    width_padding = int(roi_width * classification_model["classifier_train_cfg"].roi_padding)
+                    height_padding = int(roi_height * classification_model["classifier_train_cfg"].roi_padding)
+                    b_dict["roi"][0] = max(0, b_dict["roi"][0] - width_padding)
+                    b_dict["roi"][1] = max(0, b_dict["roi"][1] - height_padding)
+                    b_dict["roi"][2] = min(img.width, b_dict["roi"][2] + width_padding)
+                    b_dict["roi"][3] = min(img.height, b_dict["roi"][3] + height_padding)
         cropped_images = [img.crop(b_dict["roi"]) for img, b_dict in zip(input_images, bbox)]
     else:
         cropped_images = input_images

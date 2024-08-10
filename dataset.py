@@ -122,9 +122,8 @@ class CinC2024Dataset(Dataset, ReprMixin):
         ecg_ids = self._train_test_split(train_ratio=self.config.train_ratio)
         self._df_data = self.reader._df_images[self.reader._df_images.ecg_id.isin(ecg_ids)]
         self._df_data["ecg_path"] = self._df_data["ecg_id"].apply(lambda x: self.reader._df_records.loc[x, "path"])
-        self._df_data["dx"] = self._df_data["ecg_id"].apply(
-            lambda x: self.reader.load_dx_ann(x, class_map={k: i for i, k in enumerate(self.config.classes)})
-        )
+        dx_class_map = {k: i for i, k in enumerate(self.config.classes)}
+        self._df_data["dx"] = self._df_data["ecg_id"].apply(lambda x: self.reader.load_dx_ann(x, class_map=dx_class_map))
         # one-hot encode the dx
         self._df_data["dx"] = self._df_data["dx"].apply(lambda x: one_hot_encode(x, num_classes=len(self.config.classes)))
 
