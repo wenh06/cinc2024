@@ -117,3 +117,11 @@ class CINC2024Outputs:
             for b_dict in self.bbox:
                 if "boxes" in b_dict:
                     b_dict["bbox"] = b_dict.pop("boxes")
+                # extract ROI from the bounding boxes
+                bbox_arr = np.array(b_dict["bbox"])
+                b_dict["roi"] = [
+                    bbox_arr[..., 0].min().astype(int).item(),
+                    bbox_arr[..., 1].min().astype(int).item(),
+                    bbox_arr[..., 2].max().astype(int).item(),
+                    bbox_arr[..., 3].max().astype(int).item(),
+                ]

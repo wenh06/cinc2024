@@ -17,12 +17,14 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 import torch.nn as nn
+from deprecated import deprecated
 from torch.nn.parallel import DataParallel as DP
 from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
+from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import str2bool
 
-from cfg import ModelCfg, TrainCfg
-from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS
+from cfg import BaseCfg, ModelCfg, TrainCfg
+from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset
 from helper_code import (  # noqa: F401
@@ -84,6 +86,11 @@ except Exception:
 # in which ModelCfg is imported from cfg.py, not from this script
 # ModelCfg.backbone_name = "facebook/convnextv2-large-22k-384"
 # ModelCfg.backbone_source = "hf"
+
+SubmissionCfg = CFG()
+SubmissionCfg.detector = None  # "hf--facebook/detr-resnet-50"
+SubmissionCfg.classifier = "hf--facebook/convnextv2-nano-22k-384"
+SubmissionCfg.digitizer = None
 
 ################################################################################
 
@@ -262,6 +269,50 @@ def load_models(
         The trained classification models.
 
     """
+    if SubmissionCfg.digitalizer is not None:
+        raise NotImplementedError("Digitalizer is not implemented yet.")
+    else:
+        digitization_model = None
+
+    classification_model = {}
+    if SubmissionCfg.detector is not None:
+        detector, _ = ECGWaveformDetector.from_checkpoint(
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
+        )
+        classification_model["detector"] = detector
+
+    if SubmissionCfg.classifier is not None:
+        classifier, _ = MultiHead_CINC2024.from_checkpoint(
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
+        )
+        classification_model["classifier"] = classifier
+
+    return digitization_model, classification_model
+
+
+@deprecated(reason="Use `load_models` instead.", action="error")
+def load_models_bak(
+    model_folder: Union[str, bytes, os.PathLike], verbose: bool
+) -> Tuple[Dict[str, nn.Module], Dict[str, nn.Module]]:
+    """Load the trained models.
+
+    Legacy function for the unofficial phase.
+
+    Parameters
+    ----------
+    model_folder : `path_like`
+        The path to the folder containing the trained model.
+    verbose : bool
+        Whether to display progress information.
+
+    Returns
+    -------
+    digitization_model : Dict[str, nn.Module]
+        The trained digitization models.
+    classification_model : Dict[str, nn.Module]
+        The trained classification models.
+
+    """
     key = f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"
     if url_is_reachable("https://www.dropbox.com/"):
         remote_heads_url = REMOTE_HEADS_URLS[key]["dropbox"]
@@ -307,12 +358,35 @@ def run_models(
     input_images = load_images(record)  # a list of PIL.Image.Image
     # convert to RGB (it's possible that the images are RGBA format)
     input_images = [img.convert("RGB") for img in input_images]
-    output = digitization_model.inference(input_images)  # of type CINC2024Outputs
 
-    if output.digitization is not None:
-        signal = output.digitization
+    if classification_model.get("detector") is not None:
+        detector = classification_model["detector"]
+        bbox = detector.inference(input_images).bbox  # a list of dict
+        # crop the input images using the "roi" of each dict in the bbox
+        # the "roi" is a list of 4 integers [xmin, ymin, xmax, ymax]
+        cropped_images = [img.crop(b_dict["roi"]) for img, b_dict in zip(input_images, bbox)]
     else:
-        use_workaround = True
+        cropped_images = input_images
+
+    if classification_model.get("classifier") is not None:
+        classifier = classification_model["classifier"]
+        output = classifier.inference(cropped_images, threshold=REMOTE_MODELS[SubmissionCfg.classifier]["threshold"])
+        dx_classes = output.dx_classes
+        dx_prob = np.asarray(output.dx_prob)  # of shape (n_samples, n_classes), n_samples is typically 1 but not always
+        # take max pooling along the samples
+        dx_prob = dx_prob.max(axis=0)
+        labels = [
+            dx_classes[idx] for idx, prob in enumerate(dx_prob) if prob > REMOTE_MODELS[SubmissionCfg.classifier]["threshold"]
+        ]
+        # remove the "OTHER" label (BaseCfg.default_class) if present
+        labels = [label for label in labels if label != BaseCfg.default_class]
+    else:
+        labels = None
+
+    if digitization_model is not None:
+        raise NotImplementedError("Digitalizer is not implemented yet.")
+    else:
+        use_workaround = False  # True or False
 
         if use_workaround:
             # workaround for Dx prediction only by returning a random signal (or nan values),
@@ -356,8 +430,6 @@ def run_models(
             signal = np.asarray(signal, dtype=np.int16)
         else:
             signal = None
-
-    labels = output.dx[0]
 
     return signal, labels
 
