@@ -466,11 +466,13 @@ class CINC2024Reader(PhysioNetDataBase):
 
         """
         if isinstance(img, int):
-            img = self._all_images[img]
-        img_path = self._df_images.loc[img, "path"]
+            img_id = self._all_images[img]
+        else:
+            img_id = img
+        img_path = self._df_images.loc[img_id, "path"]
         img = Image.open(img_path).convert("RGB")  # png images are RGBA
         if roi_only:
-            xmin, ymin, xmax, ymax = self._df_images.loc[img, "ROI"]  # no padding
+            xmin, ymin, xmax, ymax = self._df_images.loc[img_id, "ROI"]  # no padding
             if roi_padding > 0:
                 width, height = xmax - xmin, ymax - ymin
                 pad_x = int(width * roi_padding)
