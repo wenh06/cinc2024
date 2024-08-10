@@ -6,7 +6,7 @@ import os
 import sys
 import textwrap
 from copy import deepcopy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import torch
 from torch import nn
@@ -405,6 +405,82 @@ class CINC2024Trainer(BaseTrainer):
         if self.model_config.digitization_head.include:
             checkpoint.update({"digitization_head_state_dict": self._model.digitization_head.state_dict()})
         torch.save(checkpoint, path)
+
+
+@torch.no_grad()
+def evaluate_dx_model(
+    dx_model: MultiHead_CINC2024, ds: CinC2024Dataset, thresholds: Sequence[float], restrict_labels: bool = True
+) -> Dict[float, Dict[str, float]]:
+    """Evaluate the Dx model on the given data loader on different thresholds.
+
+    Parameters
+    ----------
+    dx_model : MultiHead_CINC2024
+        The Dx model to be evaluated.
+    ds : CinC2024Dataset
+        The dataset for evaluation.
+    thresholds : Sequence[float]
+        The thresholds for the evaluation.
+    restrict_labels : bool, default True
+        Whether to restrict the labels to the classes in the CINC2024 challenge,
+        i.e. to remove the label ("OTHERS") from the labels.
+
+    Returns
+    -------
+    eval_res : dict
+        The evaluation results on different thresholds.
+
+    """
+    all_outputs = []
+    all_labels = []
+    device = dx_model.device
+    thresholds = sorted(thresholds)
+    data_loader = DataLoader(
+        dataset=ds,
+        batch_size=16,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+        drop_last=False,
+        collate_fn=collate_fn,
+    )
+    with tqdm(
+        total=len(data_loader.dataset),
+        desc="Evaluation",
+        unit="image",
+        dynamic_ncols=True,
+        mininterval=1.0,
+        leave=False,
+    ) as pbar:
+        for input_tensors in data_loader:
+            image = input_tensors.pop("image")
+            labels = {k: v.numpy() if isinstance(v, torch.Tensor) else v for k, v in input_tensors.items() if v is not None}
+            # convert numeric labels to string labels
+            # the labels are (multi-label) one-hot encoded, perhaps with label smoothing
+            labels["dx"] = [
+                [dx_model.config.classification_head.classes[idx] for idx, item in enumerate(label) if item > 0.5]
+                for label in labels["dx"]
+            ]
+            if restrict_labels:
+                labels["dx"] = [[label for label in labels if label != TrainCfg.default_class] for labels in labels["dx"]]
+
+            all_labels.append(labels)
+
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            all_outputs.append(dx_model.inference(image, threshold=thresholds[0]))  # of type CINC2024Outputs
+            pbar.update(len(image))
+
+    metrics_keeps = ["dx"]
+    eval_res = {}
+    eval_res[thresholds[0]] = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)
+    for threshold in thresholds[1:]:
+        for output in all_outputs:
+            output.dx = [[output.dx_classes[idx] for idx, p in enumerate(probs) if p > threshold] for probs in output.dx_prob]
+            if restrict_labels:
+                output.dx = [[label for label in labels if label != TrainCfg.default_class] for labels in output.dx]
+        eval_res[threshold] = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)
+    return eval_res
 
 
 def get_args(**kwargs: Any):

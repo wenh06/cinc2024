@@ -149,7 +149,7 @@ ModelCfg.checkpoints = BaseCfg.checkpoints
 # microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft  (352 MB)
 # microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft  (787MB)
 # ModelCfg.backbone_name = "facebook/convnextv2-large-22k-384"
-ModelCfg.backbone_name = "facebook/convnextv2-atto-1k-224"
+ModelCfg.backbone_name = "facebook/convnextv2-base-22k-384"
 ModelCfg.backbone_source = "hf"
 ModelCfg.backbone_freeze = TrainCfg.backbone_freeze
 
