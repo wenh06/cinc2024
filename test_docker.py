@@ -12,6 +12,7 @@ import torch
 from torch.nn.parallel import DataParallel as DP
 from torch.utils.data import DataLoader
 from torch_ecg.cfg import CFG
+from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import str2bool
 
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
@@ -24,7 +25,7 @@ from outputs import CINC2024Outputs
 from run_model import run as model_runner_func
 from team_code import train_digitization_model, train_dx_model
 from trainer import CINC2024Trainer
-from utils.misc import func_indicator, url_is_reachable
+from utils.misc import func_indicator
 from utils.scoring_metrics import compute_challenge_metrics, compute_classification_metrics, compute_digitization_metrics
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

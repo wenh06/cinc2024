@@ -2,21 +2,74 @@ import os
 from pathlib import Path
 
 import transformers
+from deprecated import deprecated
+from torch_ecg.utils.download import http_get, url_is_reachable
 
 from cfg import ModelCfg
-from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS
+from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
 from data_reader import CINC2024Reader
-from models import MultiHead_CINC2024
+from models import ECGWaveformDetector, MultiHead_CINC2024
+from team_code import SubmissionCfg
 from utils.ecg_image_generator import download_en_core_sci_sm
-from utils.misc import url_is_reachable
 
-if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable("https://huggingface.co")):
-    # workaround for using huggingface hub in China
+# workaround for using huggingface hub in China
+if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable(os.environ["HF_ENDPOINT"])):
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("https://huggingface.co")):
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 
 def cache_pretrained_models():
+    """Cache the pretrained models."""
+    print("Caching the pretrained models...")
+    if url_is_reachable("https://drive.google.com/"):
+        remote_model_source = "google-drive"
+    else:
+        remote_model_source = "deep-psp"
+    if SubmissionCfg.digitizer is not None:
+        http_get(
+            url=REMOTE_MODELS[SubmissionCfg.digitizer]["url"][remote_model_source],
+            dst_dir=MODEL_CACHE_DIR,
+            filename=REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
+            extract=False,
+        )
+    if SubmissionCfg.classifier is not None:
+        http_get(
+            url=REMOTE_MODELS[SubmissionCfg.classifier]["url"][remote_model_source],
+            dst_dir=MODEL_CACHE_DIR,
+            filename=REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
+            extract=False,
+        )
+        model, train_config = MultiHead_CINC2024.from_checkpoint(
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
+        )
+        print("classifier loaded")
+        print(model)
+        print(train_config)
+        del model, train_config
+
+    if SubmissionCfg.detector is not None:
+        http_get(
+            url=REMOTE_MODELS[SubmissionCfg.detector]["url"][remote_model_source],
+            dst_dir=MODEL_CACHE_DIR,
+            filename=REMOTE_MODELS[SubmissionCfg.detector]["filename"],
+            extract=False,
+        )
+        model, train_config = ECGWaveformDetector.from_checkpoint(
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
+        )
+        print("detector loaded")
+        print(model)
+        print(train_config)
+        del model, train_config
+
+    # Download the spacy model
+    download_en_core_sci_sm()
+
+
+@deprecated(reason="Use cache_pretrained_models instead.", action="error")
+def cache_pretrained_models_bak():
     """Cache the pretrained models."""
     print("Caching the pretrained models...")
     key = f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"

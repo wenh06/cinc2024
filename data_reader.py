@@ -19,8 +19,8 @@ from bib_lookup.utils import is_notebook
 from PIL import Image, ImageDraw, ImageFont
 from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.databases.base import DataBaseInfo, PhysioNetDataBase
-from torch_ecg.utils.download import _unzip_file, http_get
-from torch_ecg.utils.misc import add_docstring, remove_parameters_returns_from_docstring
+from torch_ecg.utils.download import _unzip_file, http_get, url_is_reachable
+from torch_ecg.utils.misc import add_docstring, get_record_list_recursive3, remove_parameters_returns_from_docstring
 from tqdm.auto import tqdm
 
 from bbox import BBox, RotatedBBox
@@ -30,7 +30,6 @@ from helper_code import cast_int_float_unknown, find_records
 from prepare_image_data import find_files as find_images
 from utils.ecg_image_generator import constants as ecg_img_gen_constants
 from utils.ecg_image_generator import run_single_file
-from utils.misc import get_record_list_recursive3, url_is_reachable
 
 __all__ = [
     "CINC2024Reader",

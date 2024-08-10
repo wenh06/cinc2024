@@ -21,6 +21,7 @@ from deprecated import deprecated
 from torch.nn.parallel import DataParallel as DP
 from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
 from torch_ecg.cfg import CFG
+from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import str2bool
 
 from cfg import BaseCfg, ModelCfg, TrainCfg
@@ -39,10 +40,9 @@ from helper_code import (  # noqa: F401
     load_labels,
     load_text,
 )
-from models import ECGWaveformDetector, MultiHead_CINC2024  # noqa: F401
+from models import ECGWaveformDetector, MultiHead_CINC2024
 from trainer import CINC2024Trainer
-from utils.ecg_simulator import evolve_ecg, evolve_standard_12_lead_ecg  # noqa: F401
-from utils.misc import url_is_reachable
+from utils.ecg_simulator import evolve_standard_12_lead_ecg
 
 ################################################################################
 # environment variables

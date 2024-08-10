@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 import transformers
 from torch_ecg.cfg import CFG
+from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import CitationMixin, list_sum
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 from torchvision.ops import batched_nms
@@ -19,7 +20,6 @@ from torchvision.ops import batched_nms
 from cfg import ModelCfg
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
 from outputs import CINC2024Outputs
-from utils.misc import url_is_reachable
 
 # workaround for using huggingface hub in China
 if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable(os.environ["HF_ENDPOINT"])):

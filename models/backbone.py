@@ -14,11 +14,11 @@ import torch
 import torch.nn as nn
 import torchvision as tv
 import transformers
+from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
-from utils.misc import url_is_reachable
 
 # workaround for using huggingface hub in China
 if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable(os.environ["HF_ENDPOINT"])):
