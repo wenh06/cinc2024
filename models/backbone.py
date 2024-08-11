@@ -15,7 +15,6 @@ import torch.nn as nn
 import torchvision as tv
 import transformers
 from torch_ecg.utils.download import url_is_reachable
-from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
@@ -30,7 +29,7 @@ os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 __all__ = ["ImageBackbone"]
 
 
-class ImageBackbone(nn.Module, SizeMixin, CitationMixin, CkptMixin):
+class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
     """Backbone for extracting features from images.
 
     Parameters

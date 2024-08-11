@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from torch_ecg.cfg import CFG, DEFAULTS
 from torch_ecg.utils.download import http_get, url_is_reachable
-from torch_ecg.utils.misc import CitationMixin, add_docstring
+from torch_ecg.utils.misc import add_docstring
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from cfg import ModelCfg
@@ -45,7 +45,7 @@ elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("http
 os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
 
 
-class MultiHead_CINC2024(nn.Module, SizeMixin, CitationMixin, CkptMixin):
+class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
     """Multi-head model for CINC2024.
 
     Parameters

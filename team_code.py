@@ -145,7 +145,7 @@ def train_models(
 
     # Find data files.
     if verbose:
-        print("Training the digitization model...")
+        print("Training the models...")
         print("Finding the Challenge data...")
 
     records = find_records(data_folder)

@@ -4,7 +4,6 @@ from typing import Any, Optional
 
 import yaml
 from torch_ecg.cfg import CFG
-from torch_ecg.utils.misc import CitationMixin
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
 from cfg import ModelCfg
@@ -25,7 +24,7 @@ YOLOV10_CONFIGS = {
 __all__ = ["YOLOv10_Detector"]
 
 
-class YOLOv10_Detector(Model, SizeMixin, CkptMixin, CitationMixin):
+class YOLOv10_Detector(Model, SizeMixin, CkptMixin):
 
     __DEFAULT_CONFIGS__ = deepcopy(YOLOV10_CONFIGS)
 
@@ -62,6 +61,6 @@ class YOLOv10_Detector(Model, SizeMixin, CkptMixin, CitationMixin):
     def yolo_cfg(self) -> dict:
         return self.__yolo_cfg
 
-    @property
-    def doi(self) -> str:
-        return "10.48550/ARXIV.2405.14458"
+    # @property
+    # def doi(self) -> str:
+    #     return "10.48550/ARXIV.2405.14458"
