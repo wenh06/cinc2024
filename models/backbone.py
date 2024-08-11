@@ -145,14 +145,7 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
         if self.training and self.augmentor is not None:
             x = self.augmentor(x)
         if self.source == "hf":
-            try:
-                return self.backbone(x).feature_maps[-1]
-            except Exception as e:
-                import traceback
-
-                # print full traceback error information
-                traceback.print_exc()
-                raise e
+            return self.backbone(x).feature_maps[-1]
         return self.backbone(x)
 
     def pipeline(self, x: INPUT_IMAGE_TYPES) -> torch.Tensor:

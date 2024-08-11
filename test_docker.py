@@ -22,8 +22,8 @@ from dataset import CinC2024Dataset, collate_fn
 from evaluate_model import run as model_evaluator_func
 from models import MultiHead_CINC2024
 from outputs import CINC2024Outputs
-from run_model import run as model_runner_func
-from team_code import SubmissionCfg, train_models
+from run_model import run as model_runner_func  # noqa: F401
+from team_code import SubmissionCfg, train_models  # noqa: F401
 from trainer import CINC2024Trainer
 from utils.misc import func_indicator
 from utils.scoring_metrics import compute_challenge_metrics, compute_classification_metrics, compute_digitization_metrics
@@ -283,9 +283,9 @@ def test_trainer() -> None:
 
     model_config = deepcopy(ModelCfg)
     model = MultiHead_CINC2024(config=model_config)
-    if torch.cuda.device_count() > 1:
-        model = DP(model)
-        # model = DDP(model)
+    # if torch.cuda.device_count() > 1:
+    #     model = DP(model)
+    #     # model = DDP(model)
     model = model.to(device=DEVICE)
     if isinstance(model, DP):
         print("model size:", model.module.module_size, model.module.module_size_)
@@ -325,7 +325,8 @@ def test_entry() -> None:
     # run the model training function (script)
     print("   Run model training function   ".center(80, "#"))
     data_folder = tmp_data_dir
-    train_models(str(data_folder), str(tmp_model_dir), verbose=2)
+
+    # train_models(str(data_folder), str(tmp_model_dir), verbose=2)
 
     # run the model inference function (script)
     output_dir = tmp_output_dir
@@ -391,6 +392,6 @@ if __name__ == "__main__":
     test_dataset()  # passed
     # test_models()  # passed
     # test_challenge_metrics()  # passed
-    # test_trainer()  # directly run test_entry
+    test_trainer()  # directly run test_entry
     test_entry()
     # set_entry_test_flag(False)
