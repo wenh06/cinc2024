@@ -156,7 +156,7 @@ class CINC2024Reader(PhysioNetDataBase):
     __synthetic_images_url__ = {
         "full": None,
         "full-alt": None,
-        "subset": "https://drive.google.com/u/0/uc?id=1plrp_G6_1nlpMslaOFEz9cEozYwLovmu",
+        "subset": "https://drive.google.com/u/0/uc?id=17HtDz9Nn8fCI-WnpHBgcYhOBZlgh89sb",
         "subset-alt": "https://deep-psp.tech/Data/ptb-xl-synthetic-images-subset-tiny.zip",
     }
     __acute_mi_statements__ = set([821, 822, 823, 827, 829, 902, 903, 904, 963, 964, 965, 966, 967, 968])
@@ -1269,7 +1269,7 @@ class CINC2024Reader(PhysioNetDataBase):
     def download_synthetic_images(self, set_name: str = "subset") -> None:
         """Download the synthetic files generated offline from Google Drive."""
         if url_is_reachable("https://drive.google.com/"):
-            source = "gdrive"
+            source = "google-drive"
             url = self.__synthetic_images_url__[set_name]
         elif url_is_reachable("https://deep-psp.tech"):
             source = "deep-psp"
@@ -1284,7 +1284,7 @@ class CINC2024Reader(PhysioNetDataBase):
             self.logger.warn("No write access. The synthetic images will not be downloaded.")
             return
         dl_file = str(self._synthetic_images_dir.parent / "ptb-xl-synthetic-images.zip")
-        if source == "gdrive":
+        if source == "google-drive":
             gdown.download(url, dl_file, quiet=False)
             _unzip_file(dl_file, self._synthetic_images_dir)
         elif source == "deep-psp":
@@ -1300,11 +1300,9 @@ class CINC2024Reader(PhysioNetDataBase):
     def download_subset(self) -> None:
         """Download the subset of the database."""
         if url_is_reachable("https://drive.google.com/"):
-            source = "gdrive"
-            # url = "https://drive.google.com/u/0/uc?id=1ZsIPg-K9AUXq1LgI0DRLFLgviPfvx5P3"
-            # url = "https://drive.google.com/u/0/uc?id=1tTEsgq5HNvB-Qy9cSk_S1koeDHE7M-d2"
-            url = "https://drive.google.com/u/0/uc?id=1KM8ZFb5yMjaFxa0WoRthCe3YQMTqIMpy"
-            dl_file = str(self.db_dir / "ptb-xl-subset.zip")
+            source = "google-drive"
+            url = "https://drive.google.com/u/0/uc?id=1wq9r6rbhaMhMe-GWHpi5lQQIVwBU8UPL"
+            dl_file = str(self.db_dir / "ptb-xl-subset-tiny.zip")
             gdown.download(url, dl_file, quiet=False)
             _unzip_file(dl_file, self.db_dir)
         elif url_is_reachable("https://deep-psp.tech"):
