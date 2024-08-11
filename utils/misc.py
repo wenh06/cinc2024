@@ -4,7 +4,7 @@ Miscellaneous functions.
 
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -18,6 +18,7 @@ __all__ = [
     "predict_proba_ordered",
     "load_submission_log",
     "view_image_with_bbox",
+    "view_roi",
 ]
 
 
@@ -168,6 +169,76 @@ def view_image_with_bbox(
     for box, cat_name in zip(bbox_dict["bbox"], bbox_dict["category_name"]):
         draw.rectangle(box.tolist(), outline="red")
         draw.text((box[0], box[1]), cat_name, fill="red", font=font, anchor="lb")
+
+    # if is jupyter notebook, show the image inline
+    if is_notebook():
+        return img
+    img.show()
+
+
+def view_roi(
+    image: Union[np.ndarray, torch.Tensor, Image.Image],
+    roi: Sequence[int],
+    fmt: str = "voc",
+    binarize: bool = False,
+    binarize_percentile: float = 1.0,
+) -> Optional[Image.Image]:
+    """View the region of interest (ROI) of the image.
+
+    Parameters
+    ----------
+    image : Union[np.ndarray, torch.Tensor, Image.Image]
+        The image to be viewed.
+    roi : Sequence[int]
+        The region of interest, a list of integers of length 4.
+    fmt : {"coco", "voc", "yolo"}, default "coco"
+        Format of the bounding boxes in `bbox`.
+    binarize : bool, default False
+        Whether to binarize the ROI.
+    binarize_percentile : float, default 1.0
+        The percentile to binarize the ROI.
+
+    Returns
+    -------
+    Image.Image
+        The image with ROI.
+
+    """
+    if isinstance(image, torch.Tensor):
+        image = image.numpy().transpose(1, 2, 0)
+    if isinstance(image, np.ndarray):
+        assert image.ndim == 3 and image.shape[-1] == 3, f"unsupported shape {image.shape}"
+        img = Image.fromarray(image)
+    elif isinstance(image, Image.Image):
+        img = image
+    else:
+        raise ValueError(f"unsupported type {type(image)}")
+
+    img_width, img_height = img.size
+    if fmt == "coco":
+        # (x, y, w, h)
+        # to voc format (xmin, ymin, xmax, ymax)
+        roi = np.array(roi)
+        roi[2:] = roi[:2] + roi[2:]
+    elif fmt == "voc":
+        # (xmin, ymin, xmax, ymax)
+        roi = np.array(roi)
+    elif fmt == "yolo":
+        # (x_center, y_center, w, h)
+        # to voc format (xmin, ymin, xmax, ymax)
+        roi = np.array(roi)
+        roi[[0, 1]] = roi[[0, 1]] - roi[[2, 3]] / 2
+        roi[[2, 3]] = roi[[0, 1]] + roi[[2, 3]]
+        roi[[0, 2]] *= img_width
+        roi[[1, 3]] *= img_height
+    else:
+        raise ValueError(f"unsupported format {fmt}")
+    img = img.crop(roi.tolist())
+
+    if binarize:
+        threshold = np.percentile(np.asarray(img.convert("L")), binarize_percentile)
+        print(f"Binarization threshold: {threshold}")
+        img = img.point(lambda p: 255 if p > threshold else 0).convert("L")
 
     # if is jupyter notebook, show the image inline
     if is_notebook():
