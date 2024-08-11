@@ -392,6 +392,6 @@ if __name__ == "__main__":
     test_dataset()  # passed
     # test_models()  # passed
     # test_challenge_metrics()  # passed
-    test_trainer()  # directly run test_entry
+    # test_trainer()  # directly run test_entry
     test_entry()
     # set_entry_test_flag(False)
