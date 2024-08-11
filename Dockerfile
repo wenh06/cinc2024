@@ -83,7 +83,6 @@ RUN mkdir -p tmp && cd tmp
 RUN git clone https://github.com/DeepPSP/torch_ecg.git && cd torch_ecg && git checkout dev \
     python -m pip install -r requirements.txt && python -m pip install -e .[dev] && cd ../../
 
-
 ## DO NOT EDIT the 3 lines.
 RUN mkdir /challenge
 COPY ./requirements-docker.txt /challenge
