@@ -10,12 +10,12 @@ from typing import List, Optional, Sequence, Union
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 
 import numpy as np
-import PIL
 import timm
 import torch
 import torch.nn as nn
 import torchvision as tv
 import transformers
+from PIL import Image
 from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
@@ -145,7 +145,14 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
         if self.training and self.augmentor is not None:
             x = self.augmentor(x)
         if self.source == "hf":
-            return self.backbone(x).feature_maps[-1]
+            try:
+                return self.backbone(x).feature_maps[-1]
+            except Exception as e:
+                import traceback
+
+                # print full traceback error information
+                traceback.print_exc()
+                raise e
         return self.backbone(x)
 
     def pipeline(self, x: INPUT_IMAGE_TYPES) -> torch.Tensor:
@@ -185,7 +192,7 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
         assert self.preprocessor is not None, "Set up the preprocessor first."
         if isinstance(x, (np.ndarray, torch.Tensor)):
             x_ndim = x.ndim
-        elif isinstance(x, (PIL.Image.Image)):
+        elif isinstance(x, (Image.Image)):
             x_ndim = 3
         elif isinstance(x, (list, tuple)):
             x_ndim = 4

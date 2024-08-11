@@ -9,10 +9,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 
 import numpy as np
-import PIL
 import torch
 import torch.nn as nn
 import transformers
+from PIL import Image
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import list_sum
@@ -138,7 +138,7 @@ class ECGWaveformDetector(nn.Module, SizeMixin, CkptMixin):
             # not tested
             if isinstance(img, (np.ndarray, torch.Tensor)):
                 img_ndim = img.ndim
-            elif isinstance(img, (PIL.Image.Image)):
+            elif isinstance(img, (Image.Image)):
                 img_ndim = 3
             elif isinstance(img, (list, tuple)):
                 img_ndim = 4
@@ -335,6 +335,6 @@ def get_target_sizes(img: INPUT_IMAGE_TYPES, channels: int = 3) -> List[Tuple[in
                 target_sizes = [tuple(img.shape[:-1])]
         elif img.ndim == 4:
             target_sizes = list_sum(get_target_sizes(item, channels) for item in img)
-    elif isinstance(img, PIL.Image.Image):
+    elif isinstance(img, Image.Image):
         target_sizes = [img.size[::-1]]
     return target_sizes
