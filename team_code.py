@@ -269,7 +269,7 @@ def load_models(
         The trained classification models and their training configurations.
 
     """
-    if SubmissionCfg.digitalizer is not None:
+    if SubmissionCfg.digitizer is not None:
         raise NotImplementedError("Digitalizer is not implemented yet.")
     else:
         digitization_model = None
