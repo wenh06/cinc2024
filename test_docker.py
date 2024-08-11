@@ -326,7 +326,7 @@ def test_entry() -> None:
     print("   Run model training function   ".center(80, "#"))
     data_folder = tmp_data_dir
 
-    # train_models(str(data_folder), str(tmp_model_dir), verbose=2)
+    train_models(str(data_folder), str(tmp_model_dir), verbose=2)
 
     # run the model inference function (script)
     output_dir = tmp_output_dir
@@ -356,10 +356,11 @@ def test_entry() -> None:
             print(f"copied {src_file} ---> {dst_file}")
 
     model_evaluator_args = CFG(
-        label_folder=str(Path(DATA_CACHE_DIR) / "synthetic_images"),
-        output_folder=str(output_dir),
+        folder_ref=str(Path(DATA_CACHE_DIR) / "synthetic_images"),
+        folder_est=str(output_dir),
         extra_scores=True,
         score_file=None,
+        no_shift=False,
     )
     model_evaluator_func(model_evaluator_args)  # metrics are printed
 
