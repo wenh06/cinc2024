@@ -169,7 +169,7 @@ def train_models(
     # dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
     # del dr
 
-    # Train the model
+    # Train the models
     train_config = deepcopy(TrainCfg)
     # train_config.db_dir = data_folder
     train_config.db_dir = Path(DATA_CACHE_DIR)
@@ -188,10 +188,12 @@ def train_models(
     else:
         train_config.debug = False
 
-        train_config.n_epochs = 27
-        train_config.batch_size = 48  # 16G (Tesla T4)
+        train_config.n_epochs = 25
+        train_config.batch_size = 16  # 16G (Tesla T4)
         train_config.log_step = 100
-        # train_config.max_lr = 1.5e-3
+        train_config.learning_rate = 5e-5
+        train_config.lr = train_config.learning_rate
+        train_config.max_lr = 1e-4
         train_config.early_stopping.patience = train_config.n_epochs // 3
 
     model_config = deepcopy(ModelCfg)
@@ -243,6 +245,8 @@ def train_models(
 
     if verbose:
         print(f"""Saved models: {list((Path(__file__).parent / "saved_models").iterdir())}""")
+
+    # TODO: train object detection model, digitization (segmentation) model
 
     print("\n" + "*" * 100)
     msg = "   CinC2024 challenge training entry ends   ".center(100, "#")
