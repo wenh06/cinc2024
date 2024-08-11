@@ -79,7 +79,9 @@ RUN python -m pip install --upgrade pip setuptools wheel
 
 # RUN pip install torch-ecg
 # install the dev branch of torch-ecg
-RUN pip install git+https://github.com/DeepPSP/torch_ecg.git@dev
+RUN mkdir -p tmp && cd tmp
+RUN git clone https://github.com/DeepPSP/torch_ecg.git && cd torch_ecg && git checkout dev && pip install -e .[dev]
+RUN cd ../../
 
 
 ## DO NOT EDIT the 3 lines.
