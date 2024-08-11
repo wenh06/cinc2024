@@ -45,3 +45,4 @@ keras
 pyyaml
 qrcode
 safetensors
+dill==0.3.8
