@@ -1,5 +1,5 @@
 # https://hub.docker.com/r/pytorch/pytorch
-FROM pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
+FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 # NOTE:
 # pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime has python version 3.10.8, system version Ubuntu 18.04.6 LTS
 # pytorch/pytorch:1.10.0-cuda11.3-cudnn8-runtime has python version 3.7.x

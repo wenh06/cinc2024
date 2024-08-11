@@ -16,14 +16,14 @@ from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import str2bool
 
 from cfg import _BASE_DIR, ModelCfg, TrainCfg
-from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS
+from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_MODELS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset, collate_fn
 from evaluate_model import run as model_evaluator_func
 from models import MultiHead_CINC2024
 from outputs import CINC2024Outputs
 from run_model import run as model_runner_func
-from team_code import train_digitization_model, train_dx_model
+from team_code import SubmissionCfg, train_models
 from trainer import CINC2024Trainer
 from utils.misc import func_indicator
 from utils.scoring_metrics import compute_challenge_metrics, compute_classification_metrics, compute_digitization_metrics
@@ -99,7 +99,7 @@ def test_dataset() -> None:
     assert data["image"].ndim == 3
     assert data["image"].shape[-1] == 3
     if "dx" in data:
-        assert isinstance(data["dx"], np.generic) and data["dx"].ndim == 0
+        assert isinstance(data["dx"], np.ndarray) and data["dx"].ndim == 1
     if "digitization" in data:
         assert isinstance(data["digitization"], np.ndarray)
         assert data["digitization"].ndim == 2
@@ -110,7 +110,13 @@ def test_dataset() -> None:
         assert data["mask"].shape[0] == ds_val.config.num_leads
     if "bbox" in data:
         # TODO: test fields for object detection
-        pass
+        assert isinstance(data["bbox"], dict)
+        assert set(data["bbox"].keys()) <= {"annotations", "image_id", "image_size", "format"}
+        assert isinstance(data["bbox"]["annotations"], list)
+        assert all([isinstance(ann, dict) for ann in data["bbox"]["annotations"]])
+        assert all(
+            [set(ann.keys()) <= {"bbox", "category_id", "is_crowd", "image_id", "area"} for ann in data["bbox"]["annotations"]]
+        )
 
     # slice indexing
     batch_size = 4
@@ -123,7 +129,7 @@ def test_dataset() -> None:
     assert all([isinstance(img, np.ndarray) for img in data["image"]])
     if "dx" in data:
         assert isinstance(data["dx"], torch.Tensor)
-        assert data["dx"].ndim == 1
+        assert data["dx"].ndim == 2
         assert data["dx"].shape[0] == batch_size
     if "digitization" in data:
         pass
@@ -138,7 +144,9 @@ def test_dataset() -> None:
         # assert data["mask"].shape[0] == batch_size
         # assert data["mask"].shape[1] == ds_val.config.num_leads
     if "bbox" in data:
-        pass
+        assert isinstance(data["bbox"], list)
+        assert len(data["bbox"]) == batch_size
+        assert all([isinstance(bbox, dict) for bbox in data["bbox"]])
 
     # DO NOT use the following code to load all data
     # since the dataset is too large to load all data into memory
@@ -159,6 +167,7 @@ def test_models() -> None:
     model.to(DEVICE)
     ds_config = deepcopy(TrainCfg)
     ds_config.db_dir = tmp_data_dir
+    ds_config.predict_bbox = False
     ds_val = CinC2024Dataset(ds_config, training=False, lazy=True)
     # ds_val._load_all_data()
     dl = DataLoader(
@@ -184,17 +193,25 @@ def test_models() -> None:
         if idx > 2:
             break
 
-    # test classmethod "from_remote_heads"
-    key = f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"
-    if url_is_reachable("https://www.dropbox.com/"):
-        remote_heads_url = REMOTE_HEADS_URLS[key]["dropbox"]
+    # test classmethod "from_checkpoint"
+    if url_is_reachable("https://drive.google.com/"):
+        remote_model_source = "google-drive"
     else:
-        remote_heads_url = REMOTE_HEADS_URLS[key]["deep-psp"]
-    model = MultiHead_CINC2024.from_remote_heads(
-        url=remote_heads_url,
-        model_dir=(tmp_model_dir / key.replace("/", "--")),
-        device=DEVICE,
-    )
+        remote_model_source = "deep-psp"
+
+    if SubmissionCfg.digitizer is not None:
+        pass
+
+    if SubmissionCfg.detector is not None:
+        pass
+
+    if SubmissionCfg.classifier is not None:
+        model, train_config = MultiHead_CINC2024.from_checkpoint(
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
+        )
+        print("classifier loaded")
+        print(model)
+        print(train_config)
     for idx, input_tensors in enumerate(dl):
         print(model.inference(input_tensors["image"]))
         if idx > 2:
@@ -308,8 +325,7 @@ def test_entry() -> None:
     # run the model training function (script)
     print("   Run model training function   ".center(80, "#"))
     data_folder = tmp_data_dir
-    train_digitization_model(str(data_folder), str(tmp_model_dir), verbose=2)
-    train_dx_model(str(data_folder), str(tmp_model_dir), verbose=2)
+    train_models(str(data_folder), str(tmp_model_dir), verbose=2)
 
     # run the model inference function (script)
     output_dir = tmp_output_dir

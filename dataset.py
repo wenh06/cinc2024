@@ -323,6 +323,8 @@ def naive_collate_fn(batch: List[Dict[str, np.ndarray]]) -> Dict[str, list]:
     batched_data = {}
     for k in batch[0].keys():
         batched_data[k] = [b[k] for b in batch]
+        if k == "dx":
+            batched_data[k] = torch.from_numpy(np.stack(batched_data[k], axis=0))
     return batched_data
 
 

@@ -350,8 +350,10 @@ class CINC2024Trainer(BaseTrainer):
                 prefix = f"{prefix}-digitization"
             if self.model_config.backbone_freeze:
                 prefix = f"{prefix}-headonly"
+            if self.train_config.roi_only:
+                prefix = f"{prefix}-roi_only"
         elif self.train_config.predict_bbox:
-            prefix = f"""{self._model.config.model_name.replace("/", "-")}"""
+            prefix = f"""{self._model.config.source}-{self._model.config.model_name.replace("/", "-")}"""
             if self.train_config.bbox_mode != "full":  # roi_only, merge_horizontal
                 prefix = f"{prefix}-{self.train_config.bbox_mode}"
         else:
@@ -367,8 +369,10 @@ class CINC2024Trainer(BaseTrainer):
                 suffix = f"{suffix}-digitization"
             if self.model_config.backbone_freeze:
                 suffix = f"{suffix}-headonly"
+            if self.train_config.roi_only:
+                suffix = f"{suffix}-roi_only"
         elif self.train_config.predict_bbox:
-            suffix = f"""{self._model.config.model_name.replace("/", "-")}"""
+            suffix = f"""{self._model.config.source}-{self._model.config.model_name.replace("/", "-")}"""
             if self.train_config.bbox_mode != "full":  # roi_only, merge_horizontal
                 suffix = f"{suffix}-{self.train_config.bbox_mode}"
         else:

@@ -1578,6 +1578,8 @@ class CINC2024Reader(PhysioNetDataBase):
             text_bbox_file = row["text_bbox_file"]
             (dst_dir / text_bbox_file.parent.relative_to(self._synthetic_images_dir)).mkdir(parents=True, exist_ok=True)
             shutil.copy(text_bbox_file, dst_dir / text_bbox_file.parent.relative_to(self._synthetic_images_dir))
+            signal_file = self._df_records.loc[row["ecg_id"], "path"].with_suffix(f".{self.data_ext}")
+            shutil.copy(signal_file, dst_dir / image_file.parent.relative_to(self._synthetic_images_dir))
 
 
 def get_record_labels(row: pd.Series, df_12sl_statements: pd.DataFrame, acute_mi_classes: Set[str]) -> List[str]:
