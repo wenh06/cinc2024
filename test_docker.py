@@ -84,20 +84,20 @@ def test_dataset() -> None:
     ds_val = CinC2024Dataset(ds_config, training=False, lazy=True)
 
     print(f"{len(ds_train) = }, {len(ds_val) = }")
-    assert len(ds_train) > 0
-    assert len(ds_val) > 0
+    assert len(ds_train) > 0, f"{len(ds_train) = }"
+    assert len(ds_val) > 0, f"{len(ds_val) = }"
 
     # int indexing
     data = ds_val[0]
-    assert isinstance(data, dict)
-    assert "image" in data and "image_id" in data
-    assert set(data.keys()) <= ds_val.data_fields
+    assert isinstance(data, dict), f"{type(data) = }"
+    assert "image" in data and "image_id" in data, f"{data.keys() = }"
+    assert set(data.keys()) <= ds_val.data_fields, f"{set(data.keys()) = }, {ds_val.data_fields = }"
     # since the image backbone from transformers automatically converts the image to correct format
     # preprocessings including normalization, resizing, channel conversion, etc. are done in the backbone
     # instead of in the dataset
-    assert isinstance(data["image"], np.ndarray)
-    assert data["image"].ndim == 3
-    assert data["image"].shape[-1] == 3
+    assert isinstance(data["image"], np.ndarray), f"{type(data['image']) = }"
+    assert data["image"].ndim == 3, f"{data['image'].shape = }"
+    assert data["image"].shape[-1] == 3, f"{data['image'].shape = }"
     if "dx" in data:
         assert isinstance(data["dx"], np.ndarray) and data["dx"].ndim == 1
     if "digitization" in data:
