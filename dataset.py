@@ -62,21 +62,24 @@ class CinC2024Dataset(Dataset, ReprMixin):
         A_kw = {}
         if self.config.predict_bbox:
             A_kw["bbox_params"] = A.BboxParams(format=self.config.bbox_format, label_fields=["category_id"])
-        if self.training:
-            self.transform = A.Compose(
-                [
-                    A.RandomBrightnessContrast(p=0.5),
-                    A.HueSaturationValue(p=0.1),
-                ],
-                **A_kw,
-            )
+        if self.config.use_augmentation:
+            if self.training:
+                self.transform = A.Compose(
+                    [
+                        A.RandomBrightnessContrast(p=0.5),
+                        A.HueSaturationValue(p=0.1),
+                    ],
+                    **A_kw,
+                )
+            else:
+                self.transform = A.Compose(
+                    [
+                        A.NoOp(),
+                    ],
+                    **A_kw,
+                )
         else:
-            self.transform = A.Compose(
-                [
-                    A.NoOp(),
-                ],
-                **A_kw,
-            )
+            self.transform = None
 
         if self.config.get("db_dir", None) is None:
             self.config.db_dir = reader_kwargs.pop("db_dir", None)
@@ -244,7 +247,13 @@ class FastDataReader(ReprMixin, Dataset):
         if self.config.predict_bbox:
             A_kw["bboxes"] = row["bbox_formatted"]["bbox"]
             A_kw["category_id"] = row["bbox_formatted"]["category_id"]
-        A_out = self.transform(image=image, **A_kw)
+        if self.transform is not None:
+            A_out = self.transform(image=image, **A_kw)
+        else:
+            A_out = {"image": image}
+            if self.config.predict_bbox:
+                A_out["bboxes"] = A_kw["bboxes"]
+                A_out["category_id"] = A_kw["category_id"]
         data["image"] = A_out.pop("image")
 
         if self.config.predict_dx:

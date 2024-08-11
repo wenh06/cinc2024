@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import albumentations as A
+import numpy as np
 import transformers
 from deprecated import deprecated
 from torch_ecg.utils.download import http_get, url_is_reachable
@@ -99,6 +101,22 @@ def cache_data():
     dr.download_subset()
 
 
+def test_albumentations():
+    transform = A.Compose(
+        [
+            A.RandomBrightnessContrast(p=0.5),
+            A.HueSaturationValue(p=0.1),
+        ],
+    )
+    transform(image=np.random.randint(0, 255, (256, 256, 3)).astype(np.uint8))
+    transform = A.Compose(
+        [
+            A.NoOp(),
+        ],
+    )
+    transform(image=np.random.randint(0, 255, (256, 256, 3)).astype(np.uint8))
+
+
 def prepare_synthetic_images():
     """Prepare the synthetic images."""
     print("Preparing the synthetic images...")
@@ -119,4 +137,5 @@ if __name__ == "__main__":
     transformers.logging.set_verbosity_info()
     cache_pretrained_models()
     cache_data()  # or prepare_synthetic_images(), prepare_synthetic_images NOT tested yet.
+    test_albumentations()
     print("Done.")

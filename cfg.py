@@ -100,6 +100,7 @@ TrainCfg.log_step = 40
 
 # data augmentation
 # https://pytorch.org/vision/stable/transforms.html
+TrainCfg.use_augmentation = True
 
 
 TrainCfg.backbone_freeze = False  # whether to freeze the backbone
