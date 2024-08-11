@@ -1,8 +1,11 @@
 # Ultralytics YOLO 🚀, AGPL-3.0 license
 
+import os
 import math
 import random
 from copy import deepcopy
+
+os.environ['ALBUMENTATIONS_DISABLE_VERSION_CHECK'] = '1'
 
 import cv2
 import numpy as np

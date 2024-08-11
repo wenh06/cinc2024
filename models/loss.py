@@ -17,8 +17,11 @@ This module contains the loss functions for the digitized signal values.
 
 """
 
+import os
 import re
 from typing import Any, Optional
+
+os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 
 import torch
 import torch.nn as nn

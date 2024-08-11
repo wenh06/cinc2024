@@ -6,6 +6,8 @@ import os
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
+
 import numpy as np
 import PIL
 import torch

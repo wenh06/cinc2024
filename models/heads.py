@@ -2,8 +2,11 @@
 """
 
 import math
+import os
 from functools import reduce
 from typing import Any, Dict, Optional, Sequence
+
+os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 
 import torch
 import torch.nn as nn

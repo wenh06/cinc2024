@@ -7,6 +7,8 @@ import warnings
 from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
+os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
+
 import numpy as np
 import PIL
 import timm

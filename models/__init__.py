@@ -9,6 +9,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
+
 import torch
 import torch.nn as nn
 from torch_ecg.cfg import CFG, DEFAULTS
