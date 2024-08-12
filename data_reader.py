@@ -909,6 +909,7 @@ class CINC2024Reader(PhysioNetDataBase):
         else:
             mask = np.zeros((raw_height, raw_width), dtype=np.float32)
         mask[plotted_pixels[:, 0].astype(int), plotted_pixels[:, 1].astype(int)] = 1
+        # mask = mask[..., np.newaxis]
 
         return mask
 

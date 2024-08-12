@@ -230,7 +230,7 @@ class FastDataReader(ReprMixin, Dataset):
         if isinstance(index, slice):
             # note that the images are of the same size
             # return default_collate_fn([self[i] for i in range(*index.indices(len(self)))])
-            if self.config.predict_bbox:
+            if self.config.predict_bbox or self.config.predict_mask:
                 return naive_collate_fn([self[i] for i in range(*index.indices(len(self)))])
             return collate_fn([self[i] for i in range(*index.indices(len(self)))])
 
@@ -247,6 +247,11 @@ class FastDataReader(ReprMixin, Dataset):
         if self.config.predict_bbox:
             A_kw["bboxes"] = row["bbox_formatted"]["bbox"]
             A_kw["category_id"] = row["bbox_formatted"]["category_id"]
+        if self.config.predict_mask:
+            # load the mask
+            mask = self.reader.load_waveform_mask(row.name, roi_only=self.config.roi_only, roi_padding=self.config.roi_padding)
+            A_kw["mask"] = mask
+
         if self.transform is not None:
             A_out = self.transform(image=image, **A_kw)
         else:
@@ -254,6 +259,8 @@ class FastDataReader(ReprMixin, Dataset):
             if self.config.predict_bbox:
                 A_out["bboxes"] = A_kw["bboxes"]
                 A_out["category_id"] = A_kw["category_id"]
+            if self.config.predict_mask:
+                A_out["mask"] = A_kw["mask"]
         data["image"] = A_out.pop("image")
 
         if self.config.predict_dx:
@@ -280,8 +287,7 @@ class FastDataReader(ReprMixin, Dataset):
             else:
                 raise NotImplementedError(f"bbox format {self.config.bbox_format} is not implemented yet")
         if self.config.predict_mask:
-            # load the mask
-            raise NotImplementedError("mask prediction is not implemented yet")
+            data["mask"] = A_out.pop("mask")
 
         return data
 
