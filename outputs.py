@@ -41,6 +41,8 @@ class CINC2024Outputs:
         Bounding boxes of the detected objects,
         keys are "bbox", "category_id", "category_name", "scores".
     bbox_loss : Sequence[Dict[str, float]], optional
+    waveform_mask : Sequence[np.ndarray], optional
+        Masks for the waveform segmentation (digitization).
 
     """
 
@@ -56,6 +58,7 @@ class CINC2024Outputs:
     bbox: Optional[Sequence[Dict[str, np.ndarray]]] = None
     bbox_classes: Optional[Sequence[str]] = None
     bbox_loss: Optional[Sequence[Dict[str, float]]] = None
+    waveform_mask: Optional[Sequence[np.ndarray]] = None
 
     def __post_init__(self) -> None:
         assert any(
@@ -65,8 +68,9 @@ class CINC2024Outputs:
                 self.dx_prob is not None,
                 self.digitization is not None,
                 self.bbox is not None,
+                self.waveform_mask is not None,
             ]
-        ), "at least one of `dx`, `digitization`, `bbox` prediction should be provided"
+        ), "at least one of `dx`, `digitization`, `bbox`, `waveform_mask` prediction should be provided"
         if self.dx is not None:
             assert self.dx_classes is not None, "dx_classes should be provided if `dx` is provided"
             idx2class = {idx: cl for idx, cl in enumerate(self.dx_classes)}
@@ -125,3 +129,7 @@ class CINC2024Outputs:
                     bbox_arr[..., 2].max().astype(int).item(),
                     bbox_arr[..., 3].max().astype(int).item(),
                 ]
+
+        # TODO: convert the waveform mask to digitized waveform
+        if self.waveform_mask is not None:
+            pass

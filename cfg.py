@@ -109,8 +109,8 @@ TrainCfg.backbone_freeze = False  # whether to freeze the backbone
 TrainCfg.predict_dx = True
 TrainCfg.predict_digitization = False  # TODO: implement digitization prediction
 TrainCfg.predict_bbox = True
-TrainCfg.predict_mask = False  # TODO: implement mask prediction from ROI obtained by object detection
 TrainCfg.bbox_format = "coco"  # "coco", "pascal_voc", "yolo"
+TrainCfg.predict_mask = False  # TODO: implement mask prediction from ROI obtained by object detection
 
 TrainCfg.bbox_mode = "merge_horizontal"  # "roi_only", "merge_horizontal", "full"
 
@@ -188,7 +188,7 @@ ModelCfg.classification_head.monitor = "dx_f_measure"
 #     # and further reshaped to the final output shape
 # ]
 
-# digitization_head now use 1D convolutional layer instead
+# digitization_head (NOT used) now use 1D convolutional layer instead
 ModelCfg.digitization_head = CFG()
 ModelCfg.digitization_head.kernel_size = 51
 ModelCfg.digitization_head.dilation = 1
@@ -227,3 +227,14 @@ ModelCfg.object_detection.bbox_thr = 0.5
 ModelCfg.object_detection.nms_thr = 0.4
 
 ModelCfg.object_detection.monitor = "detection_map"
+
+
+ModelCfg.digitizer = CFG()
+ModelCfg.digitizer.source = "custom"
+ModelCfg.digitizer.model_name = "unet"
+ModelCfg.digitizer.input_mode = "raw"  # "thresholded", "raw", "both"
+ModelCfg.digitizer.input_shape = {"height": 768, "width": 768 * 2}
+ModelCfg.digitizer.input_norm = {"mean": (0.5,), "std": (0.5,), "max_pixel_value": 255}
+ModelCfg.digitizer.threshold_percentile = 1.0  # for mode "thresholded" and "both"
+
+ModelCfg.digitizer.num_classes = 1
