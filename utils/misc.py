@@ -4,7 +4,7 @@ Miscellaneous functions.
 
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,9 @@ import torch
 import yaml
 from bib_lookup.utils import is_notebook
 from PIL import Image, ImageDraw, ImageFont
+from torch_ecg.utils.misc import list_sum
+
+from const import INPUT_IMAGE_TYPES
 
 __all__ = [
     "func_indicator",
@@ -19,6 +22,7 @@ __all__ = [
     "load_submission_log",
     "view_image_with_bbox",
     "view_roi",
+    "get_target_sizes",
 ]
 
 
@@ -261,3 +265,35 @@ def view_roi(
     if is_notebook():
         return img
     img.show()
+
+
+def get_target_sizes(img: INPUT_IMAGE_TYPES, channels: int = 3) -> List[Tuple[int, int]]:
+    """Get the target sizes of the input image(s).
+
+    Parameters
+    ----------
+    img : numpy.ndarray, or torch.Tensor, or PIL.Image.Image, or list or tuple
+        Input image.
+    channels : int, default 3
+        The number of channels of the input image.
+        Used to determine the channel dimension of the input image.
+
+    Returns
+    -------
+    List[Tuple[int, int]]
+        The list containing the target size `(height, width)` of each image.
+
+    """
+    if isinstance(img, (list, tuple)):
+        target_sizes = list_sum(get_target_sizes(item, channels) for item in img)
+    elif isinstance(img, (np.ndarray, torch.Tensor)):
+        if img.ndim == 3:
+            if img.shape[0] == channels:  # channels first
+                target_sizes = [tuple(img.shape[1:])]
+            else:  # channels last
+                target_sizes = [tuple(img.shape[:-1])]
+        elif img.ndim == 4:
+            target_sizes = list_sum(get_target_sizes(item, channels) for item in img)
+    elif isinstance(img, Image.Image):
+        target_sizes = [img.size[::-1]]
+    return target_sizes

@@ -4,7 +4,7 @@ Waveform detector model, which detects the bounding boxes of the waveforms in th
 
 import os
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 
@@ -15,13 +15,13 @@ import transformers
 from PIL import Image
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.download import url_is_reachable
-from torch_ecg.utils.misc import list_sum
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 from torchvision.ops import batched_nms
 
 from cfg import ModelCfg
 from const import INPUT_IMAGE_TYPES, MODEL_CACHE_DIR
 from outputs import CINC2024Outputs
+from utils.misc import get_target_sizes
 
 # workaround for using huggingface hub in China
 if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable(os.environ["HF_ENDPOINT"])):
@@ -36,15 +36,11 @@ class ECGWaveformDetector(nn.Module, SizeMixin, CkptMixin):
 
     Parameters
     ----------
-    name_or_path: Union[str, bytes, os.PathLike]
-        The name or path of the model.
-        e.g. "facebook/detr-resnet-50", "microsoft/conditional-detr-resnet-50", "hustvl/yolos-small",
-        or "/path/to/model".
-    source: {"hf", "mm"}, default "hf"
-        The source of the model.
-        It can be "hf" (Hugging Face) or "mm" (MM-Detection) or "de" (Detectron2).
-    pretrained: bool, default True
-        Whether to load the pretrained model weights.
+    config : CFG, optional
+        The configuration of the model.
+    **kwargs : Any
+        Configurations that overwrite items in `config`.
+
 
     References
     ----------
@@ -58,7 +54,10 @@ class ECGWaveformDetector(nn.Module, SizeMixin, CkptMixin):
         super().__init__()
         self.__config = deepcopy(ModelCfg.object_detection)
         if config is not None:
-            self.__config.update(deepcopy(config))
+            if "object_detection" in config:
+                self.__config.update(deepcopy(config["object_detection"]))
+            else:
+                self.__config.update(deepcopy(config))
         self.__config.update(kwargs)
         if self.config.source.lower() == "hf":
             # The preprocessor typically expects the annotations to be in the following format:
@@ -306,35 +305,3 @@ class ECGWaveformDetector(nn.Module, SizeMixin, CkptMixin):
     @property
     def config(self) -> CFG:
         return self.__config
-
-
-def get_target_sizes(img: INPUT_IMAGE_TYPES, channels: int = 3) -> List[Tuple[int, int]]:
-    """Get the target sizes of the input image(s).
-
-    Parameters
-    ----------
-    img : numpy.ndarray, or torch.Tensor, or PIL.Image.Image, or list or tuple
-        Input image.
-    channels : int, default 3
-        The number of channels of the input image.
-        Used to determine the channel dimension of the input image.
-
-    Returns
-    -------
-    List[Tuple[int, int]]
-        The list containing the target size `(height, width)` of each image.
-
-    """
-    if isinstance(img, (list, tuple)):
-        target_sizes = list_sum(get_target_sizes(item, channels) for item in img)
-    elif isinstance(img, (np.ndarray, torch.Tensor)):
-        if img.ndim == 3:
-            if img.shape[0] == channels:  # channels first
-                target_sizes = [tuple(img.shape[1:])]
-            else:  # channels last
-                target_sizes = [tuple(img.shape[:-1])]
-        elif img.ndim == 4:
-            target_sizes = list_sum(get_target_sizes(item, channels) for item in img)
-    elif isinstance(img, Image.Image):
-        target_sizes = [img.size[::-1]]
-    return target_sizes
