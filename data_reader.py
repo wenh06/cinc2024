@@ -332,7 +332,7 @@ class CINC2024Reader(PhysioNetDataBase):
             self._df_images = pd.DataFrame(
                 columns=[
                     "path", "image", "image_header", "ecg_id", "patient_id", "strat_fold",
-                    "lead_bbox_file", "text_bbox_file", "bbox", "ROI",
+                    "lead_bbox_file", "text_bbox_file", "bbox", "ROI", "image_shape",
                 ]
             )
             # fmt: on
@@ -365,11 +365,17 @@ class CINC2024Reader(PhysioNetDataBase):
         if not self._df_images.empty:
             self._df_images["bbox"] = None
             self._df_images["ROI"] = None
+            self._df_images["image_shape"] = None
             # self._df_images["metadata"] = None
             with tqdm(
                 total=len(self._df_images), desc="Loading bounding boxes", dynamic_ncols=True, mininterval=1, leave=True
             ) as pbar:
                 for img_id in self._all_images:
+                    # get the image shape
+                    img = Image.open(self._df_images.loc[img_id, "path"])
+                    self._df_images.at[img_id, "image_shape"] = {"width": img.width, "height": img.height}
+                    img.close()
+                    # load the bounding boxes
                     self._df_images.at[img_id, "bbox"] = self._load_bbox(img_id)
                     # self._df_images.at[img_id, "metadata"] = load_gzip_json(self._df_images.loc[img_id, "path"].with_suffix(".json.gz"))
                     # via bounding boxes get the image-level region of interest
@@ -437,7 +443,7 @@ class CINC2024Reader(PhysioNetDataBase):
         return self._df_images[self._df_images["ecg_id"] == rec].index.tolist()
 
     def load_image(
-        self, img: Union[str, int], fmt: str = "np", roi_only: bool = False, roi_padding: float = 0.1
+        self, img: Union[str, int], fmt: str = "np", roi_only: bool = False, roi_padding: float = 0.0
     ) -> Union[np.ndarray, Image.Image]:
         """Load the image of a record.
 
@@ -449,6 +455,10 @@ class CINC2024Reader(PhysioNetDataBase):
             The format of the image to be returned, case insensitive.
             If is "np", the image will be returned as a numpy array.
             If is "pil", the image will be returned as a PIL image.
+        roi_only : bool, default False
+            Whether to show only the region of interest.
+        roi_padding : float, default 0.0
+            The padding ratio of the region of interest.
 
         Returns
         -------
@@ -524,7 +534,7 @@ class CINC2024Reader(PhysioNetDataBase):
         with_matched_bbox: bool = True,
         with_plotted_pixels: bool = True,
         roi_only: bool = False,
-        roi_padding: float = 0.2,
+        roi_padding: float = 0.1,
     ) -> Optional[Image.Image]:
         """View the image of a record.
 
@@ -827,6 +837,65 @@ class CINC2024Reader(PhysioNetDataBase):
             bbox = {key: [b[key] for b in bbox] for key in keys}
         return bbox
 
+    def load_mask(self, img: Union[str, int], roi_only: bool = False, roi_padding: float = 0.0) -> np.ndarray:
+        """Load the mask of the image.
+
+        The mask is a binary mask of the image, where the pixels of the waveforms are set to 1.
+
+        Parameters
+        ----------
+        img : str or int
+            The image name or the index of the image.
+        roi_only : bool, default False
+            Whether to show only the region of interest.
+        roi_padding : float, default 0.0
+            The padding ratio of the region of interest.
+
+        Returns
+        -------
+        numpy.ndarray
+            The mask of the image.
+
+        """
+        if isinstance(img, int):
+            img = self._all_images[img]
+        raw_shape = self._df_images.loc[img, "image_shape"]
+        raw_width, raw_height = raw_shape["width"], raw_shape["height"]
+        # plotted_pixels of shape (N, 2) where N is the number of pixels, of the form (y, x), of dtype float
+        plotted_pixels = np.concatenate([item["plotted_pixels"] for item in self.load_image_metadata(img)["leads"]])
+        # dilate the plotted pixels to (floor_x, floor_y), (ceil_x, ceil_y), (floor_x, ceil_y), (ceil_x, floor_y)
+        plotted_pixels = np.concatenate(
+            [
+                np.floor(plotted_pixels),
+                np.ceil(plotted_pixels),
+                np.stack((np.floor(plotted_pixels[:, 0]), np.ceil(plotted_pixels[:, 1]))).T,
+                np.stack((np.ceil(plotted_pixels[:, 0]), np.floor(plotted_pixels[:, 1]))).T,
+            ]
+        )
+        plotted_pixels[:, 0] = np.clip(plotted_pixels[:, 0], 0, raw_height - 1)
+        plotted_pixels[:, 1] = np.clip(plotted_pixels[:, 1], 0, raw_width - 1)
+        if roi_only:
+            if self._df_images.loc[img, "ROI"] is not None:
+                xmin, ymin, xmax, ymax = self._df_images.loc[img, "ROI"]
+                if roi_padding > 0:
+                    width, height = xmax - xmin, ymax - ymin
+                    pad_x = int(width * roi_padding)
+                    pad_y = int(height * roi_padding)
+                    xmin = max(0, xmin - pad_x)
+                    ymin = max(0, ymin - pad_y)
+                    xmax = min(raw_width, xmax + pad_x)
+                    ymax = min(raw_height, ymax + pad_y)
+                mask = np.zeros((ymax - ymin, xmax - xmin), dtype=np.float32)
+                plotted_pixels[:, 0] = plotted_pixels[:, 0] = np.clip(plotted_pixels[:, 0] - ymin, 0, ymax - ymin - 1)
+                plotted_pixels[:, 1] = plotted_pixels[:, 1] = np.clip(plotted_pixels[:, 1] - xmin, 0, xmax - xmin - 1)
+
+            else:
+                mask = np.zeros((raw_height, raw_width), dtype=np.float32)
+        else:
+            mask = np.zeros((raw_height, raw_width), dtype=np.float32)
+        mask[plotted_pixels[:, 0].astype(int), plotted_pixels[:, 1].astype(int)] = 1
+        return mask
+
     @add_docstring(remove_parameters_returns_from_docstring(load_bbox.__doc__, parameters=["bbox_type", "fmt", "return_dict"]))
     def _load_bbox(
         self, img: Union[str, int], clip: bool = True, min_size: Optional[int] = None
@@ -838,9 +907,11 @@ class CINC2024Reader(PhysioNetDataBase):
             min_size = self.bbox_min_size
 
         # get image width and height without loading the image
-        pil_img = Image.open(img_path)
-        img_width, img_height = pil_img.size
-        pil_img.close()
+        # pil_img = Image.open(img_path)
+        # img_width, img_height = pil_img.size
+        # pil_img.close()
+        img_shape = self._df_images.loc[img, "image_shape"]
+        img_width, img_height = img_shape["width"], img_shape["height"]
 
         bbox = []
         # lead_bbox has the format [[y0, x0], [y1, x1], [y2, x2], [y3, x3]]
