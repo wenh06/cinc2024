@@ -89,6 +89,7 @@ def view_image_with_bbox(
     bbox: Optional[Union[List[dict], Dict[str, list]]] = None,
     fmt: str = "coco",
     cat_names: Optional[List[str]] = None,
+    mask: Optional[np.ndarray] = None,
 ) -> Optional[Image.Image]:
     """View the image with bounding boxes.
 
@@ -107,6 +108,11 @@ def view_image_with_bbox(
         - "category_id" : int.
     fmt : {"coco", "voc", "yolo"}, default "coco"
         Format of the bounding boxes in `bbox`.
+    cat_names : List[str], optional
+        The category names.
+    mask : numpy.ndarray, optional
+        The mask to be overlaid on the image.
+        The mask is a binary (0 or 1) with shape `(height, width)`.
 
     Returns
     -------
@@ -124,7 +130,15 @@ def view_image_with_bbox(
     else:
         raise ValueError(f"unsupported type {type(image)}")
 
+    if mask is not None:
+        # overlay the mask on the image with green color and 50% transparency
+        overlay_color = (0, 255, 0)
+        overlay = Image.new("RGBA", img.size, overlay_color + (128,))
+        overlay = Image.fromarray(np.asarray(overlay) * mask[:, :, np.newaxis].astype(np.uint8))
+
     if bbox is None:
+        if mask is not None:
+            img = Image.alpha_composite(img.convert("RGBA"), overlay)
         if is_notebook():
             return img
         img.show()
@@ -169,6 +183,9 @@ def view_image_with_bbox(
     for box, cat_name in zip(bbox_dict["bbox"], bbox_dict["category_name"]):
         draw.rectangle(box.tolist(), outline="red")
         draw.text((box[0], box[1]), cat_name, fill="red", font=font, anchor="lb")
+
+    if mask is not None:
+        img = Image.alpha_composite(img.convert("RGBA"), overlay)
 
     # if is jupyter notebook, show the image inline
     if is_notebook():
