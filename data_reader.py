@@ -837,8 +837,10 @@ class CINC2024Reader(PhysioNetDataBase):
             bbox = {key: [b[key] for b in bbox] for key in keys}
         return bbox
 
-    def load_mask(self, img: Union[str, int], roi_only: bool = False, roi_padding: float = 0.0) -> np.ndarray:
-        """Load the mask of the image.
+    def load_waveform_mask(
+        self, img: Union[str, int], roi_only: bool = False, roi_padding: float = 0.0, bbox: Optional[Sequence[int]] = None
+    ) -> np.ndarray:
+        """Load the waveform mask of the image.
 
         The mask is a binary mask of the image, where the pixels of the waveforms are set to 1.
 
@@ -850,11 +852,16 @@ class CINC2024Reader(PhysioNetDataBase):
             Whether to show only the region of interest.
         roi_padding : float, default 0.0
             The padding ratio of the region of interest.
+        bbox : list of int, optional
+            The bounding box of the waveform, of the form [xmin, ymin, xmax, ymax].
+            If `bbox` is not None, the mask will be generated based on the bounding box,
+            and `roi_only` and `roi_padding` will be ignored.
 
         Returns
         -------
         numpy.ndarray
-            The mask of the image.
+            The mask of the image, of shape ``(H, W)``,
+            where ``H`` is the height and ``W`` is the width.
 
         """
         if isinstance(img, int):
@@ -874,6 +881,14 @@ class CINC2024Reader(PhysioNetDataBase):
         )
         plotted_pixels[:, 0] = np.clip(plotted_pixels[:, 0], 0, raw_height - 1)
         plotted_pixels[:, 1] = np.clip(plotted_pixels[:, 1], 0, raw_width - 1)
+
+        if bbox is not None:
+            mask = np.zeros((raw_height, raw_width), dtype=np.uint8)
+            mask[plotted_pixels[:, 0].astype(int), plotted_pixels[:, 1].astype(int)] = 1
+            mask = Image.fromarray(mask).crop(bbox)
+            mask = np.asarray(mask).astype(np.float32)
+            return mask
+
         if roi_only:
             if self._df_images.loc[img, "ROI"] is not None:
                 xmin, ymin, xmax, ymax = self._df_images.loc[img, "ROI"]
@@ -894,6 +909,7 @@ class CINC2024Reader(PhysioNetDataBase):
         else:
             mask = np.zeros((raw_height, raw_width), dtype=np.float32)
         mask[plotted_pixels[:, 0].astype(int), plotted_pixels[:, 1].astype(int)] = 1
+
         return mask
 
     @add_docstring(remove_parameters_returns_from_docstring(load_bbox.__doc__, parameters=["bbox_type", "fmt", "return_dict"]))
