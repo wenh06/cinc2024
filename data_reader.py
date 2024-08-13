@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union
 
+import cv2
 import gdown
 import numpy as np
 import pandas as pd
@@ -870,23 +871,28 @@ class CINC2024Reader(PhysioNetDataBase):
         raw_width, raw_height = raw_shape["width"], raw_shape["height"]
         # plotted_pixels of shape (N, 2) where N is the number of pixels, of the form (y, x), of dtype float
         plotted_pixels = np.concatenate([item["plotted_pixels"] for item in self.load_image_metadata(img)["leads"]])
+        # NOTE: the following is replaced with cv2.dilate on the mask
         # dilate the plotted pixels to (floor_x, floor_y), (ceil_x, ceil_y), (floor_x, ceil_y), (ceil_x, floor_y)
-        plotted_pixels = np.concatenate(
-            [
-                np.floor(plotted_pixels),
-                np.ceil(plotted_pixels),
-                np.stack((np.floor(plotted_pixels[:, 0]), np.ceil(plotted_pixels[:, 1]))).T,
-                np.stack((np.ceil(plotted_pixels[:, 0]), np.floor(plotted_pixels[:, 1]))).T,
-            ]
-        )
+        # plotted_pixels = np.concatenate(
+        #     [
+        #         np.floor(plotted_pixels),
+        #         np.ceil(plotted_pixels),
+        #         np.stack((np.floor(plotted_pixels[:, 0]), np.ceil(plotted_pixels[:, 1]))).T,
+        #         np.stack((np.ceil(plotted_pixels[:, 0]), np.floor(plotted_pixels[:, 1]))).T,
+        #     ]
+        # )
+        plotted_pixels = np.round(plotted_pixels).astype(int)
         plotted_pixels[:, 0] = np.clip(plotted_pixels[:, 0], 0, raw_height - 1)
         plotted_pixels[:, 1] = np.clip(plotted_pixels[:, 1], 0, raw_width - 1)
+
+        dilate_kernel = np.ones((3, 3), np.float32)
 
         if bbox is not None:
             mask = np.zeros((raw_height, raw_width), dtype=np.uint8)
             mask[plotted_pixels[:, 0].astype(int), plotted_pixels[:, 1].astype(int)] = 1
             mask = Image.fromarray(mask).crop(bbox)
             mask = np.asarray(mask).astype(np.float32)
+            mask = cv2.dilate(mask, dilate_kernel, iterations=2)
             return mask
 
         if roi_only:
@@ -909,6 +915,7 @@ class CINC2024Reader(PhysioNetDataBase):
         else:
             mask = np.zeros((raw_height, raw_width), dtype=np.float32)
         mask[plotted_pixels[:, 0].astype(int), plotted_pixels[:, 1].astype(int)] = 1
+        mask = cv2.dilate(mask, dilate_kernel, iterations=2)
         # mask = mask[..., np.newaxis]
 
         return mask

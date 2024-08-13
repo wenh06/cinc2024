@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 
 import albumentations as A
+import cv2
 import numpy as np
 import torch
 import torch.nn as nn
@@ -18,6 +19,7 @@ import torch.nn.functional as F
 import transformers  # noqa: F401
 from PIL import Image
 from torch_ecg.cfg import CFG
+from torch_ecg.models.loss import MaskedBCEWithLogitsLoss
 from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
@@ -67,7 +69,7 @@ class ECGWaveformDigitizer(nn.Module, SizeMixin, CkptMixin):
         if self.config.source == "custom":
             if self.config.model_name == "unet":
                 self.digitizer = UNet(self.in_channels, self.config.num_classes, self.config.get("bilinear", False))
-                self.criteria = nn.CrossEntropyLoss()
+                self.criteria = MaskedBCEWithLogitsLoss()
             else:
                 raise NotImplementedError(f"model_name={self.config.model_name} is not supported")
         else:
@@ -144,6 +146,12 @@ class ECGWaveformDigitizer(nn.Module, SizeMixin, CkptMixin):
                 out_dict["mask"] = torch.stack([torch.from_numpy(item["mask"]).float() for item in preprocessed]).to(
                     self.device
                 )
+                out_dict["weight_mask"] = torch.stack(
+                    [
+                        torch.from_numpy(get_weight_mask(item["mask"], self.config.highest_weight)).float()
+                        for item in preprocessed
+                    ]
+                ).to(self.device)
 
             del preprocessed
 
@@ -174,7 +182,7 @@ class ECGWaveformDigitizer(nn.Module, SizeMixin, CkptMixin):
         if self.config.source == "custom":
             logits = self.digitizer(img).squeeze(1)  # (B, C, H, W) -> (B, H, W)
             if labels is not None:
-                loss = self.criteria(logits, labels["mask"])
+                loss = self.criteria(logits, labels["mask"], labels["weight_mask"])
             else:
                 loss = None
             return {"logits": logits, "loss": loss}
@@ -190,6 +198,8 @@ class ECGWaveformDigitizer(nn.Module, SizeMixin, CkptMixin):
         thr : float, default 0.5
             The threshold for binarization.
         show : bool, default False
+            Whether to show the result.
+            If the input image is a list of images, only the first one will be shown.
 
         Returns
         -------
@@ -346,3 +356,26 @@ class UNet(nn.Module, SizeMixin):
         x = self.up4(x, x1)
         logits = self.outc(x)
         return logits
+
+
+def get_weight_mask(mask: np.ndarray, highest_weight: int, weight_step: int = 2) -> np.ndarray:
+    """Get the weight mask for the loss function.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        The binary mask (with 0, 1 values).
+    highest_weight : int
+        The highest weight added to the mask.
+
+    Returns
+    -------
+    np.ndarray
+        The weight mask.
+
+    """
+    weight_mask = np.ones_like(mask, dtype=np.float32) + weight_step * mask.copy().astype(np.float32)
+    kernel = np.ones((5, 5), np.float32)
+    for idx in range(weight_step, highest_weight, weight_step):
+        weight_mask += cv2.dilate(mask, kernel, iterations=idx) * weight_step
+    return weight_mask

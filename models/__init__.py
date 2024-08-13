@@ -24,6 +24,7 @@ from outputs import CINC2024Outputs
 
 from .backbone import ImageBackbone
 from .detector import ECGWaveformDetector
+from .digitizer import ECGWaveformDigitizer
 from .heads import ClassificationHead, DigitizationHead
 from .loss import get_loss_func
 from .yolov10 import YOLOv10_Detector
@@ -35,6 +36,7 @@ __all__ = [
     "DigitizationHead",
     "get_loss_func",
     "ECGWaveformDetector",
+    "ECGWaveformDigitizer",
     "YOLOv10_Detector",
 ]
 

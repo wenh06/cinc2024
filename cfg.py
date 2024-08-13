@@ -232,9 +232,13 @@ ModelCfg.object_detection.monitor = "detection_map"
 ModelCfg.digitizer = CFG()
 ModelCfg.digitizer.source = "custom"
 ModelCfg.digitizer.model_name = "unet"
+
 ModelCfg.digitizer.input_mode = "raw"  # "thresholded", "raw", "both"
-ModelCfg.digitizer.input_shape = {"height": 768, "width": 768 * 2}
-ModelCfg.digitizer.input_norm = {"mean": (0.5,), "std": (0.5,), "max_pixel_value": 255}
-ModelCfg.digitizer.threshold_percentile = 1.0  # for mode "thresholded" and "both"
+ModelCfg.digitizer.input_shape = {"height": 512, "width": 512 * 2}
+ModelCfg.digitizer.input_norm = {"mean": (0.5,), "std": (0.5,), "max_pixel_value": 255}  # NOT used currently
+ModelCfg.digitizer.threshold_percentile = 1.0  # for mode "thresholded" and "both", NOT used currently
+ModelCfg.digitizer.highest_weight = 10
 
 ModelCfg.digitizer.num_classes = 1
+
+ModelCfg.digitizer.monitor = "segmentation_dice"

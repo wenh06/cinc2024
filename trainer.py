@@ -137,7 +137,8 @@ class CINC2024Trainer(BaseTrainer):
             num_workers=num_workers,
             pin_memory=True,
             drop_last=False,
-            collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
+            # collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
+            collate_fn=collate_fn if self.train_config.predict_dx else naive_collate_fn,
         )
 
         if self.train_config.debug:
@@ -148,7 +149,8 @@ class CINC2024Trainer(BaseTrainer):
                 num_workers=num_workers,
                 pin_memory=True,
                 drop_last=False,
-                collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
+                # collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
+                collate_fn=collate_fn if self.train_config.predict_dx else naive_collate_fn,
             )
         else:
             self.val_train_loader = None
@@ -159,7 +161,8 @@ class CINC2024Trainer(BaseTrainer):
             num_workers=num_workers,
             pin_memory=True,
             drop_last=False,
-            collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
+            # collate_fn=naive_collate_fn if self.train_config.predict_bbox else collate_fn,
+            collate_fn=collate_fn if self.train_config.predict_dx else naive_collate_fn,
         )
 
     def train_one_epoch(self, pbar: tqdm) -> None:
@@ -318,6 +321,8 @@ class CINC2024Trainer(BaseTrainer):
             metrics_keeps.append("digitization")
         if self.train_config.predict_bbox:
             metrics_keeps.append("detection")
+        if self.train_config.predict_mask:
+            metrics_keeps.append("segmentation")
         eval_res = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)
 
         # in case possible memeory leakage?
@@ -338,7 +343,7 @@ class CINC2024Trainer(BaseTrainer):
 
     @property
     def extra_required_train_config_fields(self) -> List[str]:
-        return ["predict_dx", "predict_digitization", "predict_bbox"]
+        return ["predict_dx", "predict_digitization", "predict_bbox", "predict_mask"]
 
     @property
     def save_prefix(self) -> str:
@@ -356,8 +361,12 @@ class CINC2024Trainer(BaseTrainer):
             prefix = f"""{self._model.config.source}-{self._model.config.model_name.replace("/", "-")}"""
             if self.train_config.bbox_mode != "full":  # roi_only, merge_horizontal
                 prefix = f"{prefix}-{self.train_config.bbox_mode}"
+        elif self.train_config.predict_mask:
+            prefix = f"""{self._model.config.source}-{self._model.config.model_name.replace("/", "-")}"""
+            if self.train_config.roi_only:
+                prefix = f"{prefix}-roi_only"
         else:
-            raise ValueError("either `predict_dx` or `predict_bbox` should be True")
+            raise ValueError("either `predict_dx` or `predict_bbox` or `predict_mask` should be True")
         return prefix + "_"
 
     def extra_log_suffix(self) -> str:
@@ -375,8 +384,12 @@ class CINC2024Trainer(BaseTrainer):
             suffix = f"""{self._model.config.source}-{self._model.config.model_name.replace("/", "-")}"""
             if self.train_config.bbox_mode != "full":  # roi_only, merge_horizontal
                 suffix = f"{suffix}-{self.train_config.bbox_mode}"
+        elif self.train_config.predict_mask:
+            suffix = f"""{self._model.config.source}-{self._model.config.model_name.replace("/", "-")}"""
+            if self.train_config.roi_only:
+                suffix = f"{suffix}-roi_only"
         else:
-            raise ValueError("either `predict_dx` or `predict_bbox` should be True")
+            raise ValueError("either `predict_dx` or `predict_bbox` or `predict_mask` should be True")
         suffix = f"{suffix}-{super().extra_log_suffix()}"
         return suffix
 
