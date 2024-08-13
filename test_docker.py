@@ -36,7 +36,9 @@ else:
     DTYPE = np.float32
 
 
-os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
+os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR.parent)
 
 
 tmp_data_dir = Path(os.environ.get("revenger_data_dir", _BASE_DIR / "tmp" / "CINC2024")).resolve()

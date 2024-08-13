@@ -5,7 +5,8 @@ import math
 import random
 from copy import deepcopy
 
-os.environ['ALBUMENTATIONS_DISABLE_VERSION_CHECK'] = '1'
+os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
+os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 
 import cv2
 import numpy as np

@@ -19,7 +19,27 @@ if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable(os.
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("https://huggingface.co")):
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
+os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR.parent)
+
+
+def check_env():
+    print("Checking the environment variables...")
+    print(f"MODEL_CACHE_DIR: {MODEL_CACHE_DIR}")
+    print(f"DATA_CACHE_DIR: {DATA_CACHE_DIR}")
+
+    for env in [
+        "HF_ENDPOINT",
+        "HUGGINGFACE_HUB_CACHE",
+        "HF_HUB_CACHE",
+        "HF_HOME",
+        "NO_ALBUMENTATIONS_UPDATE",
+        "ALBUMENTATIONS_DISABLE_VERSION_CHECK",
+    ]:
+        print(f"{env}: {str(os.environ.get(env, None))}")
+
+    print("Checking the environment variables done.")
 
 
 def cache_pretrained_models():
@@ -135,6 +155,7 @@ def prepare_synthetic_images():
 
 if __name__ == "__main__":
     transformers.logging.set_verbosity_info()
+    check_env()
     cache_pretrained_models()
     cache_data()  # or prepare_synthetic_images(), prepare_synthetic_images NOT tested yet.
     test_albumentations()

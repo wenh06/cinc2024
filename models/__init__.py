@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
+os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 
 import torch
 import torch.nn as nn
@@ -46,7 +47,9 @@ if os.environ.get("HF_ENDPOINT", None) is not None and (not url_is_reachable(os.
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("https://huggingface.co")):
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
+os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HOME"] = str(MODEL_CACHE_DIR.parent)
 
 
 class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):

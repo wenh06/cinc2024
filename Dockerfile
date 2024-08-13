@@ -13,8 +13,15 @@ FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 # which might stuck the docker build process
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ENV MODEL_CACHE_DIR=/root/.cache/cinc2024/revenger_model_dir
-# ENV DATA_CACHE_DIR=/root/.cache/cinc2024/revenger_data_dir
+ENV HUGGINGFACE_HUB_CACHE=/challenge/cache/revenger_model_dir
+ENV HF_HUB_CACHE=/challenge/cache/revenger_model_dir
+ENV MODEL_CACHE_DIR=/challenge/cache/revenger_model_dir
+ENV DATA_CACHE_DIR=/challenge/cache/revenger_data_dir
+
+ENV NO_ALBUMENTATIONS_UPDATE=1
+ENV ALBUMENTATIONS_DISABLE_VERSION_CHECK=1
+
+ENV TF_CPP_MIN_LOG_LEVEL=2
 
 
 # check distribution of the base image
@@ -51,7 +58,7 @@ LABEL maintainer="wenh06@gmail.com"
 # https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo
 RUN apt update
 RUN apt install build-essential -y
-RUN apt install git ffmpeg libsm6 libxext6 vim libsndfile1 -y
+RUN apt install git ffmpeg libsm6 libxext6 vim libsndfile1 libxrender1 -y
 
 
 # RUN ln -s /usr/bin/python3 /usr/bin/python && ln -s /usr/bin/pip3 /usr/bin/pip
@@ -87,6 +94,9 @@ RUN git clone https://github.com/DeepPSP/torch_ecg.git && cd torch_ecg && git ch
 RUN mkdir /challenge
 COPY ./requirements-docker.txt /challenge
 WORKDIR /challenge
+
+RUN mkdir -p /challenge/cache/revenger_model_dir
+RUN mkdir -p /challenge/cache/revenger_data_dir
 
 
 # install dependencies other than torch-related packages

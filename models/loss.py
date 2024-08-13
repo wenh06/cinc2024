@@ -22,6 +22,7 @@ import re
 from typing import Any, Optional
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
+os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 
 import torch
 import torch.nn as nn
