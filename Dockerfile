@@ -95,8 +95,8 @@ RUN mkdir /challenge
 COPY ./requirements-docker.txt /challenge
 WORKDIR /challenge
 
-RUN mkdir -p /challenge/cache/revenger_model_dir
-RUN mkdir -p /challenge/cache/revenger_data_dir
+RUN mkdir -p $MODEL_CACHE_DIR
+RUN mkdir -p $DATA_CACHE_DIR
 
 
 # install dependencies other than torch-related packages
@@ -113,8 +113,8 @@ COPY ./ /challenge
 RUN python post_docker_build.py
 # check if the data and model are downloaded
 # TODO: pass the path as environment variables
-RUN du -sh ~/.cache/cinc2024/revenger_model_dir
-RUN du -sh ~/.cache/cinc2024/revenger_data_dir
+RUN du -sh $DATA_CACHE_DIR
+RUN du -sh $MODEL_CACHE_DIR
 
 
 # NOTE: also run test_local.py to test locally
