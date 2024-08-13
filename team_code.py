@@ -10,7 +10,6 @@
 ################################################################################
 
 import os
-from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -24,7 +23,7 @@ from torch_ecg.cfg import CFG
 from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import str2bool
 
-from cfg import BaseCfg, ModelCfg, TrainCfg
+from cfg import BaseCfg, ModelCfg, TrainCfg  # noqa: F401
 from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset
@@ -40,14 +39,16 @@ from helper_code import (  # noqa: F401
     load_labels,
     load_text,
 )
-from models import ECGWaveformDetector, MultiHead_CINC2024
+from models import ECGWaveformDetector, ECGWaveformDigitizer, MultiHead_CINC2024
 from trainer import CINC2024Trainer
 from utils.ecg_simulator import evolve_standard_12_lead_ecg
 
 ################################################################################
 # environment variables
 
-os.environ["HF_HOME"] = str(MODEL_CACHE_DIR)
+os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
+os.environ["HF_HOME"] = str(Path(MODEL_CACHE_DIR).parent)
 
 try:
     TEST_FLAG = os.environ.get("CINC2024_REVENGER_TEST", False)
@@ -91,6 +92,12 @@ SubmissionCfg = CFG()
 SubmissionCfg.detector = None  # "hf--facebook/detr-resnet-50"
 SubmissionCfg.classifier = "hf--facebook/convnextv2-nano-22k-384"
 SubmissionCfg.digitizer = None
+
+SubmissionCfg.final_model_filename = {
+    "detector": "detector.pth.tar",
+    "classifier": "classifier.pth.tar",
+    "digitizer": "digitizer.pth.tar",
+}
 
 ################################################################################
 
@@ -156,97 +163,33 @@ def train_models(
 
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
+    model_folder = Path(model_folder).expanduser().resolve()
+    data_folder = Path(data_folder).expanduser().resolve()
     (Path(model_folder) / "working_dir").mkdir(parents=True, exist_ok=True)
 
     reader_kwargs = {
-        "db_dir": Path(DATA_CACHE_DIR),
+        # "db_dir": Path(DATA_CACHE_DIR),
+        "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
-        "synthetic_images_dir": Path(DATA_CACHE_DIR) / "synthetic_images",
+        "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
+        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
-    # Download the synthetic images
-    # dr = CINC2024Reader(**reader_kwargs)
-    # dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
-    # del dr
+    # generate the synthetic images
+    dr = CINC2024Reader(**reader_kwargs)
+    # gen_img_config = dr.__gen_img_extra_configs__[0].copy()  # requires much more storage and is much slower
+    gen_img_config = dr.__gen_img_default_config__.copy()
+    gen_img_config["write_signal_file"] = True
+    dr.prepare_synthetic_images(parallel=True, force_recompute=True, **gen_img_config)
+    del dr
 
     # Train the models
-    train_config = deepcopy(TrainCfg)
-    # train_config.db_dir = data_folder
-    train_config.db_dir = Path(DATA_CACHE_DIR)
-    train_config.synthetic_images_dir = Path(DATA_CACHE_DIR) / "synthetic_images"
-    # train_config.model_dir = model_folder
-    train_config.working_dir = Path(model_folder) / "working_dir"
-    if TEST_FLAG:
-        # train_config.debug = True
-        train_config.debug = False
-
-        train_config.n_epochs = 1
-        train_config.batch_size = 4  # 16G (Tesla T4)
-        train_config.log_step = 5
-        # # train_config.max_lr = 1.5e-3
-        # train_config.early_stopping.patience = 20
-    else:
-        train_config.debug = False
-
-        train_config.n_epochs = 25
-        train_config.batch_size = 16  # 16G (Tesla T4)
-        train_config.log_step = 100
-        train_config.learning_rate = 5e-5
-        train_config.lr = train_config.learning_rate
-        train_config.max_lr = 1e-4
-        train_config.early_stopping.patience = train_config.n_epochs // 3
-
-    model_config = deepcopy(ModelCfg)
-    # model_config.backbone_name = "facebook/convnextv2-atto-1k-224"
-
-    model = MultiHead_CINC2024(config=model_config)
-    if torch.cuda.device_count() > 1:
-        model = DP(model)
-        # model = DDP(model)
-    model = model.to(device=DEVICE)
-    if verbose:
-        if isinstance(model, DP):
-            print("model size:", model.module.module_size, model.module.module_size_)
-        else:
-            print("model size:", model.module_size, model.module_size_)
-
-    ds_train = CinC2024Dataset(train_config, training=True, lazy=True, **reader_kwargs)
-    ds_test = CinC2024Dataset(train_config, training=False, lazy=True, **reader_kwargs)
-    if verbose:
-        print(f"train size: {len(ds_train)}, test size: {len(ds_test)}")
-
-    trainer = CINC2024Trainer(
-        model=model,
-        model_config=model_config,
-        train_config=train_config,
-        device=DEVICE,
-        lazy=True,
-    )
-    if TEST_FLAG:
-        # switch the dataloaders to make the test faster
-        # the first dataloader is used for both training and evaluation
-        # the second dataloader is used for validation only
-        # trainer._setup_dataloaders(ds_test, ds_train)
-        trainer._setup_dataloaders(ds_test, None)
-    else:
-        trainer._setup_dataloaders(ds_train, ds_test)
-
-    # NOTE that this training process only ensures
-    # that the training pipeline is correct and the model can be trained
-    # the model used in Challenge evaluation will be loaded from the remote heads
-
-    best_state_dict = trainer.train()  # including saving model
-
-    del trainer
-    del model
-    del best_state_dict
-
-    torch.cuda.empty_cache()
-
-    if verbose:
-        print(f"""Saved models: {list((Path(__file__).parent / "saved_models").iterdir())}""")
-
-    # TODO: train object detection model, digitization (segmentation) model
+    if SubmissionCfg.classifier is not None:
+        train_classification_model(data_folder, model_folder)
+    if SubmissionCfg.detector is not None:
+        train_object_detection_model(data_folder, model_folder)
+    if SubmissionCfg.digitizer is not None:
+        train_digitization_model(data_folder, model_folder)
 
     print("\n" + "*" * 100)
     msg = "   CinC2024 challenge training entry ends   ".center(100, "#")
@@ -458,4 +401,369 @@ def run_models(
 #
 ################################################################################
 
-# NOT used currently.
+
+def train_classification_model(
+    data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
+) -> None:
+    """Train the classification model.
+
+    Parameters
+    ----------
+    data_folder : `path_like`
+        The path to the folder containing the training data.
+    model_folder : `path_like`
+        The path to the folder where the model will be saved.
+    verbose : bool
+        Whether to display progress information.
+
+    Returns
+    -------
+    None
+
+    """
+    model_folder = Path(model_folder).expanduser().resolve()
+    data_folder = Path(data_folder).expanduser().resolve()
+
+    model, train_config = MultiHead_CINC2024.from_checkpoint(
+        Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
+        device=DEVICE,
+    )
+    model_config = model.config
+
+    # adjust the training configuration
+    train_config.db_dir = Path(data_folder).expanduser().resolve()
+    train_config.model_dir = Path(model_folder).expanduser().resolve()
+    train_config.working_dir = Path(model_folder) / "working_dir"
+    train_config.checkpoints = train_config.working_dir / "checkpoints"
+    train_config.log_dir = train_config.working_dir / "log"
+    train_config.synthetic_images_dir = train_config.working_dir / "synthetic_images"
+
+    train_config.final_model_filename = SubmissionCfg.final_model_filename["classifier"]
+    train_config.debug = False
+
+    # the learning rate is set low so that the fine-tuned model
+    # is not too different from the pretrained model
+    train_config.n_epochs = 1
+    train_config.learning_rate = 5e-6  # 5e-4, 1e-3
+    train_config.lr = train_config.learning_rate
+    train_config.max_lr = 1e-5
+    train_config.early_stopping.patience = train_config.n_epochs // 3
+
+    train_config.predict_dx = True
+    train_config.predict_bbox = False
+    train_config.predict_mask = False
+    # train_config.roi_only = False
+    # train_config.roi_padding = 0.0
+
+    train_config.backbone_freeze = True
+
+    if TEST_FLAG:
+        train_config.batch_size = 4
+        train_config.log_step = 5
+    else:
+        train_config.batch_size = 16  # 16G (Tesla T4)
+        train_config.log_step = 120
+
+    if torch.cuda.device_count() > 1:
+        model = DP(model)
+        # model = DDP(model)
+    model = model.to(device=DEVICE)
+    if verbose:
+        if isinstance(model, DP):
+            print("model size:", model.module.module_size, model.module.module_size_)
+        else:
+            print("model size:", model.module_size, model.module_size_)
+
+    reader_kwargs = {
+        "db_dir": Path(data_folder).expanduser().resolve(),
+        "working_dir": (Path(model_folder) / "working_dir"),
+        "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
+        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+    }
+
+    ds_train = CinC2024Dataset(train_config, training=True, lazy=True, **reader_kwargs)
+    ds_test = CinC2024Dataset(train_config, training=False, lazy=True, **reader_kwargs)
+    if verbose:
+        print(f"train size: {len(ds_train)}, test size: {len(ds_test)}")
+
+    trainer = CINC2024Trainer(
+        model=model,
+        model_config=model_config,
+        train_config=train_config,
+        device=DEVICE,
+        lazy=True,
+    )
+    if TEST_FLAG:
+        # switch the dataloaders to make the test faster
+        # the first dataloader is used for both training and evaluation
+        # the second dataloader is used for validation only
+        # trainer._setup_dataloaders(ds_test, ds_train)
+        trainer._setup_dataloaders(ds_test, None)
+    else:
+        trainer._setup_dataloaders(ds_train, ds_test)
+
+    best_state_dict = trainer.train()  # including saving model
+
+    trainer.log_manager.flush()
+    trainer.log_manager.close()
+
+    del trainer
+    del model
+    del best_state_dict
+
+    torch.cuda.empty_cache()
+
+
+def train_object_detection_model(
+    data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
+) -> None:
+    """Train the object detection model.
+
+    Parameters
+    ----------
+    data_folder : `path_like`
+        The path to the folder containing the training data.
+    model_folder : `path_like`
+        The path to the folder where the model will be saved.
+    verbose : bool
+        Whether to display progress information.
+
+    Returns
+    -------
+    None
+
+    """
+    model_folder = Path(model_folder).expanduser().resolve()
+    data_folder = Path(data_folder).expanduser().resolve()
+
+    model, train_config = ECGWaveformDetector.from_checkpoint(
+        Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"],
+        device=DEVICE,
+    )
+    model_config = model.config
+
+    # adjust the training configuration
+    train_config.db_dir = Path(data_folder).expanduser().resolve()
+    train_config.model_dir = Path(model_folder).expanduser().resolve()
+    train_config.working_dir = Path(model_folder) / "working_dir"
+    train_config.checkpoints = train_config.working_dir / "checkpoints"
+    train_config.log_dir = train_config.working_dir / "log"
+    train_config.synthetic_images_dir = train_config.working_dir / "synthetic_images"
+
+    train_config.final_model_filename = SubmissionCfg.final_model_filename["detector"]
+    train_config.debug = False
+
+    train_config.n_epochs = 1
+    train_config.learning_rate = 5e-6  # 5e-4, 1e-3
+    train_config.lr = train_config.learning_rate
+    train_config.max_lr = 1e-5
+    train_config.early_stopping.patience = train_config.n_epochs // 3
+
+    train_config.predict_dx = False
+    train_config.predict_bbox = True
+    train_config.predict_mask = False
+    # train_config.roi_only = False
+    # train_config.roi_padding = 0.0
+
+    # train_config.backbone_freeze = True
+
+    if TEST_FLAG:
+        train_config.batch_size = 1
+        train_config.log_step = 5
+    else:
+        train_config.batch_size = 10  # 16G (Tesla T4)
+        train_config.log_step = 120
+
+    if torch.cuda.device_count() > 1:
+        model = DP(model)
+        # model = DDP(model)
+    model = model.to(device=DEVICE)
+    if verbose:
+        if isinstance(model, DP):
+            print("model size:", model.module.module_size, model.module.module_size_)
+        else:
+            print("model size:", model.module_size, model.module_size_)
+
+    reader_kwargs = {
+        "db_dir": Path(data_folder).expanduser().resolve(),
+        "working_dir": (Path(model_folder) / "working_dir"),
+        "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
+        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+    }
+
+    ds_train = CinC2024Dataset(train_config, training=True, lazy=True, **reader_kwargs)
+    ds_test = CinC2024Dataset(train_config, training=False, lazy=True, **reader_kwargs)
+    if verbose:
+        print(f"train size: {len(ds_train)}, test size: {len(ds_test)}")
+
+    trainer = CINC2024Trainer(
+        model=model,
+        model_config=model_config,
+        train_config=train_config,
+        device=DEVICE,
+        lazy=True,
+    )
+
+    if TEST_FLAG:
+        # switch the dataloaders to make the test faster
+        # the first dataloader is used for both training and evaluation
+        # the second dataloader is used for validation only
+        # trainer._setup_dataloaders(ds_test, ds_train)
+        trainer._setup_dataloaders(ds_test, None)
+    else:
+        trainer._setup_dataloaders(ds_train, ds_test)
+
+    best_state_dict = trainer.train()  # including saving model
+
+    trainer.log_manager.flush()
+    trainer.log_manager.close()
+
+    del trainer
+    del model
+    del best_state_dict
+
+    torch.cuda.empty_cache()
+
+
+def train_digitization_model(
+    data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
+) -> None:
+    """Train the digitization model.
+
+    Parameters
+    ----------
+    data_folder : `path_like`
+        The path to the folder containing the training data.
+    model_folder : `path_like`
+        The path to the folder where the model will be saved.
+    verbose : bool
+        Whether to display progress information.
+
+    Returns
+    -------
+    None
+
+    """
+    model_folder = Path(model_folder).expanduser().resolve()
+    data_folder = Path(data_folder).expanduser().resolve()
+
+    model, train_config = ECGWaveformDigitizer.from_checkpoint(
+        Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
+        device=DEVICE,
+    )
+    model_config = model.config
+
+    # adjust the training configuration
+    train_config.db_dir = Path(data_folder).expanduser().resolve()
+    train_config.model_dir = Path(model_folder).expanduser().resolve()
+    train_config.working_dir = Path(model_folder) / "working_dir"
+    train_config.checkpoints = train_config.working_dir / "checkpoints"
+    train_config.log_dir = train_config.working_dir / "log"
+    train_config.synthetic_images_dir = train_config.working_dir / "synthetic_images"
+
+    train_config.final_model_filename = SubmissionCfg.final_model_filename["digitizer"]
+    train_config.debug = False
+    train_config.n_epochs = 1
+    train_config.learning_rate = 5e-6  # 5e-4, 1e-3
+    train_config.lr = train_config.learning_rate
+    train_config.max_lr = 1e-5
+    train_config.early_stopping.patience = train_config.n_epochs // 3
+
+    train_config.predict_dx = False
+    train_config.predict_bbox = False
+    train_config.predict_mask = True
+    # train_config.roi_only = False
+    # train_config.roi_padding = 0.0
+
+    # train_config.backbone_freeze = True
+
+    if TEST_FLAG:
+        train_config.batch_size = 1
+        train_config.log_step = 5
+    else:
+        train_config.batch_size = 3  # 16G (Tesla T4)
+        train_config.log_step = 120
+
+    if torch.cuda.device_count() > 1:
+        model = DP(model)
+        # model = DDP(model)
+    model = model.to(device=DEVICE)
+    if verbose:
+        if isinstance(model, DP):
+            print("model size:", model.module.module_size, model.module.module_size_)
+        else:
+            print("model size:", model.module_size, model.module_size_)
+
+    reader_kwargs = {
+        "db_dir": Path(data_folder).expanduser().resolve(),
+        "working_dir": (Path(model_folder) / "working_dir"),
+        "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
+        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+    }
+
+    ds_train = CinC2024Dataset(train_config, training=True, lazy=True, **reader_kwargs)
+    ds_test = CinC2024Dataset(train_config, training=False, lazy=True, **reader_kwargs)
+    if verbose:
+        print(f"train size: {len(ds_train)}, test size: {len(ds_test)}")
+
+    trainer = CINC2024Trainer(
+        model=model,
+        model_config=model_config,
+        train_config=train_config,
+        device=DEVICE,
+        lazy=True,
+    )
+
+    if TEST_FLAG:
+        # switch the dataloaders to make the test faster
+        # the first dataloader is used for both training and evaluation
+        # the second dataloader is used for validation only
+        # trainer._setup_dataloaders(ds_test, ds_train)
+        trainer._setup_dataloaders(ds_test, None)
+    else:
+        trainer._setup_dataloaders(ds_train, ds_test)
+
+    best_state_dict = trainer.train()  # including saving model
+
+    trainer.log_manager.flush()
+    trainer.log_manager.close()
+
+    del trainer
+    del model
+    del best_state_dict
+
+    torch.cuda.empty_cache()
+
+
+def bbox_and_mask_to_signals(
+    bbox: List[Dict[str, Union[int, List[int]]]],
+    mask: List[np.ndarray],
+    signal_names: List[str],
+    signal_fs: int,
+    signal_duration: float,
+    num_samples: int,
+    num_signals: int,
+) -> np.ndarray:
+    """Convert the bounding boxes and masks to signals.
+
+    Parameters
+    ----------
+    bbox : list of dict
+        The bounding boxes.
+    mask : list of np.ndarray
+        The masks.
+    signal_names : list of str
+        The names of the signals.
+    signal_fs : int
+        The sampling frequency of the signals.
+    signal_duration : float
+        The duration of the signals.
+    num_samples : int
+        The number of samples of the signals.
+    num_signals : int
+        The number of signals.
+    signal : np.ndarray
+        The signals.
+
+    """
+    pass

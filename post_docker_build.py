@@ -21,7 +21,7 @@ elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("http
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
 os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
-os.environ["HF_HOME"] = str(MODEL_CACHE_DIR.parent)
+os.environ["HF_HOME"] = str(Path(MODEL_CACHE_DIR).parent)
 
 
 def check_env():
@@ -119,6 +119,10 @@ def cache_data():
     dr = CINC2024Reader(**reader_kwargs)
     dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
     dr.download_subset()
+
+    # download the aux files
+
+    dr.download_aux_files(dst_dir=Path(DATA_CACHE_DIR) / "aux_files")
 
 
 def test_albumentations():

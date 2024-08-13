@@ -49,7 +49,7 @@ elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("http
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
 os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
-os.environ["HF_HOME"] = str(MODEL_CACHE_DIR.parent)
+os.environ["HF_HOME"] = str(Path(MODEL_CACHE_DIR).parent)
 
 
 class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):

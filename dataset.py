@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Sequence, Set, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
+os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 
 import albumentations as A
 import numpy as np

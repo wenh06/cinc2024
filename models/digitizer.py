@@ -6,6 +6,7 @@ Adapted from https://github.com/milesial/Pytorch-UNet/tree/master/unet
 
 import os
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
@@ -36,7 +37,7 @@ elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("http
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
 os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
-os.environ["HF_HOME"] = str(MODEL_CACHE_DIR.parent)
+os.environ["HF_HOME"] = str(Path(MODEL_CACHE_DIR).parent)
 
 
 class ECGWaveformDigitizer(nn.Module, SizeMixin, CkptMixin):
