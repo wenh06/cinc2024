@@ -140,6 +140,8 @@ class CINC2024Reader(PhysioNetDataBase):
         "12sl_mapping_file": "12slv23ToSNOMED.csv",
     }
     __aux_files_url__ = {
+        "metadata_file": "https://physionet.org/files/ptb-xl/1.0.3/ptbxl_database.csv",
+        "scp_statements_file": "https://physionet.org/files/ptb-xl/1.0.3/scp_statements.csv",
         "12sl_statements_file": "https://physionet.org/files/ptb-xl-plus/1.0.1/labels/12sl_statements.csv",
         "12sl_mapping_file": "https://physionet.org/files/ptb-xl-plus/1.0.1/labels/mapping/12slv23ToSNOMED.csv",
     }
@@ -206,6 +208,7 @@ class CINC2024Reader(PhysioNetDataBase):
         self._all_subjects = None
         self._all_images = None
         self._gen_img_config_current = None
+        self._aux_files_dir = Path(kwargs.pop("aux_files_dir", self.db_dir)).expanduser().resolve()
         self._ls_rec()
 
     def _ls_rec(self) -> None:
@@ -233,27 +236,27 @@ class CINC2024Reader(PhysioNetDataBase):
             return
         self.db_dir = metadata_file.parent.resolve()
         assert (
-            self.db_dir / self.__aux_files__["scp_statements_file"]
-        ).exists(), f"scp_statements file not found in {self.db_dir}"
+            self._aux_files_dir / self.__aux_files__["scp_statements_file"]
+        ).exists(), f"scp_statements file not found in {self._aux_files_dir}"
 
-        if not (self.db_dir / self.__aux_files__["12sl_statements_file"]).exists():
+        if not (self._aux_files_dir / self.__aux_files__["12sl_statements_file"]).exists():
             self.logger.info(
-                f"""12sl_statements file {self.__aux_files__["12sl_statements_file"]} not found in {self.db_dir}. """
+                f"""12sl_statements file {self.__aux_files__["12sl_statements_file"]} not found in {self._aux_files_dir}. """
                 "Download the database first using the `download_aux_files` method."
             )
             self._df_12sl_statements = pd.DataFrame()
         else:
-            self._df_12sl_statements = pd.read_csv(self.db_dir / self.__aux_files__["12sl_statements_file"])
+            self._df_12sl_statements = pd.read_csv(self._aux_files_dir / self.__aux_files__["12sl_statements_file"])
             self._df_12sl_statements["ecg_id"] = self._df_12sl_statements["ecg_id"].apply(lambda x: f"{x:05d}")
             self._df_12sl_statements.set_index("ecg_id", inplace=True)
-        if not (self.db_dir / self.__aux_files__["12sl_mapping_file"]).exists():
+        if not (self._aux_files_dir / self.__aux_files__["12sl_mapping_file"]).exists():
             self.logger.info(
-                f"""12sl_mapping file {self.__aux_files__["12sl_mapping_file"]} not found in {self.db_dir}. """
+                f"""12sl_mapping file {self.__aux_files__["12sl_mapping_file"]} not found in {self._aux_files_dir}. """
                 "Download the database first using the `download_aux_files` method."
             )
             self._df_12sl_mapping = pd.DataFrame()
         else:
-            self._df_12sl_mapping = pd.read_csv(self.db_dir / self.__aux_files__["12sl_mapping_file"])
+            self._df_12sl_mapping = pd.read_csv(self._aux_files_dir / self.__aux_files__["12sl_mapping_file"])
             # drop nan rows and columns
             self._df_12sl_mapping.dropna(axis=0, how="all", inplace=True)
             self._df_12sl_mapping.dropna(axis=1, how="all", inplace=True)
@@ -268,7 +271,7 @@ class CINC2024Reader(PhysioNetDataBase):
         self._df_metadata["ecg_id"] = self._df_metadata["ecg_id"].apply(lambda x: f"{x:05d}")
         self._df_metadata.set_index("ecg_id", inplace=True)
         self._df_metadata["patient_id"] = self._df_metadata["patient_id"].astype(int)
-        self._df_scp_statements = pd.read_csv(self.db_dir / self.__aux_files__["scp_statements_file"], index_col=0)
+        self._df_scp_statements = pd.read_csv(self._aux_files_dir / self.__aux_files__["scp_statements_file"], index_col=0)
 
         for row_idx, row in self._df_scp_statements.iterrows():
             if row["diagnostic"] == 1:
@@ -1410,14 +1413,30 @@ class CINC2024Reader(PhysioNetDataBase):
         # reload the records
         self._ls_rec()
 
-    def download_aux_files(self) -> None:
-        """Download the auxiliary files."""
-        for filename, url in self.__aux_files__.items():
-            if (self.db_dir / filename).exists():
-                continue
-            http_get(url, self.db_dir, filename=filename, extract=False)
+    def download_aux_files(self, dst_dir: Optional[Union[str, bytes, os.PathLike]] = None) -> None:
+        """Download the auxiliary files.
 
-        # reload the records
+        Parameters
+        ----------
+        dst_dir : `path-like`, optional
+            The destination directory to save the auxiliary files.
+            If None, the auxiliary files will be saved to the default directory.
+
+        """
+        if dst_dir is None:
+            dst_dir = self._aux_files_dir
+        dst_dir = Path(dst_dir).expanduser().resolve()
+        for filename, url in self.__aux_files_url__.items():
+            if (dst_dir / filename).exists():
+                continue
+            http_get(url, dst_dir, filename=filename, extract=False)
+        if dst_dir == self._aux_files_dir:
+            # reload the records
+            self._ls_rec()
+
+    def set_aux_files_dir(self, aux_files_dir: Union[str, bytes, os.PathLike]) -> None:
+        """Set the directory of the auxiliary files."""
+        self._aux_files_dir = Path(aux_files_dir).expanduser().resolve()
         self._ls_rec()
 
     @staticmethod
