@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from torch_ecg.utils.misc import list_sum
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
+from torchmetrics.segmentation.generalized_dice import GeneralizedDiceScore
+from torchmetrics.segmentation.mean_iou import MeanIoU
 from transformers.image_transforms import corners_to_center_format
 
 from helper_code import compute_f_measure
@@ -29,13 +31,13 @@ def compute_challenge_metrics(
     outputs : Sequence[CINC2024Outputs]
         The outputs for the records.
     keeps : Union[str, Sequence[str]], optional
-        Metrics to keep, available options are "dx" and "digitization".
+        Metrics to keep, available options are "dx", "digitization", "detection", "segmentation".
         By default all metrics are computed.
 
     Returns
     -------
     Dict[str, float]
-        The computed challenge metrics for "dx" and "digitization" (at least one of them).
+        The computed challenge metrics for "dx", "digitization", "detection", "segmentation" (at least one of them).
         nan values are returned for the metrics that are not computed due to missing outputs.
 
     Examples
@@ -59,7 +61,7 @@ def compute_challenge_metrics(
     """
     metrics = {}
     if keeps is None:
-        keeps = ["dx", "digitization", "detection"]
+        keeps = ["dx", "digitization", "detection", "segmentation"]
     elif isinstance(keeps, str):
         keeps = [keeps]
     keeps = [keep.lower() for keep in keeps]
@@ -71,6 +73,10 @@ def compute_challenge_metrics(
         )
     if "detection" in keeps:
         metrics.update({f"detection_{metric}": value for metric, value in compute_detection_metrics(labels, outputs).items()})
+    if "mask" in keeps:
+        metrics.update(
+            {f"segmentation_{metric}": value for metric, value in compute_segmentation_metrics(labels, outputs).items()}
+        )
     return metrics
 
 
@@ -253,3 +259,54 @@ def coco_to_voc_format(boxes: torch.Tensor) -> torch.Tensor:
     boxes_voc = boxes.clone()
     boxes_voc[:, [2, 3]] += boxes_voc[:, [0, 1]]
     return boxes_voc
+
+
+def compute_segmentation_metrics(
+    labels: Sequence[Dict[str, Union[np.ndarray, List[dict]]]],
+    outputs: Sequence[CINC2024Outputs],
+) -> Dict[str, float]:
+    """Compute the metrics for the segmentation task.
+
+    Parameters
+    ----------
+    labels : Sequence[Dict[str, Union[np.ndarray, List[dict]]]]
+        The labels for the records.
+    outputs : Sequence[CINC2024Outputs]
+        The outputs for the records.
+
+    Returns
+    -------
+    Dict[str, float]
+        The computed challenge metrics for the segmentation task.
+
+    """
+    assert len(labels) == len(outputs), "The number of labels and outputs should be the same"
+    if not all([item.waveform_mask is not None for item in outputs]):
+        return {"mAP": np.nan}
+    assert all(
+        [len(label["mask"]) == len(output.waveform_mask) for label, output in zip(labels, outputs)]
+    ), "The number of 'mask' labels and outputs should be the same"
+
+    metric_miou = MeanIoU(num_classes=1, include_background=False, per_class=False)
+    metric_dice = GeneralizedDiceScore(num_classes=1, include_background=False, per_class=False)
+
+    count = 0
+    for label, output in zip(labels, outputs):
+        # label is a dictionary with keys "mask" and other fields (not used here)
+        for lb, op in zip(label["mask"], output.waveform_mask):
+            # convert the masks to the required format
+            converted_targets = torch.Tensor(lb).long()
+            for _ in range(4 - converted_targets.ndim):
+                converted_targets = converted_targets.unsqueeze(0)
+            converted_predictions = torch.Tensor(op).long()
+            for _ in range(4 - converted_predictions.ndim):
+                converted_predictions = converted_predictions.unsqueeze(0)
+            metric_miou.update(converted_predictions, converted_targets)
+            metric_dice.update(converted_predictions, converted_targets)
+            count += 1
+
+    # NOTE: the mean IoU is computed as the sum of mean IoU over all samples,
+    # BUT not divided by the number of samples;
+    # while the mean Dice is computed as the sum of mean Dice over all samples divided by the number of samples.
+    result = {"miou": metric_miou.compute().item() / count, "dice": metric_dice.compute().item()}
+    return result
