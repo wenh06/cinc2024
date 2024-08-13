@@ -73,7 +73,7 @@ def compute_challenge_metrics(
         )
     if "detection" in keeps:
         metrics.update({f"detection_{metric}": value for metric, value in compute_detection_metrics(labels, outputs).items()})
-    if "mask" in keeps:
+    if "segmentation" in keeps:
         metrics.update(
             {f"segmentation_{metric}": value for metric, value in compute_segmentation_metrics(labels, outputs).items()}
         )

@@ -8,6 +8,7 @@ import textwrap
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence
 
+import numpy as np
 import torch
 from torch import nn
 from torch.nn.parallel import DataParallel as DP
@@ -260,8 +261,19 @@ class CINC2024Trainer(BaseTrainer):
 
         self.model.eval()
 
+        metrics_keeps = []
+        if self.train_config.predict_dx:
+            metrics_keeps.append("dx")
+        if self.train_config.predict_digitization:
+            metrics_keeps.append("digitization")
+        if self.train_config.predict_bbox:
+            metrics_keeps.append("detection")
+        if self.train_config.predict_mask:
+            metrics_keeps.append("segmentation")
+
         all_outputs = []
         all_labels = []
+        all_eval_res = []
 
         with tqdm(
             total=len(data_loader.dataset),
@@ -289,11 +301,19 @@ class CINC2024Trainer(BaseTrainer):
                         for label in labels["dx"]
                     ]
 
-                all_labels.append(labels)
+                if self.train_config.predict_mask:
+                    # the labels and prediction contains masks whose total amount is too large to store in memory
+                    if torch.cuda.is_available():
+                        torch.cuda.synchronize()
+                    all_eval_res.append(
+                        compute_challenge_metrics(labels=[labels], outputs=[self._model.inference(image)], keeps=metrics_keeps)
+                    )
+                else:
+                    all_labels.append(labels)
+                    if torch.cuda.is_available():
+                        torch.cuda.synchronize()
+                    all_outputs.append(self._model.inference(image))  # of type CINC2024Outputs
 
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                all_outputs.append(self._model.inference(image))  # of type CINC2024Outputs
                 pbar.update(len(image))
 
         if self.val_train_loader is not None and self.train_config.predict_dx:
@@ -314,20 +334,15 @@ class CINC2024Trainer(BaseTrainer):
                 )
                 self.log_manager.log_message(msg)
 
-        metrics_keeps = []
-        if self.train_config.predict_dx:
-            metrics_keeps.append("dx")
-        if self.train_config.predict_digitization:
-            metrics_keeps.append("digitization")
-        if self.train_config.predict_bbox:
-            metrics_keeps.append("detection")
         if self.train_config.predict_mask:
-            metrics_keeps.append("segmentation")
-        eval_res = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)
+            eval_res = {key: np.mean([res[key] for res in all_eval_res]).item() for key in all_eval_res[0].keys()}
+        else:
+            eval_res = compute_challenge_metrics(labels=all_labels, outputs=all_outputs, keeps=metrics_keeps)
 
         # in case possible memeory leakage?
         del all_labels
         del all_outputs
+        del all_eval_res
 
         self.model.train()
 

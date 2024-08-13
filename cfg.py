@@ -95,7 +95,7 @@ TrainCfg.keep_checkpoint_max = 10
 TrainCfg.flooding_level = 0.0  # flooding performed if positive,
 
 # configs of logging
-TrainCfg.log_step = 40
+TrainCfg.log_step = 100
 # TrainCfg.eval_every = 20
 
 # data augmentation
