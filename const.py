@@ -122,9 +122,9 @@ REMOTE_MODELS = {
     },
     "custom--unet": {
         "url": {
-            "google-drive": ("https://drive.google.com/u/0/uc?id="),
+            "google-drive": ("https://drive.google.com/u/0/uc?id=1vrfUtSGUr5YHghwfFpxLxYFDp_4M--R1"),
             "deep-psp": (
-                "https://deep-psp.tech/Models/CinC2024/" "BestModel_custom-unet-roi_only_5_08-14_05-48_metric_0.73.pth.tar"
+                "https://deep-psp.tech/Models/CinC2024/BestModel_custom-unet-roi_only_5_08-14_05-48_metric_0.73.pth.tar"
             ),
         },
         "filename": "BestModel_custom-unet-roi_only_5_08-14_05-48_metric_0.73.pth.tar",
