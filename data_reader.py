@@ -1262,7 +1262,13 @@ class CINC2024Reader(PhysioNetDataBase):
                     )
                 pool = mp.Pool(processes=max(1, mp.cpu_count() - 3), maxtasksperchild=10)
                 # use tqdm to show progress
-                for _ in tqdm(pool.imap_unordered(_generate_synthetic_image, args_list), total=len(args_list)):
+                for _ in tqdm(
+                    pool.imap_unordered(_generate_synthetic_image, args_list),
+                    total=len(args_list),
+                    desc="Generating synthetic images",
+                    mininterval=1.0,
+                    dynamic_ncols=True,
+                ):
                     pass
             else:
                 self._prepare_synthetic_images(output_folder=output_folder, fs=fs, force_recompute=force_recompute, **kwargs)

@@ -177,20 +177,22 @@ def train_models(
     }
 
     # generate the synthetic images
+    print("Preparing the synthetic images...")
     dr = CINC2024Reader(**reader_kwargs)
     # gen_img_config = dr.__gen_img_extra_configs__[0].copy()  # requires much more storage and is much slower
     gen_img_config = dr.__gen_img_default_config__.copy()
     gen_img_config["write_signal_file"] = True
     dr.prepare_synthetic_images(parallel=True, force_recompute=True, **gen_img_config)
     del dr
+    print("Done.")
 
     # Train the models
     if SubmissionCfg.classifier is not None:
-        train_classification_model(data_folder, model_folder)
+        train_classification_model(data_folder, model_folder, verbose)
     if SubmissionCfg.detector is not None:
-        train_object_detection_model(data_folder, model_folder)
+        train_object_detection_model(data_folder, model_folder, verbose)
     if SubmissionCfg.digitizer is not None:
-        train_digitization_model(data_folder, model_folder)
+        train_digitization_model(data_folder, model_folder, verbose)
 
     print("\n" + "*" * 100)
     msg = "   CinC2024 challenge training entry ends   ".center(100, "#")
@@ -425,6 +427,8 @@ def train_classification_model(
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
 
+    print("Training the classification model...")
+
     model, train_config = MultiHead_CINC2024.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
         device=DEVICE,
@@ -515,6 +519,8 @@ def train_classification_model(
 
     torch.cuda.empty_cache()
 
+    print("Classification model training completed.")
+
 
 def train_object_detection_model(
     data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
@@ -537,6 +543,8 @@ def train_object_detection_model(
     """
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
+
+    print("Training the object detection model...")
 
     model, train_config = ECGWaveformDetector.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"],
@@ -627,6 +635,8 @@ def train_object_detection_model(
 
     torch.cuda.empty_cache()
 
+    print("Object detection model training completed.")
+
 
 def train_digitization_model(
     data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool
@@ -649,6 +659,8 @@ def train_digitization_model(
     """
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
+
+    print("Training the digitization model...")
 
     model, train_config = ECGWaveformDigitizer.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
@@ -737,6 +749,8 @@ def train_digitization_model(
     del best_state_dict
 
     torch.cuda.empty_cache()
+
+    print("Digitization model training completed.")
 
 
 def bbox_and_mask_to_signals(
