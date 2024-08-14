@@ -108,6 +108,9 @@ RUN pip list
 # copy the whole project to the docker container
 COPY ./ /challenge
 
+# unzip the aux files in /challenge/aux_files
+RUN unzip /challenge/aux_files/aux_files.zip -d /challenge/aux_files && cd /challenge/aux_files \
+    && ls -A && du -sh * && cd /challenge
 
 # Download synthetic image data and pretrained models
 RUN python post_docker_build.py

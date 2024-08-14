@@ -7,11 +7,12 @@ on:
     branches: [ master ]
 
 env:
+  # see the Dockerfile for the definition of some of the following environment variables
   status: alpha
   CINC2024_REVENGER_TEST: 1
   download_data_dir: ${{ github.workspace }}/download_data
-  revenger_data_dir: /challenge/training_data
-  revenger_model_dir: /challenge/models
+  revenger_data_dir: /challenge/cache/revenger_data_dir
+  revenger_model_dir: /challenge/cache/revenger_model_dir
   revenger_test_dir: /challenge/test
   revenger_output_dir: /challenge/output
   docker_main_filename: Dockerfile

@@ -24,7 +24,7 @@ from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.misc import str2bool
 
 from cfg import BaseCfg, ModelCfg, TrainCfg  # noqa: F401
-from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
+from const import MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset
 from helper_code import (  # noqa: F401
@@ -172,7 +172,8 @@ def train_models(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
     # generate the synthetic images
@@ -478,7 +479,8 @@ def train_classification_model(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
     ds_train = CinC2024Dataset(train_config, training=True, lazy=True, **reader_kwargs)
@@ -588,7 +590,8 @@ def train_object_detection_model(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
     ds_train = CinC2024Dataset(train_config, training=True, lazy=True, **reader_kwargs)
@@ -698,7 +701,8 @@ def train_digitization_model(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
     ds_train = CinC2024Dataset(train_config, training=True, lazy=True, **reader_kwargs)

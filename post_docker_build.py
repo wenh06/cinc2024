@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 
 import albumentations as A
@@ -8,7 +9,7 @@ from deprecated import deprecated
 from torch_ecg.utils.download import http_get, url_is_reachable
 
 from cfg import ModelCfg
-from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
+from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
 from data_reader import CINC2024Reader
 from models import ECGWaveformDetector, MultiHead_CINC2024
 from team_code import SubmissionCfg
@@ -147,6 +148,7 @@ def prepare_synthetic_images():
     reader_kwargs = {
         "db_dir": Path(DATA_CACHE_DIR),
         "synthetic_images_dir": Path(DATA_CACHE_DIR) / "synthetic_images",
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",
     }
     dr = CINC2024Reader(**reader_kwargs)
     config_index = 0  # -1 for default config, taking no action
@@ -160,7 +162,10 @@ def prepare_synthetic_images():
 if __name__ == "__main__":
     transformers.logging.set_verbosity_info()
     check_env()
+    time.sleep(2)
     cache_pretrained_models()
+    time.sleep(2)
     cache_data()  # or prepare_synthetic_images(), prepare_synthetic_images NOT tested yet.
+    time.sleep(2)
     test_albumentations()
     print("Done.")

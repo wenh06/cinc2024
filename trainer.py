@@ -293,7 +293,7 @@ class CINC2024Trainer(BaseTrainer):
                 # image = self._model.get_input_tensors(input_tensors.pop("image"))
                 image = input_tensors.pop("image")
                 labels = {k: v.numpy() if isinstance(v, torch.Tensor) else v for k, v in input_tensors.items() if v is not None}
-                if "dx" in labels:
+                if "dx" in labels and self.train_config.predict_dx:
                     # convert numeric labels to string labels
                     # the labels are (multi-label) one-hot encoded, perhaps with label smoothing
                     labels["dx"] = [
