@@ -66,34 +66,14 @@ except Exception:
 ################################################################################
 # NOTE: configurable options
 
-# choices of the backbone models:
-# a list of candidate backbones
-# microsoft/resnet-18  (46.8MB in memory consumption, including the classification head, pretrained on ImageNet-1k)
-# facebook/convnextv2-atto-1k-224  (14.9 MB)
-# facebook/convnextv2-femto-1k-224  (21.0 MB)
-# facebook/convnextv2-pico-1k-224  (36.3 MB)
-# facebook/convnextv2-nano-22k-384  (62.5 MB)
-# facebook/convnextv2-tiny-22k-384  (115 MB)
-# facebook/convnextv2-base-22k-384  (355 MB)
-# facebook/convnextv2-large-22k-384  (792 MB)
-# facebook/convnextv2-huge-22k-512  (2.64 GB)
-# microsoft/swinv2-tiny-patch4-window16-256  (113 MB, pretrained on ImageNet-1k)
-# microsoft/swinv2-small-patch4-window16-256  (199 MB, pretrained on ImageNet-1k)
-# microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft  (352 MB)
-# microsoft/swinv2-large-patch4-window12to24-192to384-22kto1k-ft  (787MB)
-# NOTE: DO NOT change the backbone_name and backbone_source here
-# change them in cfg.py
-# as one has to run post_docker_build.py to cache the pretrained models
-# in which ModelCfg is imported from cfg.py, not from this script
-# ModelCfg.backbone_name = "facebook/convnextv2-large-22k-384"
-# ModelCfg.backbone_source = "hf"
+# model choices, ref. const.py
 
 SubmissionCfg = CFG()
 SubmissionCfg.detector = None  # "hf--facebook/detr-resnet-50"
 SubmissionCfg.classifier = "hf--facebook/convnextv2-nano-22k-384"
-SubmissionCfg.digitizer = None
+SubmissionCfg.digitizer = None  # "custom--unet"
 
-SubmissionCfg.final_model_filename = {
+SubmissionCfg.final_model_name = {
     "detector": "detector.pth.tar",
     "classifier": "classifier.pth.tar",
     "digitizer": "digitizer.pth.tar",
@@ -219,25 +199,49 @@ def load_models(
         The trained classification models and their training configurations.
 
     """
+    model_folder = Path(model_folder).expanduser().resolve()
+
+    print("Loading the trained models...")
+
+    digitization_model = {}
     if SubmissionCfg.digitizer is not None:
-        raise NotImplementedError("Digitalizer is not implemented yet.")
-    else:
-        digitization_model = None
+        # digitizer, digitizer_train_cfg = ECGWaveformDigitizer.from_checkpoint(
+        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"]
+        # )
+        model_path = Path(model_folder) / SubmissionCfg.final_model_name["digitizer"]
+        digitizer, digitizer_train_cfg = ECGWaveformDigitizer.from_checkpoint(model_path)
+        digitization_model["digitizer"] = digitizer
+        digitization_model["digitizer_train_cfg"] = digitizer_train_cfg
+
+        print(f"Digitization model loaded from {str(model_path)}")
 
     classification_model = {}
     if SubmissionCfg.detector is not None:
-        detector, detector_train_cfg = ECGWaveformDetector.from_checkpoint(
-            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
-        )
+        # detector, detector_train_cfg = ECGWaveformDetector.from_checkpoint(
+        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
+        # )
+        model_path = Path(model_folder) / SubmissionCfg.final_model_name["detector"]
+        detector, detector_train_cfg = ECGWaveformDetector.from_checkpoint(model_path)
         classification_model["detector"] = detector
         classification_model["detector_train_cfg"] = detector_train_cfg
 
+        print(f"Object detection model loaded from {str(model_path)}")
+
     if SubmissionCfg.classifier is not None:
-        classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(
-            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
-        )
+        # classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(
+        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
+        # )
+        model_path = Path(model_folder) / SubmissionCfg.final_model_name["classifier"]
+        classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(model_path)
         classification_model["classifier"] = classifier
         classification_model["classifier_train_cfg"] = classifier_train_cfg
+
+        print(f"Classification model loaded from {str(model_path)}")
+
+    if len(digitization_model) == 0:
+        digitization_model = None
+    if len(classification_model) == 0:
+        classification_model = None
 
     return digitization_model, classification_model
 
@@ -443,7 +447,7 @@ def train_classification_model(
     train_config.log_dir = train_config.working_dir / "log"
     train_config.synthetic_images_dir = train_config.working_dir / "synthetic_images"
 
-    train_config.final_model_filename = SubmissionCfg.final_model_filename["classifier"]
+    train_config.final_model_name = SubmissionCfg.final_model_name["classifier"]
     train_config.debug = False
 
     # the learning rate is set low so that the fine-tuned model
@@ -560,7 +564,7 @@ def train_object_detection_model(
     train_config.log_dir = train_config.working_dir / "log"
     train_config.synthetic_images_dir = train_config.working_dir / "synthetic_images"
 
-    train_config.final_model_filename = SubmissionCfg.final_model_filename["detector"]
+    train_config.final_model_name = SubmissionCfg.final_model_name["detector"]
     train_config.debug = False
 
     train_config.n_epochs = 1
@@ -676,7 +680,7 @@ def train_digitization_model(
     train_config.log_dir = train_config.working_dir / "log"
     train_config.synthetic_images_dir = train_config.working_dir / "synthetic_images"
 
-    train_config.final_model_filename = SubmissionCfg.final_model_filename["digitizer"]
+    train_config.final_model_name = SubmissionCfg.final_model_name["digitizer"]
     train_config.debug = False
     train_config.n_epochs = 1
     train_config.learning_rate = 5e-6  # 5e-4, 1e-3
