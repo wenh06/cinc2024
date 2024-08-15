@@ -17,6 +17,7 @@ ENV HUGGINGFACE_HUB_CACHE=/challenge/cache/revenger_model_dir
 ENV HF_HUB_CACHE=/challenge/cache/revenger_model_dir
 ENV MODEL_CACHE_DIR=/challenge/cache/revenger_model_dir
 ENV DATA_CACHE_DIR=/challenge/cache/revenger_data_dir
+ENV GIT_CLONE_DIR=/challenge/cache/git_clone_dir
 
 ENV NO_ALBUMENTATIONS_UPDATE=1
 ENV ALBUMENTATIONS_DISABLE_VERSION_CHECK=1
@@ -61,6 +62,17 @@ RUN apt install build-essential -y
 RUN apt install git ffmpeg libsm6 libxext6 vim libsndfile1 libxrender1 unzip -y
 
 
+RUN mkdir -p $MODEL_CACHE_DIR
+RUN mkdir -p $DATA_CACHE_DIR
+RUN mkdir -p $GIT_CLONE_DIR
+
+
+## DO NOT EDIT the 3 lines.
+RUN mkdir /challenge
+COPY ./requirements-docker.txt /challenge
+WORKDIR /challenge
+
+
 # RUN ln -s /usr/bin/python3 /usr/bin/python && ln -s /usr/bin/pip3 /usr/bin/pip
 RUN which python
 
@@ -86,18 +98,10 @@ RUN python -m pip install --upgrade pip setuptools wheel
 
 # RUN pip install torch-ecg
 # install the dev branch of torch-ecg
-RUN mkdir -p tmp && cd tmp
-RUN git clone https://github.com/DeepPSP/torch_ecg.git && cd torch_ecg && git checkout dev \
-    && python -m pip install -r requirements.txt && python -m pip install -e .[dev] && cd ../../
-
-## DO NOT EDIT the 3 lines.
-RUN mkdir /challenge
-COPY ./requirements-docker.txt /challenge
-WORKDIR /challenge
-
-RUN mkdir -p $MODEL_CACHE_DIR
-RUN mkdir -p $DATA_CACHE_DIR
-
+RUN cd $GIT_CLONE_DIR \
+    && git clone https://github.com/DeepPSP/torch_ecg.git && cd torch_ecg && git checkout dev \
+    && python -m pip install -r requirements.txt && python -m pip install -e .[dev] \
+    && cd /challenge
 
 # install dependencies other than torch-related packages
 RUN pip install -r requirements-docker.txt
