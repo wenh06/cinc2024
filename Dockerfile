@@ -62,15 +62,15 @@ RUN apt install build-essential -y
 RUN apt install git ffmpeg libsm6 libxext6 vim libsndfile1 libxrender1 unzip -y
 
 
-RUN mkdir -p $MODEL_CACHE_DIR
-RUN mkdir -p $DATA_CACHE_DIR
-RUN mkdir -p $GIT_CLONE_DIR
-
-
 ## DO NOT EDIT the 3 lines.
 RUN mkdir /challenge
 COPY ./requirements-docker.txt /challenge
 WORKDIR /challenge
+
+
+RUN mkdir -p $MODEL_CACHE_DIR
+RUN mkdir -p $DATA_CACHE_DIR
+RUN mkdir -p $GIT_CLONE_DIR
 
 
 # RUN ln -s /usr/bin/python3 /usr/bin/python && ln -s /usr/bin/pip3 /usr/bin/pip
