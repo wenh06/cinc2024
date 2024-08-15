@@ -422,7 +422,7 @@ class CINC2024Trainer(BaseTrainer):
             Path to save the checkpoint
 
         """
-        if not self.model_config.backbone_freeze:
+        if (not self.train_config.predict_dx) or (not self.model_config.get("backbone_freeze", False)):
             super().save_checkpoint(path)
             return
         # if the backbone is frozen, save only the state_dict of the head(s)
