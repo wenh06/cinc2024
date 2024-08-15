@@ -223,7 +223,7 @@ def compute_detection_metrics(
             post_processed_targets.append(converted_targets)
             post_processed_predictions.append(
                 {
-                    "boxes": torch.Tensor(op["boxes"]),
+                    "boxes": torch.Tensor(op["bbox"]),  # CINC2024Outputs.bbox: key "boxes" changed to "bbox"
                     "labels": torch.Tensor(op["category_id"]).long(),
                     "scores": torch.Tensor(op["scores"]),
                 }
