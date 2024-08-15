@@ -38,6 +38,7 @@ from helper_code import (  # noqa: F401
     get_num_signals,
     get_sampling_frequency,
     get_signal_names,
+    get_signal_units,
     load_images,
     load_labels,
     load_text,
@@ -829,6 +830,7 @@ def bbox_and_mask_to_signals(
     signal_names = [sn.upper() for sn in signal_names]
     signal_fs = get_sampling_frequency(header)  # sampling frequency of the signal
     signal_duration = num_samples / signal_fs  # duration of the signal
+    # signal_units = get_signal_units(header)  # units of the signals
     # median_filter_window = int(signal_fs * 1.5)  # 1.5 seconds
 
     signal = np.zeros((num_samples, num_signals))
@@ -981,6 +983,11 @@ def bbox_and_mask_to_signals(
                     signal[sig_start : sig_start + lead_Len, standard_lead_names.index("V3")] = y[2 * lead_Len : 3 * lead_Len]
                     signal[sig_start : sig_start + lead_Len, standard_lead_names.index("V6")] = y[3 * lead_Len :]
 
+    # if signal_units.lower() == "mv":
+    #     return signal
+    # else:
+    #     return np.asarray(signal * 1000, dtype=np.int16)
+
     return signal
 
 
@@ -1010,6 +1017,7 @@ def digitization_workaround(record: Union[str, bytes, os.PathLike]) -> np.ndarra
     signal_names = [sn.upper() for sn in signal_names]
     signal_fs = get_sampling_frequency(header)  # sampling frequency of the signal
     signal_duration = num_samples / signal_fs  # duration of the signal
+    # signal_units = get_signal_units(header)  # units of the signals
 
     standard_lead_names = ["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"]
     if set(signal_names).issubset(standard_lead_names):
@@ -1034,9 +1042,12 @@ def digitization_workaround(record: Union[str, bytes, os.PathLike]) -> np.ndarra
         # official baseline uses random signal
         signal = np.random.default_rng().uniform(low=-1000, high=1000, size=(num_samples, num_signals))
 
-    signal = np.asarray(signal, dtype=np.int16)
+    # if signal_units.lower() == "mv":
+    #     signal = signal / 1000.0
+    # else:
+    #     signal = np.asarray(signal, dtype=np.int16)
 
-    return signal
+    return signal / 1000.0
 
 
 def is_bbox_overlap(bbox: Sequence[Sequence[int]]) -> bool:
