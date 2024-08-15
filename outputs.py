@@ -132,4 +132,4 @@ class CINC2024Outputs:
 
         # TODO: convert the waveform mask to digitized waveform
         if self.waveform_mask is not None:
-            pass
+            self.waveform_mask = [np.round(item).astype(np.uint8) for item in self.waveform_mask]

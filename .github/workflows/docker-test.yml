@@ -12,7 +12,7 @@ env:
   CINC2024_REVENGER_TEST: 1
   download_data_dir: ${{ github.workspace }}/download_data
   revenger_data_dir: /challenge/cache/revenger_data_dir
-  revenger_model_dir: /challenge/cache/revenger_model_dir
+  revenger_model_dir: /challenge/models
   revenger_test_dir: /challenge/test
   revenger_output_dir: /challenge/output
   docker_main_filename: Dockerfile

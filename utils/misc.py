@@ -2,6 +2,7 @@
 Miscellaneous functions.
 """
 
+from copy import deepcopy
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
@@ -125,12 +126,13 @@ def view_image_with_bbox(
 
     """
     if isinstance(image, torch.Tensor):
-        image = image.numpy().transpose(1, 2, 0)
+        image = image.clone().numpy().transpose(1, 2, 0)
     if isinstance(image, np.ndarray):
         assert image.ndim == 3 and image.shape[-1] == 3, f"unsupported shape {image.shape}"
         img = Image.fromarray(image)
     elif isinstance(image, Image.Image):
-        img = image
+        # make a copy
+        img = image.copy()
     else:
         raise ValueError(f"unsupported type {type(image)}")
 
@@ -159,7 +161,7 @@ def view_image_with_bbox(
         else:
             bbox_dict["category_name"] = [str(item["category_id"]) for item in bbox]
     elif isinstance(bbox, dict):
-        bbox_dict = bbox
+        bbox_dict = deepcopy(bbox)
     else:
         raise ValueError(f"unsupported type {type(bbox)}")
 
