@@ -11,7 +11,7 @@ from torch_ecg.utils.download import http_get, url_is_reachable
 from cfg import ModelCfg
 from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
 from data_reader import CINC2024Reader
-from models import ECGWaveformDetector, MultiHead_CINC2024
+from models import ECGWaveformDetector, ECGWaveformDigitizer, MultiHead_CINC2024
 from team_code import SubmissionCfg
 from utils.ecg_image_generator import download_en_core_sci_sm
 
@@ -57,6 +57,14 @@ def cache_pretrained_models():
             filename=REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
             extract=False,
         )
+        model, train_config = ECGWaveformDigitizer.from_checkpoint(
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"]
+        )
+        print("digitizer loaded")
+        print(f"digitizer: {model}")
+        print(f"digitizer train config: {train_config}")
+        del model, train_config
+
     if SubmissionCfg.classifier is not None:
         http_get(
             url=REMOTE_MODELS[SubmissionCfg.classifier]["url"][remote_model_source],
@@ -68,8 +76,8 @@ def cache_pretrained_models():
             Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
         )
         print("classifier loaded")
-        print(model)
-        print(train_config)
+        print(f"classifier: {model}")
+        print(f"classifier train config: {train_config}")
         del model, train_config
 
     if SubmissionCfg.detector is not None:
@@ -83,8 +91,8 @@ def cache_pretrained_models():
             Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
         )
         print("detector loaded")
-        print(model)
-        print(train_config)
+        print(f"detector: {model}")
+        print(f"detector train config: {train_config}")
         del model, train_config
 
     # Download the spacy model
