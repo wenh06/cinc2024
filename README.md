@@ -17,7 +17,9 @@ Digitization and Classification of ECG Images: The George B. Moody PhysioNet Cha
 ## The Conference
 
 [Conference Website](https://cinc2024.org/) |
-[Unofficial Phase Leaderboard](https://docs.google.com/spreadsheets/d/e/2PACX-1vR2GLKHdS9W4Z_AOtaY_YkQrX-rY24BqQ8PmLTJW-50D9FRE-Fvijf2Gp6f3FwTN5FWx7tPb7nGEGA6/pubhtml?gid=1803759927&single=false&widget=true&headers=false)
+[Unofficial Phase Leaderboard](https://docs.google.com/spreadsheets/d/e/2PACX-1vR2GLKHdS9W4Z_AOtaY_YkQrX-rY24BqQ8PmLTJW-50D9FRE-Fvijf2Gp6f3FwTN5FWx7tPb7nGEGA6/pubhtml?gid=1803759927&single=false&widget=true&headers=false) |
+[Official Phase Leaderboard](https://docs.google.com/spreadsheets/d/e/2PACX-1vRxoN5oxymRHNa5XFjautP0Jn6BqtrX8gVkoW6M3FPzEYvi8ma-7sF9-ftU8gwkX2XCcunkYbCxdO3E/pubhtml?rm=minimal&gid=1894271459&gid=2117462787&single=false&widget=true&headers=false)
+
 
 :point_right: [Back to TOC](#cinc2024)
 
