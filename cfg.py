@@ -153,6 +153,11 @@ ModelCfg.checkpoints = BaseCfg.checkpoints
 ModelCfg.backbone_name = "facebook/convnextv2-nano-22k-384"
 ModelCfg.backbone_source = "hf"
 ModelCfg.backbone_freeze = TrainCfg.backbone_freeze
+# input size of the backbone (None for inherited from the pretrained processor)
+# example: {"height": 512, "width": 1024, "shortest_edge": 768}
+# some processors use "shortest_edge" to resize the input image (width = height = shortest_edge)
+# some processors use "height" and "width" to resize the input image
+ModelCfg.backbone_input_size = None
 
 ModelCfg.classification_head = deepcopy(linear)
 

@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from pathlib import Path
-from typing import List, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
@@ -366,3 +366,33 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
                 )
                 # remove `state_dict` to avoid potential memory leak
                 del state_dict
+
+    def set_input_size(self, input_size: Dict[str, int]) -> None:
+        """Set the input size of the backbone model.
+
+        Works for `hf` source only. `self.preprocessor.size` is updated using this method.
+
+        Parameters
+        ----------
+        input_size : dict
+            Input size of the backbone model.
+            Example: {"height": 512, "width": 1024, "shortest_edge": 768}.
+            It depends on the processor used by the backbone model to
+            use "width" and "height" or "shortest_edge" to resize the input image.
+
+        Returns
+        -------
+        None
+
+        """
+        if "shortest_edge" in self.preprocessor.size:
+            self.preprocessor.size["shortest_edge"] = input_size["shortest_edge"]
+        elif "height" in self.preprocessor.size and "width" in self.preprocessor.size:
+            self.preprocessor.size["height"] = input_size["height"]
+            self.preprocessor.size["width"] = input_size["width"]
+        else:  # not found in the processor (typically won't happen for huggingface transformers)
+            raise ValueError(f"Input size not found in the processor: {self.preprocessor.size}")
+
+        # reset the default output shape
+        self.__default_output_shape = None
+        self.compute_output_shape()

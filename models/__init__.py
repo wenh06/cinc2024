@@ -77,6 +77,9 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
             source=self.__config.backbone_source,
             pretrained=True,
         )
+        if self.config.backbone_source == "hf" and self.config.get("backbone_input_size", None) is not None:
+            # modify the input size of the backbone if necessary
+            self.image_backbone.set_input_size(self.config.backbone_input_size)
         if self.config.backbone_freeze:
             self.freeze_backbone(freeze=True)
         backbone_output_shape = self.image_backbone.compute_output_shape()
