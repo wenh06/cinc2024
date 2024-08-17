@@ -391,7 +391,7 @@ if __name__ == "__main__":
     print(f"tmp_output_dir: {str(tmp_output_dir)}")
     print("#" * 80)
 
-    test_dataset()  # passed
+    # test_dataset()  # passed
     # test_models()  # passed
     # test_challenge_metrics()  # passed
     # test_trainer()  # directly run test_entry
