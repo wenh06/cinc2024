@@ -27,7 +27,7 @@ from tqdm.auto import tqdm
 
 from bbox import BBox, RotatedBBox
 from cfg import BaseCfg, ModelCfg
-from const import DATA_CACHE_DIR
+from const import DATA_CACHE_DIR, PROJECT_DIR
 from helper_code import cast_int_float_unknown, find_records
 from prepare_image_data import find_files as find_images
 from utils.ecg_image_generator import constants as ecg_img_gen_constants
@@ -212,7 +212,8 @@ class CINC2024Reader(PhysioNetDataBase):
         self._all_subjects = None
         self._all_images = None
         self._gen_img_config_current = None
-        self._aux_files_dir = Path(kwargs.pop("aux_files_dir", self.db_dir)).expanduser().resolve()
+        # self._aux_files_dir = Path(kwargs.pop("aux_files_dir", self.db_dir)).expanduser().resolve()
+        self._aux_files_dir = Path(kwargs.pop("aux_files_dir", Path(PROJECT_DIR) / "aux_files")).expanduser().resolve()
         self._ls_rec()
 
     def _ls_rec(self) -> None:
