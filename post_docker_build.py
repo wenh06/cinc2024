@@ -132,6 +132,7 @@ def cache_data():
     reader_kwargs = {
         "db_dir": Path(TEST_DATA_CACHE_DIR),
         "synthetic_images_dir": Path(TEST_DATA_CACHE_DIR) / "synthetic_images",
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",
     }
     dr = CINC2024Reader(**reader_kwargs)
     dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
@@ -152,6 +153,7 @@ def cache_data():
     reader_kwargs = {
         "db_dir": Path(FULL_DATA_CACHE_DIR),
         "synthetic_images_dir": Path(FULL_DATA_CACHE_DIR) / "synthetic_images",
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",
     }
     dr = CINC2024Reader(**reader_kwargs)
     # dr.download_aux_files()
