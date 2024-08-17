@@ -9,7 +9,15 @@ from deprecated import deprecated
 from torch_ecg.utils.download import http_get, url_is_reachable
 
 from cfg import ModelCfg
-from const import DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_HEADS_URLS, REMOTE_MODELS
+from const import (
+    DATA_CACHE_DIR,
+    FULL_DATA_CACHE_DIR,
+    MODEL_CACHE_DIR,
+    PROJECT_DIR,
+    REMOTE_HEADS_URLS,
+    REMOTE_MODELS,
+    TEST_DATA_CACHE_DIR,
+)
 from data_reader import CINC2024Reader
 from models import ECGWaveformDetector, ECGWaveformDigitizer, MultiHead_CINC2024
 from team_code import SubmissionCfg
@@ -122,16 +130,47 @@ def cache_data():
     """Cache the synthetic image data and the subset."""
     print("Caching the synthetic image data...")
     reader_kwargs = {
-        "db_dir": Path(DATA_CACHE_DIR),
-        "synthetic_images_dir": Path(DATA_CACHE_DIR) / "synthetic_images",
+        "db_dir": Path(TEST_DATA_CACHE_DIR),
+        "synthetic_images_dir": Path(TEST_DATA_CACHE_DIR) / "synthetic_images",
     }
     dr = CINC2024Reader(**reader_kwargs)
     dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
     dr.download_subset()
 
+    print(f"{len(dr._df_metadata) = }")
+    print(f"{len(dr._df_records) = }")
+    print(f"{len(dr._all_records) = }")
+    default_train_val_split = dr.default_train_val_split
+    print(f"train samples: {len(default_train_val_split['train'])}")
+    print(f"val samples: {len(default_train_val_split['val'])}")
+    default_train_val_test_split = dr.default_train_val_test_split
+    print(f"test samples: {len(default_train_val_test_split['test'])}")
+    print(f"train samples: {len(default_train_val_test_split['train'])}")
+    print(f"val samples: {len(default_train_val_test_split['val'])}")
+
+    print("Caching the full data...")
+    reader_kwargs = {
+        "db_dir": Path(FULL_DATA_CACHE_DIR),
+        "synthetic_images_dir": Path(FULL_DATA_CACHE_DIR) / "synthetic_images",
+    }
+    dr = CINC2024Reader(**reader_kwargs)
+    # dr.download_aux_files()
+    dr.download()
+
+    print(f"{len(dr._df_metadata) = }")
+    print(f"{len(dr._df_records) = }")
+    print(f"{len(dr._all_records) = }")
+    default_train_val_split = dr.default_train_val_split
+    print(f"train samples: {len(default_train_val_split['train'])}")
+    print(f"val samples: {len(default_train_val_split['val'])}")
+    default_train_val_test_split = dr.default_train_val_test_split
+    print(f"test samples: {len(default_train_val_test_split['test'])}")
+    print(f"train samples: {len(default_train_val_test_split['train'])}")
+    print(f"val samples: {len(default_train_val_test_split['val'])}")
+
     # download the aux files
 
-    dr.download_aux_files(dst_dir=Path(DATA_CACHE_DIR) / "aux_files")
+    # dr.download_aux_files(dst_dir=Path(DATA_CACHE_DIR) / "aux_files")
 
 
 def test_albumentations():

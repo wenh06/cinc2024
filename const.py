@@ -13,6 +13,8 @@ __all__ = [
     "PROJECT_DIR",
     "MODEL_CACHE_DIR",
     "DATA_CACHE_DIR",
+    "TEST_DATA_CACHE_DIR",
+    "FULL_DATA_CACHE_DIR",
     "REMOTE_HEADS_URLS",
     "REMOTE_MODELS",
 ]
@@ -48,6 +50,8 @@ DATA_CACHE_DIR = str(
     .resolve()
 )
 Path(DATA_CACHE_DIR).mkdir(parents=True, exist_ok=True)
+TEST_DATA_CACHE_DIR = str(Path(DATA_CACHE_DIR) / "cinc2024_test_data")
+FULL_DATA_CACHE_DIR = str(Path(DATA_CACHE_DIR) / "cinc2024_full_data")
 
 
 REMOTE_HEADS_URLS = {
