@@ -27,7 +27,7 @@ from torch_ecg.utils.misc import str2bool
 from torch_ecg.utils.utils_signal import resample_irregular_timeseries
 
 from cfg import BaseCfg, ModelCfg, TrainCfg  # noqa: F401
-from const import MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_MODELS
+from const import FULL_DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_MODELS, TEST_DATA_CACHE_DIR
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset
 from helper_code import (  # noqa: F401
@@ -82,6 +82,8 @@ SubmissionCfg.final_model_name = {
     "classifier": "classifier.pth.tar",
     "digitizer": "digitizer.pth.tar",
 }
+
+SubmissionCfg.use_full_data = False
 
 ################################################################################
 
@@ -145,6 +147,12 @@ def train_models(
     if num_records == 0:
         raise FileNotFoundError("No data was provided.")
 
+    # override the default data folder
+    if TEST_FLAG or not SubmissionCfg.use_full_data:
+        data_folder = TEST_DATA_CACHE_DIR
+    else:
+        data_folder = FULL_DATA_CACHE_DIR
+
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
     model_folder = Path(model_folder).expanduser().resolve()
@@ -152,7 +160,6 @@ def train_models(
     (Path(model_folder) / "working_dir").mkdir(parents=True, exist_ok=True)
 
     reader_kwargs = {
-        # "db_dir": Path(DATA_CACHE_DIR),
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
@@ -472,6 +479,12 @@ def train_classification_model(
     None
 
     """
+    # override the default data folder
+    if TEST_FLAG or not SubmissionCfg.use_full_data:
+        data_folder = TEST_DATA_CACHE_DIR
+    else:
+        data_folder = FULL_DATA_CACHE_DIR
+
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
 
@@ -589,6 +602,12 @@ def train_object_detection_model(
     None
 
     """
+    # override the default data folder
+    if TEST_FLAG or not SubmissionCfg.use_full_data:
+        data_folder = TEST_DATA_CACHE_DIR
+    else:
+        data_folder = FULL_DATA_CACHE_DIR
+
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
 
@@ -705,6 +724,12 @@ def train_digitization_model(
     None
 
     """
+    # override the default data folder
+    if TEST_FLAG or not SubmissionCfg.use_full_data:
+        data_folder = TEST_DATA_CACHE_DIR
+    else:
+        data_folder = FULL_DATA_CACHE_DIR
+
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
 
