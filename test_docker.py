@@ -337,7 +337,7 @@ def test_entry() -> None:
 
     model_runner_args = CFG(
         # data_folder=str(Path(DATA_CACHE_DIR) / "synthetic_images"),
-        data_folder=str(data_folder),
+        data_folder=str(Path(data_folder) / "synthetic_images"),
         model_folder=str(tmp_model_dir),
         output_folder=str(output_dir),
         allow_failures=False,
@@ -349,7 +349,7 @@ def test_entry() -> None:
 
     model_evaluator_args = CFG(
         # folder_ref=str(Path(DATA_CACHE_DIR) / "synthetic_images"),
-        folder_ref=str(data_folder),
+        folder_ref=str(Path(data_folder) / "synthetic_images"),
         folder_est=str(output_dir),
         extra_scores=True,
         score_file=None,
