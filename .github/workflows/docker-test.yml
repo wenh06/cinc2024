@@ -54,9 +54,13 @@ jobs:
           -e PYTHONUNBUFFERED=1 \
           -e CINC2024_REVENGER_TEST=${{ env.CINC2024_REVENGER_TEST }} \
           -e revenger_data_dir=${{ env.revenger_data_dir }} \
+          -e revenger_model_dir=${{ env.revenger_model_dir }} \
+          -e revenger_test_dir=${{ env.revenger_test_dir }} \
+          -e revenger_output_dir=${{ env.revenger_output_dir }} \
+          -e mount_data_dir=${{ env.mount_data_dir }} \
           -v ${{ env.download_data_dir }}:${{ env.mount_data_dir }} \
           deeppsp-cinc2024-docker-image:latest \
-          bash -c "python data_reader.py download_subset download_synthetic_images --db-dir ${{ env.revenger_data_dir }}"
+          bash -c "python data_reader.py download_subset download_synthetic_images --db-dir ${{ env.mount_data_dir }}"
         docker ps -a
         docker stop $(docker ps -a -q)
 
@@ -73,6 +77,7 @@ jobs:
           -e revenger_model_dir=${{ env.revenger_model_dir }} \
           -e revenger_test_dir=${{ env.revenger_test_dir }} \
           -e revenger_output_dir=${{ env.revenger_output_dir }} \
+          -e mount_data_dir=${{ env.mount_data_dir }} \
           -v ${{ env.download_data_dir }}:${{ env.mount_data_dir }}:ro \
           --network none \
           deeppsp-cinc2024-docker-image:latest \
