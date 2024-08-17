@@ -16,6 +16,7 @@ import cv2
 import gdown
 import numpy as np
 import pandas as pd
+import wfdb
 from bib_lookup.utils import is_notebook
 from PIL import Image, ImageDraw, ImageFont
 from torch_ecg.cfg import CFG, DEFAULTS
@@ -181,6 +182,9 @@ class CINC2024Reader(PhysioNetDataBase):
         self.bbox_ext = "npz"
         self.bbox_min_size = 2 * max(kwargs.pop("bbox_min_size", 12) // 2, 1)  # pixels
         self.record_pattern = "[\\d]{5}_[lh]r"
+
+        # the full data (zip) file is uploaded to Google Drive (much faster than Physionet)
+        self._url_compressed = "https://drive.google.com/u/0/uc?id=1-54Ai4cu67gUrsOhOR5XTqu35FyAkp2Y"
 
         assert os.access(self.db_dir, os.W_OK) or os.access(
             self.working_dir, os.W_OK
@@ -1698,6 +1702,20 @@ class CINC2024Reader(PhysioNetDataBase):
             shutil.copy(text_bbox_file, dst_dir / text_bbox_file.parent.relative_to(self._synthetic_images_dir))
             signal_file = self._df_records.loc[row["ecg_id"], "path"].with_suffix(f".{self.data_ext}")
             shutil.copy(signal_file, dst_dir / image_file.parent.relative_to(self._synthetic_images_dir))
+
+    def download(self, compressed: bool = True) -> None:
+        """Download the database from PhysioNet."""
+        if compressed:
+            http_get(self._url_compressed, self.db_dir, extract=True, filename="ptb-xl.zip")
+            self._ls_rec()
+            return
+        wfdb.dl_database(
+            self.db_name,
+            self.db_dir,
+            keep_subdirs=True,
+            overwrite=False,
+        )
+        self._ls_rec()
 
 
 def get_record_labels(row: pd.Series, df_12sl_statements: pd.DataFrame, acute_mi_classes: Set[str]) -> List[str]:
