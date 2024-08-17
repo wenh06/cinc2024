@@ -28,7 +28,6 @@ from .detector import ECGWaveformDetector
 from .digitizer import ECGWaveformDigitizer
 from .heads import ClassificationHead, DigitizationHead
 from .loss import get_loss_func
-from .yolov10 import YOLOv10_Detector
 
 __all__ = [
     "MultiHead_CINC2024",
@@ -38,7 +37,6 @@ __all__ = [
     "get_loss_func",
     "ECGWaveformDetector",
     "ECGWaveformDigitizer",
-    "YOLOv10_Detector",
 ]
 
 

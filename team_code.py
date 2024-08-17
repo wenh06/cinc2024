@@ -60,10 +60,6 @@ try:
 except Exception:
     TEST_FLAG = False
 
-# MODEL_DIR = "revenger_model_dir"
-# SYNTHETIC_IMAGE_DIR = "revenger_synthetic_image_dir"
-# MODEL_DIR and SYNTHETIC_IMAGE_DIR are subfolders of model_folder passed to the functions
-
 ################################################################################
 
 
