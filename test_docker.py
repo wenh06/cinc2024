@@ -40,7 +40,7 @@ os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
 os.environ["HF_HOME"] = str(Path(MODEL_CACHE_DIR).parent)
 
 
-tmp_data_dir = Path(os.environ.get("revenger_data_dir", _BASE_DIR / "tmp" / "CINC2024")).resolve()
+tmp_data_dir = Path(os.environ.get("mount_data_dir", _BASE_DIR / "tmp" / "CINC2024")).resolve()
 print(f"tmp_data_dir: {str(tmp_data_dir)}")
 # create the data directory if it does not exist
 tmp_data_dir.mkdir(parents=True, exist_ok=True)
