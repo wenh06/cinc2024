@@ -182,13 +182,13 @@ def test_albumentations():
             A.HueSaturationValue(p=0.1),
         ],
     )
-    transform(image=np.random.randint(0, 255, (256, 256, 3)).astype(np.uint8))
+    transform(image=np.random.randint(0, 256, (256, 256, 3)).astype(np.uint8))
     transform = A.Compose(
         [
             A.NoOp(),
         ],
     )
-    transform(image=np.random.randint(0, 255, (256, 256, 3)).astype(np.uint8))
+    transform(image=np.random.randint(0, 256, (256, 256, 3)).astype(np.uint8))
 
 
 def prepare_synthetic_images():

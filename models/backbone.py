@@ -318,7 +318,7 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
                 _input_shape = [3, input_shape, input_shape]
             else:
                 _input_shape = input_shape
-        test_input = torch.randint(0, 255, (1, *_input_shape), dtype=torch.uint8)
+        test_input = torch.randint(0, 256, (1, *_input_shape), dtype=torch.uint8)
         with torch.no_grad():
             output = self.pipeline(test_input)
         del test_input
