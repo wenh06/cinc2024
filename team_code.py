@@ -97,6 +97,8 @@ else:
 CINC2024Reader.__DEBUG__ = False
 CinC2024Dataset.__DEBUG__ = False
 MultiHead_CINC2024.__DEBUG__ = False
+ECGWaveformDetector.__DEBUG__ = False
+ECGWaveformDigitizer.__DEBUG__ = False
 CINC2024Trainer.__DEBUG__ = False
 
 ################################################################################
