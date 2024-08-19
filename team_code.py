@@ -307,6 +307,7 @@ def run_models(
     else:
         cropped_images_for_classifier = input_images
         cropped_images_for_digitizer = input_images
+        shifted_bbox = None
         bbox = None
 
     if "classifier" in classification_model:
@@ -314,15 +315,21 @@ def run_models(
         output = classifier.inference(
             cropped_images_for_classifier, threshold=REMOTE_MODELS[SubmissionCfg.classifier]["threshold"]
         )
-        dx_classes = output.dx_classes
-        dx_prob = np.asarray(output.dx_prob)  # of shape (n_samples, n_classes), n_samples is typically 1 but not always
-        # take max pooling along the samples
-        dx_prob = dx_prob.max(axis=0)
-        labels = [
-            dx_classes[idx] for idx, prob in enumerate(dx_prob) if prob > REMOTE_MODELS[SubmissionCfg.classifier]["threshold"]
-        ]
-        # remove the "OTHER" label (BaseCfg.default_class) if present
-        labels = [label for label in labels if label != BaseCfg.default_class]
+        try:
+            dx_classes = output.dx_classes
+            dx_prob = np.asarray(output.dx_prob)  # of shape (n_samples, n_classes), n_samples is typically 1 but not always
+            # take max pooling along the samples
+            dx_prob = dx_prob.max(axis=0)
+            labels = [
+                dx_classes[idx]
+                for idx, prob in enumerate(dx_prob)
+                if prob > REMOTE_MODELS[SubmissionCfg.classifier]["threshold"]
+            ]
+            # remove the "OTHER" label (BaseCfg.default_class) if present
+            labels = [label for label in labels if label != BaseCfg.default_class]
+        except Exception as e:
+            print("classifier inference error:", e)
+            labels = ["NORM"]
     else:
         labels = None
 
@@ -337,7 +344,7 @@ def run_models(
                 record=record,
             )
         except Exception as e:
-            print(f"Error: {e}")
+            print("bbox and mask to signals error:", e)
             signal = digitization_workaround(record)
     else:
         use_workaround = False  # True or False

@@ -5,19 +5,9 @@ from pathlib import Path
 import albumentations as A
 import numpy as np
 import transformers
-from deprecated import deprecated
 from torch_ecg.utils.download import http_get, url_is_reachable
 
-from cfg import ModelCfg
-from const import (
-    DATA_CACHE_DIR,
-    FULL_DATA_CACHE_DIR,
-    MODEL_CACHE_DIR,
-    PROJECT_DIR,
-    REMOTE_HEADS_URLS,
-    REMOTE_MODELS,
-    TEST_DATA_CACHE_DIR,
-)
+from const import DATA_CACHE_DIR, FULL_DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_MODELS, TEST_DATA_CACHE_DIR
 from data_reader import CINC2024Reader
 from models import ECGWaveformDetector, ECGWaveformDigitizer, MultiHead_CINC2024
 from team_code import SubmissionCfg
@@ -102,25 +92,6 @@ def cache_pretrained_models():
         print(f"detector: {model}")
         print(f"detector train config: {train_config}")
         del model, train_config
-
-    # Download the spacy model
-    download_en_core_sci_sm()
-
-
-@deprecated(reason="Use cache_pretrained_models instead.", action="error")
-def cache_pretrained_models_bak():
-    """Cache the pretrained models."""
-    print("Caching the pretrained models...")
-    key = f"{ModelCfg.backbone_source}--{ModelCfg.backbone_name}"
-    if url_is_reachable("https://www.dropbox.com/"):
-        remote_heads_url = REMOTE_HEADS_URLS[key]["dropbox"]
-    else:
-        remote_heads_url = REMOTE_HEADS_URLS[key]["deep-psp"]
-    model_dir = Path(MODEL_CACHE_DIR) / key.replace("/", "--")
-    model = MultiHead_CINC2024.from_remote_heads(
-        url=remote_heads_url,
-        model_dir=model_dir,
-    )
 
     # Download the spacy model
     download_en_core_sci_sm()
