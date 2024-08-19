@@ -346,7 +346,10 @@ class CINC2024Reader(PhysioNetDataBase):
             )
             # fmt: on
             self._df_images.set_index("image", inplace=True)
-            self.logger.warning(f"no synthetic images found in {self._synthetic_images_dir}")
+            self.logger.warning(
+                f"No synthetic images found in {self._synthetic_images_dir}, "
+                "run the `prepare_synthetic_images` method to generate synthetic images."
+            )
 
         self._df_records = self._df_metadata.copy()
         if self.fs == 100:
@@ -1703,6 +1706,61 @@ class CINC2024Reader(PhysioNetDataBase):
             shutil.copy(text_bbox_file, dst_dir / text_bbox_file.parent.relative_to(self._synthetic_images_dir))
             signal_file = self._df_records.loc[row["ecg_id"], "path"].with_suffix(f".{self.data_ext}")
             shutil.copy(signal_file, dst_dir / image_file.parent.relative_to(self._synthetic_images_dir))
+
+        # also copy the auxiliary files
+        for _, aux_file in self.__aux_files__.items():
+            if (self._aux_files_dir / aux_file).exists():
+                shutil.copy(self._aux_files_dir / aux_file, dst_dir)
+        for aux_file in ["RECORDS", "SHA256SUMS.txt", "LICENSE.txt"]:
+            if (self.db_dir / aux_file).exists():
+                shutil.copy(self.db_dir / aux_file, dst_dir)
+
+    def select_record_subset(self, dst_dir: Union[str, bytes, os.PathLike], ratio: float = 0.1) -> None:
+        """Select a subset of the ECG signal records.
+
+        Parameters
+        ----------
+        dst_dir : str or bytes or os.PathLike
+            The destination directory to save the selected records.
+        ratio : float, default 0.01
+            The ratio of the selected records.
+
+        Returns
+        -------
+        None
+
+        """
+        dst_dir = Path(dst_dir).expanduser().resolve()
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        selected_records = {
+            "train": self._df_records[self._df_records["strat_fold"] < 9].sample(frac=ratio).index.tolist(),
+            "val": self._df_records[self._df_records["strat_fold"] == 9].sample(frac=ratio).index.tolist(),
+            "test": self._df_records[self._df_records["strat_fold"] == 10].sample(frac=ratio).index.tolist(),
+        }
+        selected_records = self._df_records.loc[selected_records["train"] + selected_records["val"] + selected_records["test"]]
+        for _, row in tqdm(
+            selected_records.iterrows(),
+            total=len(selected_records),
+            desc="Copying ECG signal records",
+            dynamic_ncols=True,
+            mininterval=1.0,
+        ):
+            file_lr = (self.db_dir / row["filename_lr"]).with_suffix(f".{self.data_ext}")
+            (dst_dir / file_lr.parent.relative_to(self.db_dir)).mkdir(parents=True, exist_ok=True)
+            shutil.copy(file_lr, dst_dir / file_lr.parent.relative_to(self.db_dir))
+            shutil.copy(file_lr.with_suffix(f".{self.header_ext}"), dst_dir / file_lr.parent.relative_to(self.db_dir))
+            file_hr = (self.db_dir / row["filename_hr"]).with_suffix(f".{self.data_ext}")
+            (dst_dir / file_hr.parent.relative_to(self.db_dir)).mkdir(parents=True, exist_ok=True)
+            shutil.copy(file_hr, dst_dir / file_hr.parent.relative_to(self.db_dir))
+            shutil.copy(file_hr.with_suffix(f".{self.header_ext}"), dst_dir / file_hr.parent.relative_to(self.db_dir))
+
+        # also copy the auxiliary files
+        for _, aux_file in self.__aux_files__.items():
+            if (self._aux_files_dir / aux_file).exists():
+                shutil.copy(self._aux_files_dir / aux_file, dst_dir)
+        for aux_file in ["RECORDS", "SHA256SUMS.txt", "LICENSE.txt"]:
+            if (self.db_dir / aux_file).exists():
+                shutil.copy(self.db_dir / aux_file, dst_dir)
 
     def download(self, compressed: bool = True) -> None:
         """Download the database from PhysioNet."""

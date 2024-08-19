@@ -20,7 +20,6 @@ Digitization and Classification of ECG Images: The George B. Moody PhysioNet Cha
 [Unofficial Phase Leaderboard](https://docs.google.com/spreadsheets/d/e/2PACX-1vR2GLKHdS9W4Z_AOtaY_YkQrX-rY24BqQ8PmLTJW-50D9FRE-Fvijf2Gp6f3FwTN5FWx7tPb7nGEGA6/pubhtml?gid=1803759927&single=false&widget=true&headers=false) |
 [Official Phase Leaderboard](https://docs.google.com/spreadsheets/d/e/2PACX-1vRxoN5oxymRHNa5XFjautP0Jn6BqtrX8gVkoW6M3FPzEYvi8ma-7sF9-ftU8gwkX2XCcunkYbCxdO3E/pubhtml?rm=minimal&gid=1894271459&gid=2117462787&single=false&widget=true&headers=false)
 
-
 :point_right: [Back to TOC](#cinc2024)
 
 ## Possible solutions for the digitization task
@@ -28,9 +27,9 @@ Digitization and Classification of ECG Images: The George B. Moody PhysioNet Cha
 <details>
 <summary>Click to view the details</summary>
 
-- **End-to-end model**: A single model that takes the input image and produces the digitized ECG signal directly.
+- **End-to-end model** (NOT adopted): A single model that takes the input image and produces the digitized ECG signal directly.
 
-- **Several-stage solution**: A multi-stage solution that consists of several models, possibly including:
+- **Several-stage solution** (adopted): A multi-stage solution that consists of several models, possibly including:
 
   - ~~**OCR model**: Recognizes the ECG signal names and its locations in the input image, as well as other metadata.~~
     ~~For example, using [EasyOCR](https://github.com/JaidedAI/EasyOCR), or [Tesseract](https://github.com/tesseract-ocr/tesseract),~~
@@ -39,7 +38,10 @@ Digitization and Classification of ECG Images: The George B. Moody PhysioNet Cha
   - **Object detection model**: Detects the area (bounding box) of the ECG signal in the input image.
     This bounding box, together with the location of the ECG signal names, can be used to crop each channel of the ECG signal.
 
-  - **Edge sharpening algorithm**: Enhances and extracts the grid lines and the ECG signal from the cropped patches of the input image.
+  - ~~**Edge sharpening algorithm**: Enhances and extracts the grid lines and the ECG signal from the cropped patches of the input image.~~
+
+  - **Segmentation model**: Segments the ECG signal from the cropped patches of the input image.
+    This model can be a U-Net, a DeepLabV3, or a Mask R-CNN, etc.
 
 The end-to-end model is simpler in terms of implementation, but it may be harder to train and optimize.
 Its effectiveness can not be guaranteed.
@@ -81,7 +83,7 @@ But it requires more effort to design and implement the models and algorithms. (
 - [official_baseline](official_baseline): the official baseline code, included as a submodule.
 - [official_scoring_metric](official_scoring_metric): the official scoring code, included as a submodule.
 - [ecg-image-kit](ecg-image-kit): a submodule for the ECG image processing and generating toolkit, provided by the organizers.
-- [models](models): folder for model definitions, including [image backbones](models/backbone.py), [Dx head, digitization head](models/heads.py), [custom losses](models/loss.py), etc.
+- [models](models): folder for model definitions, including [image backbones](models/backbone.py), [Dx head, digitization head](models/heads.py), [custom losses](models/loss.py), [waveform detector](models/waveform_detector.py), etc.
 - [utils](utils): various utility functions, including a [ECG simulator](utils/ecg_simulator.py) for generating synthetic ECG signals, [ecg image generator](utils/ecg_image_generator) which is an enhanced version of the [ecg-image-kit](ecg-image-kit), etc.
 
 </details>

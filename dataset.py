@@ -134,6 +134,13 @@ class CinC2024Dataset(Dataset, ReprMixin):
         # one-hot encode the dx
         self._df_data["dx"] = self._df_data["dx"].apply(lambda x: one_hot_encode(x, num_classes=len(self.config.classes)))
 
+        if self.config.predict_bbox:
+            # select only the images with bounding boxes of the waveforms
+            self._df_data = self._df_data[self._df_data["lead_bbox_file"].apply(lambda x: x is not None)]
+        if self.config.predict_mask:
+            # select only the images with masks of the waveforms
+            self._df_data = self._df_data[self._df_data["path"].apply(lambda x: x.with_suffix(".json.gz").exists())]
+
         self.fdr = FastDataReader(self.reader, self._df_data, self.config, self.transform)
 
         if not self.lazy:
@@ -143,7 +150,7 @@ class CinC2024Dataset(Dataset, ReprMixin):
         if self.cache is None:
             # self._load_all_data()
             return len(self.fdr)
-        return self.cache["images"].shape[0]
+        return len(self.cache["images"])
 
     def __getitem__(self, index: Union[int, slice]) -> Dict[str, np.ndarray]:
         if self.cache is None:
