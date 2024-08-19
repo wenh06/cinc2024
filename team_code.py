@@ -80,7 +80,7 @@ SubmissionCfg.final_model_name = {
     "digitizer": "digitizer.pth.tar",
 }
 
-SubmissionCfg.use_full_data = False
+SubmissionCfg.use_full_data = True
 
 ################################################################################
 
