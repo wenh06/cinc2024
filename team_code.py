@@ -10,6 +10,7 @@
 ################################################################################
 
 import os
+import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -151,6 +152,11 @@ def train_models(
     else:
         data_folder = FULL_DATA_CACHE_DIR
 
+    # raise error only when testing in GitHub Actions;
+    # in other cases (submissions), errors are caught and printed,
+    # and workarounds are used to continue the training
+    raise_error = TEST_FLAG
+
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
     model_folder = Path(model_folder).expanduser().resolve()
@@ -167,21 +173,56 @@ def train_models(
 
     # generate the synthetic images
     print("Preparing the synthetic images...")
-    dr = CINC2024Reader(**reader_kwargs)
-    # gen_img_config = dr.__gen_img_extra_configs__[0].copy()  # requires much more storage and is much slower
-    gen_img_config = dr.__gen_img_default_config__.copy()
-    gen_img_config["write_signal_file"] = True
-    dr.prepare_synthetic_images(parallel=True, force_recompute=True, **gen_img_config)
-    del dr
+    try:
+        dr = CINC2024Reader(**reader_kwargs)
+        # gen_img_config = dr.__gen_img_extra_configs__[0].copy()  # requires much more storage and is much slower
+        gen_img_config = dr.__gen_img_default_config__.copy()
+        gen_img_config["write_signal_file"] = True
+        dr.prepare_synthetic_images(parallel=True, force_recompute=True, **gen_img_config)
+        del dr
+    except Exception as e:
+        print("prepare_synthetic_images error:", e)
+        if raise_error:
+            raise e
     print("Done.")
 
     # Train the models
     if SubmissionCfg.classifier is not None:
-        train_classification_model(data_folder, model_folder, verbose)
+        try:
+            train_classification_model(data_folder, model_folder, verbose)
+        except Exception as e:
+            print("classifier training error:", e)
+            print("Copying the pretrained model to the model folder...")
+            shutil.copy(
+                Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
+                Path(model_folder) / SubmissionCfg.final_model_name["classifier"],
+            )
+            if raise_error:
+                raise e
     if SubmissionCfg.detector is not None:
-        train_object_detection_model(data_folder, model_folder, verbose)
+        try:
+            train_object_detection_model(data_folder, model_folder, verbose)
+        except Exception as e:
+            print("detector training error:", e)
+            print("Copying the pretrained model to the model folder...")
+            shutil.copy(
+                Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"],
+                Path(model_folder) / SubmissionCfg.final_model_name["detector"],
+            )
+            if raise_error:
+                raise e
     if SubmissionCfg.digitizer is not None:
-        train_digitization_model(data_folder, model_folder, verbose)
+        try:
+            train_digitization_model(data_folder, model_folder, verbose)
+        except Exception as e:
+            print("digitizer training error:", e)
+            print("Copying the pretrained model to the model folder...")
+            shutil.copy(
+                Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
+                Path(model_folder) / SubmissionCfg.final_model_name["digitizer"],
+            )
+            if raise_error:
+                raise e
 
     print("\n" + "*" * 100)
     msg = "   CinC2024 challenge training entry ends   ".center(100, "#")
@@ -284,23 +325,41 @@ def run_models(
     input_images = [img.convert("RGB") for img in input_images]
     image_shapes = [{"width": img.width, "height": img.height} for img in input_images]
 
+    # raise error only when testing in GitHub Actions;
+    # in other cases (submissions), errors are caught and printed,
+    # and workarounds are used to continue the model inference
+    raise_error = TEST_FLAG
+
     if "detector" in digitization_model:
         detector = digitization_model["detector"]
         bbox = detector.inference(input_images).bbox  # a list of dict
         # crop the input images using the "roi" of each dict in the bbox
         # the "roi" is a list of 4 integers [xmin, ymin, xmax, ymax]
         if "classifier" in classification_model and classification_model["classifier_train_cfg"].roi_only:
-            cropped_images_for_classifier = get_cropped_images(
-                input_images, bbox, roi_padding=classification_model["classifier_train_cfg"].roi_padding
-            )
+            try:
+                cropped_images_for_classifier = get_cropped_images(
+                    input_images, bbox, roi_padding=classification_model["classifier_train_cfg"].roi_padding
+                )
+            except Exception as e:
+                print("get_cropped_images for classifier error:", e)
+                cropped_images_for_classifier = input_images
+                if raise_error:
+                    raise e
         else:
             cropped_images_for_classifier = input_images
 
         if "digitizer" in digitization_model and digitization_model["digitizer_train_cfg"].roi_only:
-            cropped_images_for_digitizer = get_cropped_images(
-                input_images, bbox, roi_padding=digitization_model["digitizer_train_cfg"].roi_padding
-            )
-            shifted_bbox = get_shifted_bbox(bbox, roi_padding=digitization_model["digitizer_train_cfg"].roi_padding)
+            try:
+                cropped_images_for_digitizer = get_cropped_images(
+                    input_images, bbox, roi_padding=digitization_model["digitizer_train_cfg"].roi_padding
+                )
+                shifted_bbox = get_shifted_bbox(bbox, roi_padding=digitization_model["digitizer_train_cfg"].roi_padding)
+            except Exception as e:
+                print("get_cropped_images for digitizer error:", e)
+                cropped_images_for_digitizer = input_images
+                shifted_bbox = bbox
+                if raise_error:
+                    raise e
         else:
             cropped_images_for_digitizer = input_images
             shifted_bbox = bbox
@@ -312,10 +371,10 @@ def run_models(
 
     if "classifier" in classification_model:
         classifier = classification_model["classifier"]
-        output = classifier.inference(
-            cropped_images_for_classifier, threshold=REMOTE_MODELS[SubmissionCfg.classifier]["threshold"]
-        )
         try:
+            output = classifier.inference(
+                cropped_images_for_classifier, threshold=REMOTE_MODELS[SubmissionCfg.classifier]["threshold"]
+            )
             dx_classes = output.dx_classes
             dx_prob = np.asarray(output.dx_prob)  # of shape (n_samples, n_classes), n_samples is typically 1 but not always
             # take max pooling along the samples
@@ -330,13 +389,14 @@ def run_models(
         except Exception as e:
             print("classifier inference error:", e)
             labels = ["NORM"]
+            if raise_error:
+                raise e
     else:
         labels = None
 
     if "digitizer" in digitization_model:
         digitizer = digitization_model["digitizer"]
         waveform_mask = digitizer.inference(cropped_images_for_digitizer).waveform_mask  # a list of np.ndarray
-
         try:
             signal = bbox_and_mask_to_signals(
                 bbox=shifted_bbox,
@@ -346,6 +406,8 @@ def run_models(
         except Exception as e:
             print("bbox and mask to signals error:", e)
             signal = digitization_workaround(record)
+            if raise_error:
+                raise e
     else:
         use_workaround = False  # True or False
 
