@@ -156,6 +156,11 @@ def train_models(
     # in other cases (submissions), errors are caught and printed,
     # and workarounds are used to continue the training
     raise_error = TEST_FLAG
+    if raise_error:
+        print("Training in test mode. Any error will raise an exception.")
+    else:
+        print("Training in submission mode. Errors will be caught and printed.")
+        print("Workarounds will be used to continue the training.")
 
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
@@ -329,6 +334,11 @@ def run_models(
     # in other cases (submissions), errors are caught and printed,
     # and workarounds are used to continue the model inference
     raise_error = TEST_FLAG
+    if raise_error:
+        print("Running the models in test mode. Any error will raise an exception.")
+    else:
+        print("Running the models in submission mode. Errors will be caught and printed.")
+        print("Workarounds will be used to continue the model inference.")
 
     if "detector" in digitization_model:
         detector = digitization_model["detector"]
