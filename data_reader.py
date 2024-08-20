@@ -10,7 +10,7 @@ import shutil
 from ast import literal_eval
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Set, Tuple, Union
 
 import cv2
 import gdown
@@ -1409,24 +1409,6 @@ class CINC2024Reader(PhysioNetDataBase):
         self.logger.info("Fixing the datetime format of the header files in the synthetic images directory.")
         self.fix_datetime_format(self._synthetic_images_dir)
 
-    def download_subset(self) -> None:
-        """Download the subset of the database."""
-        if url_is_reachable("https://drive.google.com/"):
-            source = "google-drive"
-            url = "https://drive.google.com/u/0/uc?id=1wq9r6rbhaMhMe-GWHpi5lQQIVwBU8UPL"
-            dl_file = str(self.db_dir / "ptb-xl-subset-tiny.zip")
-            gdown.download(url, dl_file, quiet=False)
-            _unzip_file(dl_file, self.db_dir)
-        elif url_is_reachable("https://deep-psp.tech"):
-            source = "deep-psp"
-            url = "https://deep-psp.tech/Data/ptb-xl-subset-tiny.zip"
-            http_get(url, self.db_dir, extract=True)
-        else:
-            self.logger.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
-
-        # reload the records
-        self._ls_rec()
-
     def download_aux_files(self, dst_dir: Optional[Union[str, bytes, os.PathLike]] = None) -> None:
         """Download the auxiliary files.
 
@@ -1762,8 +1744,38 @@ class CINC2024Reader(PhysioNetDataBase):
             if (self.db_dir / aux_file).exists():
                 shutil.copy(self.db_dir / aux_file, dst_dir)
 
-    def download(self, compressed: bool = True) -> None:
+    def download(self, compressed: bool = True, name: Literal["full", "subset", "subset-tiny"] = "full") -> None:
         """Download the database from PhysioNet."""
+        if name != "full":
+            subsets_info = {
+                "subset-tiny": {
+                    "google-drive": "https://drive.google.com/u/0/uc?id=1wq9r6rbhaMhMe-GWHpi5lQQIVwBU8UPL",
+                    "deep-psp": "https://deep-psp.tech/Data/ptb-xl-subset-tiny.zip",
+                    "filename": "ptb-xl-subset-tiny.zip",
+                },
+                "subset": {
+                    "google-drive": "https://drive.google.com/u/0/uc?id=1zfF__i6nK3XnkqxEIl57nOMGwGRJSCZC",
+                    "deep-psp": "https://deep-psp.tech/Data/ptb-xl-subset.zip",
+                    "filename": "ptb-xl-subset.zip",
+                },
+            }
+            if url_is_reachable("https://drive.google.com/"):
+                source = "google-drive"
+            elif url_is_reachable("https://deep-psp.tech"):
+                source = "deep-psp"
+            else:
+                self.logger.warn(
+                    "Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded."
+                )
+                return
+
+            url = subsets_info[name][source]
+            dl_file = str(self.db_dir / subsets_info[name]["filename"])
+            gdown.download(url, dl_file, quiet=False)
+            _unzip_file(dl_file, self.db_dir)
+            self._ls_rec()
+            return
+
         if compressed:
             http_get(self._url_compressed, self.db_dir, extract=True, filename="ptb-xl.zip")
             self._ls_rec()
@@ -2046,7 +2058,13 @@ if __name__ == "__main__":
         "operations",
         nargs=argparse.ONE_OR_MORE,
         type=str,
-        choices=["download", "download_subset", "download_synthetic_images", "prepare_synthetic_images"],
+        choices=[
+            "download",
+            "download_subset",
+            "download_subset_tiny",
+            "download_synthetic_images",
+            "prepare_synthetic_images",
+        ],
     )
     parser.add_argument(
         "-d",
@@ -2098,10 +2116,13 @@ if __name__ == "__main__":
 
     operations = args.operations
     if "download" in operations:
-        dr.download()
+        dr.download(name="full")
 
     if "download_subset" in operations:
-        dr.download_subset()
+        dr.download(name="subset")
+
+    if "download_subset_tiny" in operations:
+        dr.download(name="subset-tiny")
 
     if "download_synthetic_images" in operations:
         dr.download_synthetic_images(set_name=args.download_image_set)
