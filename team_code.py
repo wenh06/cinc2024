@@ -11,9 +11,11 @@
 
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+import humanize
 import numpy as np
 import pandas as pd
 import torch
@@ -327,6 +329,8 @@ def run_models(
         The predicted labels.
 
     """
+    start_time = datetime.now()
+
     input_images = load_images(record)  # a list of PIL.Image.Image
     # convert to RGB (it's possible that the images are RGBA format)
     input_images = [img.convert("RGB") for img in input_images]
@@ -427,6 +431,9 @@ def run_models(
             signal = digitization_workaround(record)
         else:
             signal = None
+
+    elapsed_time = humanize.naturaldelta(datetime.now() - start_time)
+    print(f"Model inference completed in {elapsed_time}.")
 
     return signal, labels
 
@@ -571,6 +578,8 @@ def train_classification_model(
 
     print("Training the classification model...")
 
+    start_time = datetime.now()
+
     model, train_config = MultiHead_CINC2024.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
         device=DEVICE,
@@ -661,7 +670,8 @@ def train_classification_model(
 
     torch.cuda.empty_cache()
 
-    print("Classification model training completed.")
+    elapsed_time = humanize.naturaldelta(datetime.now() - start_time)
+    print(f"Classification model training completed in {elapsed_time}.")
 
 
 def train_object_detection_model(
@@ -695,6 +705,8 @@ def train_object_detection_model(
     data_folder = Path(data_folder).expanduser().resolve()
 
     print("Training the object detection model...")
+
+    start_time = datetime.now()
 
     model, train_config = ECGWaveformDetector.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"],
@@ -785,7 +797,8 @@ def train_object_detection_model(
 
     torch.cuda.empty_cache()
 
-    print("Object detection model training completed.")
+    elapsed_time = humanize.naturaldelta(datetime.now() - start_time)
+    print(f"Object detection model training completed in {elapsed_time}.")
 
 
 def train_digitization_model(
@@ -819,6 +832,8 @@ def train_digitization_model(
     data_folder = Path(data_folder).expanduser().resolve()
 
     print("Training the digitization model...")
+
+    start_time = datetime.now()
 
     model, train_config = ECGWaveformDigitizer.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
@@ -908,7 +923,8 @@ def train_digitization_model(
 
     torch.cuda.empty_cache()
 
-    print("Digitization model training completed.")
+    elapsed_time = humanize.naturaldelta(datetime.now() - start_time)
+    print(f"Digitization model training completed in {elapsed_time}.")
 
 
 def bbox_and_mask_to_signals(

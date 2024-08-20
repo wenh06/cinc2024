@@ -50,3 +50,4 @@ qrcode
 safetensors
 torchmetrics
 dill==0.3.8
+humanize
