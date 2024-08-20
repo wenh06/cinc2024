@@ -433,7 +433,7 @@ def run_models(
             signal = None
 
     elapsed_time = humanize.naturaldelta(datetime.now() - start_time)
-    print(f"Model inference completed in {elapsed_time}.")
+    print(f"Inference pipeline completed in {elapsed_time}.")
 
     return signal, labels
 
