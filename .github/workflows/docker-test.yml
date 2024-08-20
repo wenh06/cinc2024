@@ -60,7 +60,7 @@ jobs:
           -e mount_data_dir=${{ env.mount_data_dir }} \
           -v ${{ env.download_data_dir }}:${{ env.mount_data_dir }} \
           deeppsp-cinc2024-docker-image:latest \
-          bash -c "python data_reader.py download_subset download_synthetic_images --db-dir ${{ env.mount_data_dir }}"
+          bash -c "python data_reader.py download_subset_tiny download_synthetic_images --db-dir ${{ env.mount_data_dir }}"
         docker ps -a
         docker stop $(docker ps -a -q)
 

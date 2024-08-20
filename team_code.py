@@ -28,7 +28,7 @@ from torch_ecg.utils.misc import str2bool
 from torch_ecg.utils.utils_signal import resample_irregular_timeseries
 
 from cfg import BaseCfg, ModelCfg, TrainCfg  # noqa: F401
-from const import FULL_DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_MODELS, TEST_DATA_CACHE_DIR
+from const import FULL_DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_MODELS, SUBSET_DATA_CACHE_DIR, TEST_DATA_CACHE_DIR
 from data_reader import CINC2024Reader
 from dataset import CinC2024Dataset
 from helper_code import (  # noqa: F401
@@ -147,10 +147,12 @@ def train_models(
         raise FileNotFoundError("No data was provided.")
 
     # override the default data folder
-    if TEST_FLAG or not SubmissionCfg.use_full_data:
+    if TEST_FLAG:
         data_folder = TEST_DATA_CACHE_DIR
-    else:
+    elif SubmissionCfg.use_full_data:
         data_folder = FULL_DATA_CACHE_DIR
+    else:
+        data_folder = SUBSET_DATA_CACHE_DIR
 
     # raise error only when testing in GitHub Actions;
     # in other cases (submissions), errors are caught and printed,
@@ -557,10 +559,12 @@ def train_classification_model(
 
     """
     # override the default data folder
-    if TEST_FLAG or not SubmissionCfg.use_full_data:
+    if TEST_FLAG:
         data_folder = TEST_DATA_CACHE_DIR
-    else:
+    elif SubmissionCfg.use_full_data:
         data_folder = FULL_DATA_CACHE_DIR
+    else:
+        data_folder = SUBSET_DATA_CACHE_DIR
 
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
@@ -680,10 +684,12 @@ def train_object_detection_model(
 
     """
     # override the default data folder
-    if TEST_FLAG or not SubmissionCfg.use_full_data:
+    if TEST_FLAG:
         data_folder = TEST_DATA_CACHE_DIR
-    else:
+    elif SubmissionCfg.use_full_data:
         data_folder = FULL_DATA_CACHE_DIR
+    else:
+        data_folder = SUBSET_DATA_CACHE_DIR
 
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()
@@ -802,10 +808,12 @@ def train_digitization_model(
 
     """
     # override the default data folder
-    if TEST_FLAG or not SubmissionCfg.use_full_data:
+    if TEST_FLAG:
         data_folder = TEST_DATA_CACHE_DIR
-    else:
+    elif SubmissionCfg.use_full_data:
         data_folder = FULL_DATA_CACHE_DIR
+    else:
+        data_folder = SUBSET_DATA_CACHE_DIR
 
     model_folder = Path(model_folder).expanduser().resolve()
     data_folder = Path(data_folder).expanduser().resolve()

@@ -7,7 +7,15 @@ import numpy as np
 import transformers
 from torch_ecg.utils.download import http_get, url_is_reachable
 
-from const import DATA_CACHE_DIR, FULL_DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_MODELS, TEST_DATA_CACHE_DIR
+from const import (
+    DATA_CACHE_DIR,
+    FULL_DATA_CACHE_DIR,
+    MODEL_CACHE_DIR,
+    PROJECT_DIR,
+    REMOTE_MODELS,
+    SUBSET_DATA_CACHE_DIR,
+    TEST_DATA_CACHE_DIR,
+)
 from data_reader import CINC2024Reader
 from models import ECGWaveformDetector, ECGWaveformDigitizer, MultiHead_CINC2024
 from team_code import SubmissionCfg
@@ -101,24 +109,56 @@ def cache_data():
     """Cache the synthetic image data and the subset."""
     print("Caching the synthetic image data...")
     reader_kwargs = {
+        "db_dir": Path(SUBSET_DATA_CACHE_DIR),
+        "synthetic_images_dir": Path(SUBSET_DATA_CACHE_DIR) / "synthetic_images",
+        "aux_files_dir": Path(PROJECT_DIR) / "aux_files",
+    }
+    dr = CINC2024Reader(**reader_kwargs)
+    # dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
+    dr.download(name="subset")
+
+    print("   Checking the subset data   ".center(80, "#"))
+    print(f"{len(dr._df_metadata) = }")
+    print(f"{len(dr._df_records) = }")
+    print(f"{len(dr._all_records) = }")
+    print(f"{len(dr._df_images) = }")
+    default_train_val_split = dr.default_train_val_split
+    print("For the default 2 part split:")
+    print(f"train samples: {len(default_train_val_split['train'])}")
+    print(f"val samples: {len(default_train_val_split['val'])}")
+    default_train_val_test_split = dr.default_train_val_test_split
+    print("For the default 3 part split:")
+    print(f"test samples: {len(default_train_val_test_split['test'])}")
+    print(f"train samples: {len(default_train_val_test_split['train'])}")
+    print(f"val samples: {len(default_train_val_test_split['val'])}")
+
+    print("   Test data checking complete.   ".center(80, "#"))
+
+    print("Caching the action test data...")
+    reader_kwargs = {
         "db_dir": Path(TEST_DATA_CACHE_DIR),
         "synthetic_images_dir": Path(TEST_DATA_CACHE_DIR) / "synthetic_images",
         "aux_files_dir": Path(PROJECT_DIR) / "aux_files",
     }
     dr = CINC2024Reader(**reader_kwargs)
-    dr.download_synthetic_images(set_name="subset")  # "full" is too large, not uploaded to any cloud storage
-    dr.download_subset()
+    dr.download(name="subset-tiny")
 
+    print("   Checking the action test data   ".center(80, "#"))
     print(f"{len(dr._df_metadata) = }")
     print(f"{len(dr._df_records) = }")
     print(f"{len(dr._all_records) = }")
+    print(f"{len(dr._df_images) = }")
     default_train_val_split = dr.default_train_val_split
+    print("For the default 2 part split:")
     print(f"train samples: {len(default_train_val_split['train'])}")
     print(f"val samples: {len(default_train_val_split['val'])}")
     default_train_val_test_split = dr.default_train_val_test_split
+    print("For the default 3 part split:")
     print(f"test samples: {len(default_train_val_test_split['test'])}")
     print(f"train samples: {len(default_train_val_test_split['train'])}")
     print(f"val samples: {len(default_train_val_test_split['val'])}")
+
+    print("   GitHub Action test data checking complete.   ".center(80, "#"))
 
     print("Caching the full data...")
     reader_kwargs = {
@@ -128,18 +168,24 @@ def cache_data():
     }
     dr = CINC2024Reader(**reader_kwargs)
     # dr.download_aux_files()
-    dr.download()
+    dr.download(name="full")
 
+    print("   Checking the full data   ".center(80, "#"))
     print(f"{len(dr._df_metadata) = }")
     print(f"{len(dr._df_records) = }")
     print(f"{len(dr._all_records) = }")
+    print(f"{len(dr._df_images) = }")
     default_train_val_split = dr.default_train_val_split
+    print("For the default 2 part split:")
     print(f"train samples: {len(default_train_val_split['train'])}")
     print(f"val samples: {len(default_train_val_split['val'])}")
     default_train_val_test_split = dr.default_train_val_test_split
+    print("For the default 3 part split:")
     print(f"test samples: {len(default_train_val_test_split['test'])}")
     print(f"train samples: {len(default_train_val_test_split['train'])}")
     print(f"val samples: {len(default_train_val_test_split['val'])}")
+
+    print("   Full data checking complete.   ".center(80, "#"))
 
     # download the aux files
 

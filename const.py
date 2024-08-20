@@ -14,6 +14,7 @@ __all__ = [
     "MODEL_CACHE_DIR",
     "DATA_CACHE_DIR",
     "TEST_DATA_CACHE_DIR",
+    "SUBSET_DATA_CACHE_DIR",
     "FULL_DATA_CACHE_DIR",
     "REMOTE_MODELS",
 ]
@@ -49,7 +50,8 @@ DATA_CACHE_DIR = str(
     .resolve()
 )
 Path(DATA_CACHE_DIR).mkdir(parents=True, exist_ok=True)
-TEST_DATA_CACHE_DIR = str(Path(DATA_CACHE_DIR) / "cinc2024_test_data")
+TEST_DATA_CACHE_DIR = str(Path(DATA_CACHE_DIR) / "cinc2024_action_test_data")
+SUBSET_DATA_CACHE_DIR = str(Path(DATA_CACHE_DIR) / "cinc2024_subset_data")
 FULL_DATA_CACHE_DIR = str(Path(DATA_CACHE_DIR) / "cinc2024_full_data")
 
 

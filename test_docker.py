@@ -327,6 +327,9 @@ def test_entry() -> None:
     print("   Run model training function   ".center(80, "#"))
     data_folder = tmp_data_dir
 
+    # NOTE: data_folder will be overridden by one of
+    # FULL_DATA_CACHE_DIR, TEST_DATA_CACHE_DIR, SUBSET_DATA_CACHE_DIR
+    # in the `train_models` function
     train_models(str(data_folder), str(tmp_model_dir), verbose=2)
 
     # run the model inference function (script)
