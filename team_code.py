@@ -82,7 +82,7 @@ SubmissionCfg.final_model_name = {
     "digitizer": "digitizer.pth.tar",
 }
 
-SubmissionCfg.use_full_data = False
+SubmissionCfg.use_full_data = True
 
 ################################################################################
 
@@ -114,7 +114,7 @@ CINC2024Trainer.__DEBUG__ = False
 
 
 def train_models(
-    data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool = False
+    data_folder: Union[str, bytes, os.PathLike], model_folder: Union[str, bytes, os.PathLike], verbose: bool = True
 ) -> None:
     """Train the models.
 
@@ -147,6 +147,8 @@ def train_models(
 
     if num_records == 0:
         raise FileNotFoundError("No data was provided.")
+    else:
+        print(f"Found {num_records} records.")
 
     # override the default data folder
     if TEST_FLAG:
@@ -176,7 +178,6 @@ def train_models(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
         "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
@@ -239,7 +240,7 @@ def train_models(
 
 
 def load_models(
-    model_folder: Union[str, bytes, os.PathLike], verbose: bool = False
+    model_folder: Union[str, bytes, os.PathLike], verbose: bool = True
 ) -> Tuple[Dict[str, Union[dict, nn.Module]], Dict[str, Union[dict, nn.Module]]]:
     """Load the trained models.
 
@@ -306,7 +307,7 @@ def run_models(
     record: Union[str, bytes, os.PathLike],
     digitization_model: Dict[str, Union[dict, nn.Module]],
     classification_model: Dict[str, Union[dict, nn.Module]],
-    verbose: bool = False,
+    verbose: bool = True,
 ) -> Tuple[Optional[np.ndarray], Optional[List[str]]]:
     """Run the digitization model on a record.
 
@@ -335,6 +336,9 @@ def run_models(
     # convert to RGB (it's possible that the images are RGBA format)
     input_images = [img.convert("RGB") for img in input_images]
     image_shapes = [{"width": img.width, "height": img.height} for img in input_images]
+
+    if verbose:
+        print(f"Loaded {len(input_images)} images.")
 
     # raise error only when testing in GitHub Actions;
     # in other cases (submissions), errors are caught and printed,
@@ -617,7 +621,7 @@ def train_classification_model(
         train_config.batch_size = 4
         train_config.log_step = 5
     else:
-        train_config.batch_size = 16  # 16G (Tesla T4)
+        train_config.batch_size = 12  # 16G (Tesla T4)
         train_config.log_step = 120
 
     # if torch.cuda.device_count() > 1:
@@ -634,7 +638,6 @@ def train_classification_model(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
         "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
@@ -743,7 +746,7 @@ def train_object_detection_model(
         train_config.batch_size = 1
         train_config.log_step = 5
     else:
-        train_config.batch_size = 10  # 16G (Tesla T4)
+        train_config.batch_size = 8  # 16G (Tesla T4)
         train_config.log_step = 120
 
     # if torch.cuda.device_count() > 1:
@@ -760,7 +763,6 @@ def train_object_detection_model(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
         "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
@@ -869,7 +871,7 @@ def train_digitization_model(
         train_config.batch_size = 1
         train_config.log_step = 5
     else:
-        train_config.batch_size = 3  # 16G (Tesla T4)
+        train_config.batch_size = 2  # 16G (Tesla T4)
         train_config.log_step = 200
 
     # if torch.cuda.device_count() > 1:
@@ -886,7 +888,6 @@ def train_digitization_model(
         "db_dir": Path(data_folder).expanduser().resolve(),
         "working_dir": (Path(model_folder) / "working_dir"),
         "synthetic_images_dir": Path(model_folder) / "working_dir" / "synthetic_images",
-        # "aux_files_dir": Path(DATA_CACHE_DIR) / "aux_files",  # ref. post_docker_build.py
         "aux_files_dir": Path(PROJECT_DIR) / "aux_files",  # ref. post_docker_build.py
     }
 
