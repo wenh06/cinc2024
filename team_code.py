@@ -23,7 +23,7 @@ import torch.nn as nn
 from PIL import Image
 from scipy.ndimage import median_filter  # noqa: F401
 from sklearn.cluster import KMeans
-from torch.nn.parallel import DataParallel as DP
+from torch.nn.parallel import DataParallel as DP  # noqa: F401
 from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import str2bool
@@ -82,7 +82,7 @@ SubmissionCfg.final_model_name = {
     "digitizer": "digitizer.pth.tar",
 }
 
-SubmissionCfg.use_full_data = True
+SubmissionCfg.use_full_data = False
 
 ################################################################################
 
@@ -620,9 +620,9 @@ def train_classification_model(
         train_config.batch_size = 16  # 16G (Tesla T4)
         train_config.log_step = 120
 
-    if torch.cuda.device_count() > 1:
-        model = DP(model)
-        # model = DDP(model)
+    # if torch.cuda.device_count() > 1:
+    #     model = DP(model)
+    #     # model = DDP(model)
     model = model.to(device=DEVICE)
     if verbose:
         if isinstance(model, DP):
@@ -746,9 +746,9 @@ def train_object_detection_model(
         train_config.batch_size = 10  # 16G (Tesla T4)
         train_config.log_step = 120
 
-    if torch.cuda.device_count() > 1:
-        model = DP(model)
-        # model = DDP(model)
+    # if torch.cuda.device_count() > 1:
+    #     model = DP(model)
+    #     # model = DDP(model)
     model = model.to(device=DEVICE)
     if verbose:
         if isinstance(model, DP):
@@ -872,9 +872,9 @@ def train_digitization_model(
         train_config.batch_size = 3  # 16G (Tesla T4)
         train_config.log_step = 200
 
-    if torch.cuda.device_count() > 1:
-        model = DP(model)
-        # model = DDP(model)
+    # if torch.cuda.device_count() > 1:
+    #     model = DP(model)
+    #     # model = DDP(model)
     model = model.to(device=DEVICE)
     if verbose:
         if isinstance(model, DP):
