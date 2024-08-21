@@ -624,9 +624,6 @@ def train_classification_model(
         train_config.batch_size = 12  # 16G (Tesla T4)
         train_config.log_step = 120
 
-    # if torch.cuda.device_count() > 1:
-    #     model = DP(model)
-    #     # model = DDP(model)
     model = model.to(device=DEVICE)
     if verbose:
         if isinstance(model, DP):
@@ -749,9 +746,6 @@ def train_object_detection_model(
         train_config.batch_size = 8  # 16G (Tesla T4)
         train_config.log_step = 120
 
-    # if torch.cuda.device_count() > 1:
-    #     model = DP(model)
-    #     # model = DDP(model)
     model = model.to(device=DEVICE)
     if verbose:
         if isinstance(model, DP):
@@ -874,9 +868,6 @@ def train_digitization_model(
         train_config.batch_size = 2  # 16G (Tesla T4)
         train_config.log_step = 200
 
-    # if torch.cuda.device_count() > 1:
-    #     model = DP(model)
-    #     # model = DDP(model)
     model = model.to(device=DEVICE)
     if verbose:
         if isinstance(model, DP):
