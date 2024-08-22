@@ -436,6 +436,13 @@ def run_models(
         else:
             signal = None
 
+    # to avoid error
+    # IndexError: Channel xxx contain values outside allowed range [-32768, 32767] for fmt 16
+    max_val = (np.iinfo(np.int16).max - 1) / 1000
+    min_val = (np.iinfo(np.int16).min + 1) / 1000
+    if signal is not None:
+        signal = np.clip(signal, min_val, max_val)
+
     elapsed_time = humanize.naturaldelta(datetime.now() - start_time)
     print(f"Inference pipeline completed in {elapsed_time}.")
 
