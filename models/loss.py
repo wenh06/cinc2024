@@ -19,7 +19,7 @@ This module contains the loss functions for the digitized signal values.
 
 import os
 import re
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
@@ -88,8 +88,8 @@ _snr_loss_docstring = """Signal-to-noise ratio loss.
         so that the padded values do not contribute to the loss.
     eps : float, default 1e-7
         Small value to avoid division by zero.
-    reduction : {"none", "mean", "sum"}, optional
-        Specifies the reduction to apply to the output, by default "mean".
+    reduction : {"none", "mean", "sum"}, default "mean"
+        Specifies the reduction to apply to the output.
 
     Returns
     -------
@@ -110,7 +110,11 @@ _snr_loss_docstring = """Signal-to-noise ratio loss.
 
 @add_docstring(_snr_loss_docstring)
 def snr_loss(
-    inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, eps: float = 1e-7, reduction: str = "mean"
+    inp: torch.Tensor,
+    target: torch.Tensor,
+    mask: Optional[torch.Tensor] = None,
+    eps: float = 1e-7,
+    reduction: Literal["none", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     if mask is None:
         mask = torch.ones_like(target)
@@ -147,8 +151,8 @@ _dtw_loss_docstring = """Dynamic time warping loss.
         Mask tensor, of shape ``(batch_size, num_leads, sig_len)``.
         The mask tensor is used to mask out the padded values in the signal,
         so that the padded values do not contribute to the loss.
-    reduction : {"none", "mean", "sum"}, optional
-        Specifies the reduction to apply to the output, by default "mean".
+    reduction : {"none", "mean", "sum"}, default "mean"
+        Specifies the reduction to apply to the output.
 
     Returns
     -------
@@ -164,7 +168,10 @@ _dtw_loss_docstring = """Dynamic time warping loss.
 
 @add_docstring(_dtw_loss_docstring)
 def dtw_loss(
-    inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, reduction: str = "mean"
+    inp: torch.Tensor,
+    target: torch.Tensor,
+    mask: Optional[torch.Tensor] = None,
+    reduction: Literal["none", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     raise NotImplementedError
 
@@ -181,8 +188,8 @@ _mae_loss_docstring = """Mean absolute error loss.
         Mask tensor, of shape ``(batch_size, num_leads, sig_len)``.
         The mask tensor is used to mask out the padded values in the signal,
         so that the padded values do not contribute to the loss.
-    reduction : {"none", "mean", "sum"}, optional
-        Specifies the reduction to apply to the output, by default "mean".
+    reduction : {"none", "mean", "sum"}, default "mean"
+        Specifies the reduction to apply to the output.
 
     Returns
     -------
@@ -199,7 +206,10 @@ _mae_loss_docstring = """Mean absolute error loss.
 
 @add_docstring(_mae_loss_docstring)
 def mae_loss(
-    inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, reduction: str = "mean"
+    inp: torch.Tensor,
+    target: torch.Tensor,
+    mask: Optional[torch.Tensor] = None,
+    reduction: Literal["none", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     if mask is None:
         mask = torch.ones_like(target)
@@ -232,8 +242,8 @@ _rmse_loss_docstring = """Root mean squared error loss.
         Mask tensor, of shape ``(batch_size, num_leads, sig_len)``.
         The mask tensor is used to mask out the padded values in the signal,
         so that the padded values do not contribute to the loss.
-    reduction : {"none", "mean", "sum"}, optional
-        Specifies the reduction to apply to the output, by default "mean".
+    reduction : {"none", "mean", "sum"}, default "mean"
+        Specifies the reduction to apply to the output.
 
     Returns
     -------
@@ -250,7 +260,10 @@ _rmse_loss_docstring = """Root mean squared error loss.
 
 @add_docstring(_rmse_loss_docstring)
 def rmse_loss(
-    inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, reduction: str = "mean"
+    inp: torch.Tensor,
+    target: torch.Tensor,
+    mask: Optional[torch.Tensor] = None,
+    reduction: Literal["none", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     if mask is None:
         mask = torch.ones_like(target)
@@ -286,8 +299,8 @@ _ks_loss_docstring = """Kolmogorov-Smirnov loss, inspired by the Kolmogorov-Smir
         Mask tensor, of shape ``(batch_size, num_leads, sig_len)``.
         The mask tensor is used to mask out the padded values in the signal,
         so that the padded values do not contribute to the loss.
-    reduction : {"none", "mean", "sum"}, optional
-        Specifies the reduction to apply to the output, by default "mean".
+    reduction : {"none", "mean", "sum"}, default "mean"
+        Specifies the reduction to apply to the output.
 
     Returns
     -------
@@ -308,7 +321,10 @@ _ks_loss_docstring = """Kolmogorov-Smirnov loss, inspired by the Kolmogorov-Smir
 
 @add_docstring(_ks_loss_docstring)
 def ks_loss(
-    inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, reduction: str = "mean"
+    inp: torch.Tensor,
+    target: torch.Tensor,
+    mask: Optional[torch.Tensor] = None,
+    reduction: Literal["none", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     raise NotImplementedError
 
@@ -330,8 +346,8 @@ _asci_loss_docstring = """Adaptive signed correlation index loss.
         so that the padded values do not contribute to the loss.
     beta : float, default 0.05
         Beta parameter for the ASCI loss, by default 0.05.
-    reduction : {"none", "mean", "sum"}, optional
-        Specifies the reduction to apply to the output, by default "mean".
+    reduction : {"none", "mean", "sum"}, default "mean"
+        Specifies the reduction to apply to the output.
 
     Returns
     -------
@@ -352,7 +368,11 @@ _asci_loss_docstring = """Adaptive signed correlation index loss.
 
 @add_docstring(_asci_loss_docstring)
 def asci_loss(
-    inp: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor] = None, beta: float = 0.05, reduction: str = "mean"
+    inp: torch.Tensor,
+    target: torch.Tensor,
+    mask: Optional[torch.Tensor] = None,
+    beta: float = 0.05,
+    reduction: Literal["none", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     raise NotImplementedError
 
@@ -361,7 +381,7 @@ def asci_loss(
 @add_docstring(remove_parameters_returns_from_docstring(_snr_loss_docstring, parameters=["inp", "target", "mask"]))
 class SNRLoss(nn.Module):
 
-    def __init__(self, eps: float = 1e-7, reduction: str = "mean") -> None:
+    def __init__(self, eps: float = 1e-7, reduction: Literal["none", "mean", "sum"] = "mean") -> None:
         super().__init__()
         self.eps = eps
         self.reduction = reduction
@@ -391,7 +411,7 @@ class SNRLoss(nn.Module):
 @add_docstring(remove_parameters_returns_from_docstring(_dtw_loss_docstring, parameters=["inp", "target", "mask"]))
 class DTWLoss(nn.Module):
 
-    def __init__(self, reduction: str = "mean") -> None:
+    def __init__(self, reduction: Literal["none", "mean", "sum"] = "mean") -> None:
         super().__init__()
         self.reduction = reduction
         raise NotImplementedError
@@ -421,7 +441,7 @@ class DTWLoss(nn.Module):
 @add_docstring(remove_parameters_returns_from_docstring(_mae_loss_docstring, parameters=["inp", "target", "mask"]))
 class MAELoss(nn.Module):
 
-    def __init__(self, reduction: str = "mean") -> None:
+    def __init__(self, reduction: Literal["none", "mean", "sum"] = "mean") -> None:
         super().__init__()
         self.reduction = reduction
 
@@ -450,7 +470,7 @@ class MAELoss(nn.Module):
 @add_docstring(remove_parameters_returns_from_docstring(_rmse_loss_docstring, parameters=["inp", "target", "mask"]))
 class RMSELoss(nn.Module):
 
-    def __init__(self, reduction: str = "mean") -> None:
+    def __init__(self, reduction: Literal["none", "mean", "sum"] = "mean") -> None:
         super().__init__()
         self.reduction = reduction
 
@@ -479,7 +499,7 @@ class RMSELoss(nn.Module):
 @add_docstring(remove_parameters_returns_from_docstring(_asci_loss_docstring, parameters=["inp", "target", "mask"]))
 class KSLoss(nn.Module):
 
-    def __init__(self, reduction: str = "mean") -> None:
+    def __init__(self, reduction: Literal["none", "mean", "sum"] = "mean") -> None:
         super().__init__()
         self.reduction = reduction
         raise NotImplementedError
@@ -509,7 +529,7 @@ class KSLoss(nn.Module):
 @add_docstring(remove_parameters_returns_from_docstring(_asci_loss_docstring, parameters=["inp", "target", "mask"]))
 class ASCILoss(nn.Module):
 
-    def __init__(self, beta: float = 0.05, reduction: str = "mean") -> None:
+    def __init__(self, beta: float = 0.05, reduction: Literal["none", "mean", "sum"] = "mean") -> None:
         super().__init__()
         self.beta = beta
         self.reduction = reduction

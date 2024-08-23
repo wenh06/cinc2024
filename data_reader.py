@@ -757,8 +757,8 @@ class CINC2024Reader(PhysioNetDataBase):
     def load_bbox(
         self,
         img: Union[str, int],
-        bbox_type: Optional[str] = None,
-        fmt: str = "coco",
+        bbox_type: Optional[Literal["lead", "text"]] = None,
+        fmt: Literal["coco", "pascal_voc", "yolo", "albumentations"] = "coco",
         return_dict: bool = False,
         clip: bool = True,
         min_size: Optional[int] = None,
@@ -1013,7 +1013,7 @@ class CINC2024Reader(PhysioNetDataBase):
                 )
         return bbox
 
-    def load_header(self, rec_or_img: Union[str, int], source: Optional[str] = "image") -> str:
+    def load_header(self, rec_or_img: Union[str, int], source: Literal["record", "image"] = "image") -> str:
         """Load the header of a record or an image.
 
         Parameters
@@ -1487,7 +1487,9 @@ class CINC2024Reader(PhysioNetDataBase):
             return img.size
 
     @staticmethod
-    def match_bbox(bbox: List[Dict[str, Any]], fmt: str = "coco") -> List[Dict[str, Any]]:
+    def match_bbox(
+        bbox: List[Dict[str, Any]], fmt: Literal["coco", "pascal_voc", "yolo", "albumentations"] = "coco"
+    ) -> List[Dict[str, Any]]:
         """Match the waveform boxes with the lead name boxes.
 
         The matching is done by finding the minimum distance between

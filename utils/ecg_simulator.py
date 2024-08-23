@@ -66,7 +66,7 @@ References
 """
 
 from numbers import Real
-from typing import Dict, Optional
+from typing import Dict, Literal, Optional
 
 import numpy as np
 from scipy.ndimage import median_filter
@@ -129,7 +129,7 @@ def evolve_ecg(
     noise_ratio: Optional[dict] = None,
     remove_baseline: float = 0.66,
     return_phase: bool = False,
-    return_format: str = "channel_first",
+    return_format: Literal["channel_first", "channel_last", "lead_first", "lead_last", "flat"] = "channel_first",
     verbose: int = 0,
 ) -> Dict[str, np.ndarray]:
     """Evolve single-lead ecg model using the state transition function with duration t.
@@ -333,7 +333,7 @@ def evolve_standard_12_lead_ecg(
     noise_ratio: Optional[dict] = None,
     remove_baseline: float = 0.66,
     return_phase: bool = False,
-    return_format: str = "channel_first",
+    return_format: Literal["channel_first", "channel_last", "lead_first", "lead_last", "flat"] = "channel_first",
     verbose: int = 0,
 ) -> Dict[str, np.ndarray]:
     """Evolve single-lead ecg model using the state transition function with duration t.

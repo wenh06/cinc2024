@@ -5,7 +5,7 @@ Miscellaneous functions.
 from copy import deepcopy
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -92,7 +92,7 @@ def load_submission_log() -> pd.DataFrame:
 def view_image_with_bbox(
     image: Union[np.ndarray, torch.Tensor, Image.Image],
     bbox: Optional[Union[List[dict], Dict[str, list]]] = None,
-    fmt: str = "coco",
+    fmt: Literal["coco", "voc", "yolo"] = "coco",
     cat_names: Optional[List[str]] = None,
     mask: Optional[np.ndarray] = None,
 ) -> Optional[Image.Image]:
@@ -202,7 +202,7 @@ def view_image_with_bbox(
 def view_roi(
     image: Union[np.ndarray, torch.Tensor, Image.Image],
     roi: Sequence[int],
-    fmt: str = "voc",
+    fmt: Literal["coco", "voc", "yolo"] = "coco",
     binarize: bool = False,
     binarize_percentile: float = 1.0,
 ) -> Optional[Image.Image]:

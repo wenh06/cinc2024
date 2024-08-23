@@ -4,7 +4,7 @@
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Sequence, Set, Union
+from typing import Dict, List, Literal, Sequence, Set, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
@@ -396,7 +396,7 @@ def format_image_annotations_as_coco(
     return {"annotations": annotations, "image_id": image_id}
 
 
-def bbox2roi(bbox: Dict[str, list], fmt: str) -> Dict[str, List]:
+def bbox2roi(bbox: Dict[str, list], fmt: Literal["coco", "voc", "yolo"]) -> Dict[str, list]:
     """Merge all waveform bounding boxes into one ROI box.
 
     Parameters
@@ -454,7 +454,7 @@ def bbox2roi(bbox: Dict[str, list], fmt: str) -> Dict[str, List]:
     }
 
 
-def merge_horizontal_bbox(bbox: Dict[str, list], fmt: str) -> Dict[str, list]:
+def merge_horizontal_bbox(bbox: Dict[str, list], fmt: Literal["coco", "voc", "yolo"]) -> Dict[str, list]:
     """Merge all waveform bounding boxes that are horizontally adjacent.
 
     Adjacent bounding boxes are merged into one bounding box:

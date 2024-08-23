@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, List, Literal, Optional, Sequence, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
@@ -71,7 +71,12 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
     __DEBUG__ = True
     __name__ = "ImageBackbone"
 
-    def __init__(self, backbone_name_or_path: Union[str, bytes, os.PathLike], source: str = "hf", pretrained: bool = True):
+    def __init__(
+        self,
+        backbone_name_or_path: Union[str, bytes, os.PathLike],
+        source: Literal["timm", "hf", "tv"] = "hf",
+        pretrained: bool = True,
+    ):
         super().__init__()
         self.backbone_name_or_path = backbone_name_or_path
         self.source = source.lower()
@@ -208,7 +213,9 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
         return x
 
     @staticmethod
-    def list_backbones(architectures: Optional[Union[str, Sequence[str]]] = None, source: Optional[str] = None) -> List[str]:
+    def list_backbones(
+        architectures: Optional[Union[str, Sequence[str]]] = None, source: Optional[Literal["timm", "hf", "tv"]] = None
+    ) -> List[str]:
         """List available backbones.
 
         Parameters
