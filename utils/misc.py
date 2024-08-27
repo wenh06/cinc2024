@@ -187,8 +187,8 @@ def view_image_with_bbox(
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("arial.ttf", int(min(img.size) * 0.025))
     for box, cat_name in zip(bbox_dict["bbox"], bbox_dict["category_name"]):
-        draw.rectangle(box.tolist(), outline="red")
-        draw.text((box[0], box[1]), cat_name, fill="red", font=font, anchor="lb")
+        draw.rectangle(box.tolist(), outline="green", width=5)
+        draw.text((box[0], box[1]), cat_name, fill="green", font=font, anchor="lb")
 
     if mask is not None:
         img = Image.alpha_composite(img.convert("RGBA"), overlay)
