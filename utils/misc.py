@@ -95,6 +95,7 @@ def view_image_with_bbox(
     fmt: Literal["coco", "voc", "yolo"] = "coco",
     cat_names: Optional[List[str]] = None,
     mask: Optional[np.ndarray] = None,
+    **kwargs: Any,
 ) -> Optional[Image.Image]:
     """View the image with bounding boxes.
 
@@ -118,6 +119,8 @@ def view_image_with_bbox(
     mask : numpy.ndarray, optional
         The mask to be overlaid on the image.
         The mask is a binary (0 or 1) with shape `(height, width)`.
+    **kwargs : Any
+        Additional keyword arguments.
 
     Returns
     -------
@@ -138,7 +141,8 @@ def view_image_with_bbox(
 
     if mask is not None:
         # overlay the mask on the image with green color and 50% transparency
-        overlay_color = (0, 255, 0)
+        # overlay_color = (0, 255, 0)
+        overlay_color = kwargs.get("mask_color", (0, 255, 0))
         overlay = Image.new("RGBA", img.size, overlay_color + (128,))
         overlay = Image.fromarray(np.asarray(overlay) * mask[:, :, np.newaxis].astype(np.uint8))
 
@@ -187,8 +191,8 @@ def view_image_with_bbox(
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("arial.ttf", int(min(img.size) * 0.025))
     for box, cat_name in zip(bbox_dict["bbox"], bbox_dict["category_name"]):
-        draw.rectangle(box.tolist(), outline="green", width=5)
-        draw.text((box[0], box[1]), cat_name, fill="green", font=font, anchor="lb")
+        draw.rectangle(box.tolist(), outline=kwargs.get("box_color", "green"), width=kwargs.get("box_width", 5))
+        draw.text((box[0], box[1]), cat_name, fill=kwargs.get("box_color", "green"), font=font, anchor="lb")
 
     if mask is not None:
         img = Image.alpha_composite(img.convert("RGBA"), overlay)
