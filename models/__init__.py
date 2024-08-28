@@ -7,7 +7,7 @@ It is a multi-head model for CINC2024. The backbone is a pre-trained image model
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
@@ -274,6 +274,62 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
         if self.config.digitization_head.include:
             to_save["digitization_head_state_dict"] = self.digitization_head.state_dict()
         torch.save(to_save, path)
+
+    @classmethod
+    def from_checkpoint(
+        cls, path: Union[str, bytes, os.PathLike], device: Optional[torch.device] = None
+    ) -> Tuple[nn.Module, dict]:
+        """Load the whole model or specific heads from a checkpoint.
+
+        Parameters
+        ----------
+        path : `path-like`
+            Path to the checkpoint.
+            If it is a directory, then this directory should contain only one checkpoint file
+            (with the extension `.pth` or `.pt`).
+        device : torch.device, optional
+            Map location of the model parameters,
+            defaults to "cuda" if available, otherwise "cpu".
+
+        Returns
+        -------
+        model : torch.nn.Module
+            The model loaded from a checkpoint.
+        aux_config : dict
+            Auxiliary configs that are needed for data preprocessing, etc.
+
+        """
+        if Path(path).is_dir():
+            candidates = list(Path(path).glob("*.pth")) + list(Path(path).glob("*.pt"))
+            assert len(candidates) == 1, "The directory should contain only one checkpoint file"
+            path = candidates[0]
+        _device = device or DEFAULTS.device
+        ckpt = torch.load(path, map_location=_device)
+        aux_config = ckpt.get("train_config", None) or ckpt.get("config", None)
+        assert aux_config is not None, "input checkpoint has no sufficient data to recover a model"
+        kwargs = dict(
+            config=ckpt["model_config"],
+        )
+        if "classes" in aux_config:
+            kwargs["classes"] = aux_config["classes"]
+        if "n_leads" in aux_config:
+            kwargs["n_leads"] = aux_config["n_leads"]
+        model = cls(**kwargs)
+        # model.load_state_dict(ckpt["model_state_dict"])
+        if kwargs["config"]["backbone_freeze"]:
+            loaded_heads = False
+            if "classification_head_state_dict" in ckpt:
+                model.classification_head.load_state_dict(ckpt["classification_head_state_dict"])
+                loaded_heads = True
+            if "digitization_head_state_dict" in ckpt:
+                model.digitization_head.load_state_dict(ckpt["digitization_head_state_dict"])
+                loaded_heads = True
+            if not loaded_heads:
+                raise ValueError("No heads are loaded from the checkpoint in the frozen backbone mode.")
+        else:
+            model.load_state_dict(ckpt["model_state_dict"])
+
+        return model, aux_config
 
     @classmethod
     def from_remote_heads(
