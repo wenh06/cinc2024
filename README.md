@@ -11,6 +11,8 @@ The figure below demonstrates the framework of the proposed method in this proje
 
 ![The framework](images/framework.svg)
 
+:skull::skull::skull: **SUPER BIG MISTAKE**: The loss function for the classification head of the official phase (multi-label) is NOT changed from the cross-entropy loss used in the unofficial phase (single-label) to the asymmetric loss. See [the commit](188e7b2) for the details. :skull::skull::skull:
+
 <!-- toc -->
 
 - [The Conference](#the-conference)
