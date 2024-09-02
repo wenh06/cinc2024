@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 from torch_ecg.cfg import CFG
 from torch_ecg.models._nets import MLP
+from torch_ecg.models.loss import AsymmetricLoss, BCEWithLogitsWithClassWeightLoss, FocalLoss
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin, compute_conv_output_shape
 
 from .loss import get_loss_func
@@ -65,7 +66,22 @@ class ClassificationHead(nn.Module, SizeMixin, CkptMixin):
                 dropouts=self.config.dropouts,
             ),
         )
-        self.classification_criterion = nn.CrossEntropyLoss()
+        # self.classification_criterion = nn.CrossEntropyLoss()
+        loss_kw = self.config.get("criterion_kw", {})
+        if self.config.criterion == "BCEWithLogitsLoss":
+            self.classification_criterion = nn.BCEWithLogitsLoss(**loss_kw)
+        elif self.config.criterion == "BCEWithLogitsWithClassWeightLoss":
+            self.classification_criterion = BCEWithLogitsWithClassWeightLoss(**loss_kw)
+        elif self.config.criterion == "BCELoss":
+            self.classification_criterion = nn.BCELoss(**loss_kw)
+        elif self.config.criterion == "FocalLoss":
+            self.classification_criterion = FocalLoss(**loss_kw)
+        elif self.config.criterion == "AsymmetricLoss":
+            self.classification_criterion = AsymmetricLoss(**loss_kw)
+        elif self.config.criterion == "CrossEntropyLoss":
+            self.classification_criterion = nn.CrossEntropyLoss(**loss_kw)
+        else:
+            raise NotImplementedError(f"loss `{self.config.criterion}` not implemented!")
 
     def forward(self, img_features: torch.Tensor, labels: Optional[Dict[str, torch.Tensor]] = None) -> Dict[str, torch.Tensor]:
         """Forward pass of the model.
