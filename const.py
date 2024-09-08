@@ -67,6 +67,17 @@ REMOTE_MODELS = {
         "threshold": 0.6,
         "filename": "BestModel_hf-facebook-convnextv2-nano-22k-384-dx_18_09-05_16-58_metric_0.56.pth.tar",
     },
+    "hf--facebook-convnextv2-base-22k-384": {
+        "url": {
+            "google-drive": ("https://drive.google.com/u/0/uc?id=1-90LBrK6fb_tSxkDrSsHsYraWcrM5UDd"),
+            "deep-psp": (
+                "https://deep-psp.tech/Models/CinC2024/"
+                "BestModel_hf-facebook-convnextv2-base-22k-384-dx_18_09-04_19-56_metric_0.59.pth.tar"
+            ),
+        },
+        "threshold": 0.5,
+        "filename": "BestModel_hf-facebook-convnextv2-base-22k-384-dx_18_09-04_19-56_metric_0.59.pth.tar",
+    },
     "hf--facebook/detr-resnet-50": {
         "url": {
             "google-drive": ("https://drive.google.com/u/0/uc?id=19bt05pNy7u-6uKz2WPyP3OYdTS9f3mrB"),
