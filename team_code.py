@@ -448,7 +448,9 @@ def run_models(
     # remove spikes
     if signal is not None:
         try:
-            signal = remove_spikes_naive(signal, threshold=5.0, inplace=False)  # threshold is in mV
+            for ch_idx in range(signal.shape[1]):
+                # threshold is in mV
+                signal[:, ch_idx] = remove_spikes_naive(signal[:, ch_idx], threshold=5.0, inplace=False)
         except Exception as e:
             print("remove_spikes_naive error:", e)
             if raise_error:
@@ -953,6 +955,11 @@ def bbox_and_mask_to_signals(
     record : `path_like`
         The path to the record to process, without file extension.
 
+    Returns
+    -------
+    numpy.ndarray
+        The signals, of shape ``(num_samples, num_signals)``.
+
     """
     # a macro grid of the ECG paper corresponds to 0.2 second and 0.5 mV
     ts_to_mv = 0.5 / 0.2  # mV per ms
@@ -990,7 +997,7 @@ def bbox_and_mask_to_signals(
         bbox = [[] for _ in range(len(mask))]
 
     for img_idx, (b_list, waveform_mask) in enumerate(zip(bbox, mask)):
-        if img_idx >= num_signals:
+        if img_idx * signal_fs * 10 > num_samples:
             break
         waveform_pixels = np.where(waveform_mask > 0)
         # to array of shape (n_pixels, 2) of (y, x)
