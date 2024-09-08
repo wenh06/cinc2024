@@ -27,7 +27,7 @@ from torch.nn.parallel import DataParallel as DP  # noqa: F401
 from torch.nn.parallel import DistributedDataParallel as DDP  # noqa: F401
 from torch_ecg.cfg import CFG
 from torch_ecg.utils.misc import str2bool
-from torch_ecg.utils.utils_signal import resample_irregular_timeseries
+from torch_ecg.utils.utils_signal import remove_spikes_naive, resample_irregular_timeseries
 
 from cfg import BaseCfg, ModelCfg, TrainCfg  # noqa: F401
 from const import FULL_DATA_CACHE_DIR, MODEL_CACHE_DIR, PROJECT_DIR, REMOTE_MODELS, SUBSET_DATA_CACHE_DIR, TEST_DATA_CACHE_DIR
@@ -49,6 +49,7 @@ from helper_code import (  # noqa: F401
 from models import ECGWaveformDetector, ECGWaveformDigitizer, MultiHead_CINC2024
 from trainer import CINC2024Trainer
 from utils.ecg_simulator import evolve_standard_12_lead_ecg
+from utils.misc import schmidt_spike_removal  # noqa: F401
 
 ################################################################################
 # environment variables
@@ -73,7 +74,8 @@ except Exception:
 
 SubmissionCfg = CFG()
 SubmissionCfg.detector = "hf--facebook/detr-resnet-50"
-SubmissionCfg.classifier = "hf--facebook/convnextv2-nano-22k-384"
+# SubmissionCfg.classifier = "hf--facebook/convnextv2-nano-22k-384"
+SubmissionCfg.classifier = "hf--facebook-convnextv2-base-22k-384"
 SubmissionCfg.digitizer = "custom--unet"
 
 SubmissionCfg.final_model_name = {
@@ -442,6 +444,15 @@ def run_models(
     min_val = (np.iinfo(np.int16).min + 1) / 1000
     if signal is not None:
         signal = np.clip(signal, min_val, max_val)
+
+    # remove spikes
+    if signal is not None:
+        try:
+            signal = remove_spikes_naive(signal, threshold=5.0, inplace=False)  # threshold is in mV
+        except Exception as e:
+            print("remove_spikes_naive error:", e)
+            if raise_error:
+                raise e
 
     elapsed_time = humanize.naturaldelta(datetime.now() - start_time)
     print(f"Inference pipeline completed in {elapsed_time}.")
