@@ -58,14 +58,14 @@ FULL_DATA_CACHE_DIR = str(Path(DATA_CACHE_DIR) / "cinc2024_full_data")
 REMOTE_MODELS = {
     "hf--facebook/convnextv2-nano-22k-384": {
         "url": {
-            "google-drive": ("https://drive.google.com/u/0/uc?id=1KKioeOkUYHNXPGRhnXHWz9nmjudVjNEq"),
+            "google-drive": ("https://drive.google.com/u/0/uc?id=1-0Mtejm0zWJ_3T8dxvT34w_0Xx0CRHMs"),
             "deep-psp": (
                 "https://deep-psp.tech/Models/CinC2024/"
-                "BestModel_hf-facebook-convnextv2-nano-22k-384-dx_20_08-09_13-18_metric_0.32.pth.tar"
+                "BestModel_hf-facebook-convnextv2-nano-22k-384-dx_18_09-05_16-58_metric_0.56.pth.tar"
             ),
         },
-        "threshold": 0.9,
-        "filename": "BestModel_hf-facebook-convnextv2-nano-22k-384-dx_20_08-09_13-18_metric_0.32.pth.tar",
+        "threshold": 0.6,
+        "filename": "BestModel_hf-facebook-convnextv2-nano-22k-384-dx_18_09-05_16-58_metric_0.56.pth.tar",
     },
     "hf--facebook/detr-resnet-50": {
         "url": {
