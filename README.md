@@ -26,6 +26,12 @@ The figure below demonstrates the framework of the proposed method in this proje
 [Unofficial Phase Leaderboard](https://docs.google.com/spreadsheets/d/e/2PACX-1vR2GLKHdS9W4Z_AOtaY_YkQrX-rY24BqQ8PmLTJW-50D9FRE-Fvijf2Gp6f3FwTN5FWx7tPb7nGEGA6/pubhtml?gid=1803759927&single=false&widget=true&headers=false) |
 [Official Phase Leaderboard](https://docs.google.com/spreadsheets/d/e/2PACX-1vRxoN5oxymRHNa5XFjautP0Jn6BqtrX8gVkoW6M3FPzEYvi8ma-7sF9-ftU8gwkX2XCcunkYbCxdO3E/pubhtml?rm=minimal&gid=1894271459&gid=2117462787&single=false&widget=true&headers=false)
 
+<p align="middle">
+  <img src="images/badge-of-recognition-1.png" width="40%" />
+  &nbsp; &nbsp; &nbsp;
+  <img src="images/badge-of-recognition-2.png" width="40%" />
+</p>
+
 :point_right: [Back to TOC](#cinc2024)
 
 ## Possible solutions for the digitization task
@@ -58,6 +64,14 @@ But it requires more effort to design and implement the models and algorithms. (
 </details>
 
 :point_right: [Back to TOC](#cinc2024)
+
+## Performance comparison of classification backbones
+
+Curves of F1 score using different backbone sizes (all ConvNeXt architecture) are collected in the following image.
+
+<p align="middle">
+  <img src="images/clf-compare.svg" width="75%" />
+</p>
 
 ## Description of the files/folders(modules)
 
