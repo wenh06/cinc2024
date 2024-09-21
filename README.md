@@ -16,6 +16,9 @@ The figure below demonstrates the framework of the proposed method in this proje
 <!-- toc -->
 
 - [The Conference](#the-conference)
+- [Description of the files/folders(modules)](#description-of-the-filesfoldersmodules)
+- [Performance comparison of classification backbones](#performance-comparison-of-classification-backbones)
+- [Final results table](#final-results-table)
 - [Possible solutions for the digitization task](#possible-solutions-for-the-digitization-task)
 
 <!-- tocstop -->
@@ -33,45 +36,6 @@ The figure below demonstrates the framework of the proposed method in this proje
 </p>
 
 :point_right: [Back to TOC](#cinc2024)
-
-## Possible solutions for the digitization task
-
-<details>
-<summary>Click to view the details</summary>
-
-- **End-to-end model** (NOT adopted): A single model that takes the input image and produces the digitized ECG signal directly.
-
-- **Several-stage solution** (adopted): A multi-stage solution that consists of several models, possibly including:
-
-  - ~~**OCR model**: Recognizes the ECG signal names and its locations in the input image, as well as other metadata.~~
-    ~~For example, using [EasyOCR](https://github.com/JaidedAI/EasyOCR), or [Tesseract](https://github.com/tesseract-ocr/tesseract),~~
-    ~~or [TrOCR](https://huggingface.co/docs/transformers/en/model_doc/trocr).~~
-
-  - **Object detection model**: Detects the area (bounding box) of the ECG signal in the input image.
-    This bounding box, together with the location of the ECG signal names, can be used to crop each channel of the ECG signal.
-
-  - ~~**Edge sharpening algorithm**: Enhances and extracts the grid lines and the ECG signal from the cropped patches of the input image.~~
-
-  - **Segmentation model**: Segments the ECG signal from the cropped patches of the input image.
-    This model can be a U-Net, a DeepLabV3, or a Mask R-CNN, etc.
-
-The end-to-end model is simpler in terms of implementation, but it may be harder to train and optimize.
-Its effectiveness can not be guaranteed.
-
-The several-stage solution may be easier to train and optimize.
-But it requires more effort to design and implement the models and algorithms. (Actually a system of models and algorithms.)
-
-</details>
-
-:point_right: [Back to TOC](#cinc2024)
-
-## Performance comparison of classification backbones
-
-Curves of F1 score using different backbone sizes (all ConvNeXt architecture) are collected in the following image.
-
-<p align="middle">
-  <img src="images/clf-compare.svg" width="75%" />
-</p>
 
 ## Description of the files/folders(modules)
 
@@ -105,6 +69,60 @@ Curves of F1 score using different backbone sizes (all ConvNeXt architecture) ar
 - [ecg-image-kit](ecg-image-kit): a submodule for the ECG image processing and generating toolkit, provided by the organizers.
 - [models](models): folder for model definitions, including [image backbones](models/backbone.py), [Dx head, digitization head](models/heads.py), [custom losses](models/loss.py), [waveform detector](models/waveform_detector.py), etc.
 - [utils](utils): various utility functions, including a [ECG simulator](utils/ecg_simulator.py) for generating synthetic ECG signals, [ecg image generator](utils/ecg_image_generator) which is an enhanced version of the [ecg-image-kit](ecg-image-kit), etc.
+
+</details>
+
+:point_right: [Back to TOC](#cinc2024)
+
+## Performance comparison of classification backbones
+
+Curves of F1 score using different backbone sizes (all ConvNeXt architecture) are collected in the following image.
+
+<p align="middle">
+  <img src="images/clf-compare.svg" width="75%" />
+</p>
+
+## Final results table
+
+|                                              |   F-measure |    SNR |
+|:---------------------------------------------|------------:|-------:|
+| Rank                                         |       8     |  9     |
+| Leaderboard                                  |       0.33  | -0.733 |
+| Color scans of clean papers                  |       0.332 | -0.148 |
+| Black-and-white scans of clean papers        |       0.327 | -1.267 |
+| Mobile phone photos of clean papers          |       0.306 | -9.019 |
+| Mobile phone photos of stained papers        |       0.316 | -8.545 |
+| Mobile phone photos of deteriorated papers   |       0.306 | -6.398 |
+| Color scans of deteriorated papers           |       0.331 | -1.636 |
+| Black-and-white scans of deteriorated papers |       0.319 | -3.559 |
+| Screenshots of computer monitor              |       0.288 | -6.532 |
+
+## Possible solutions for the digitization task
+
+<details>
+<summary>Click to view the details</summary>
+
+- **End-to-end model** (NOT adopted): A single model that takes the input image and produces the digitized ECG signal directly.
+
+- **Several-stage solution** (adopted): A multi-stage solution that consists of several models, possibly including:
+
+  - ~~**OCR model**: Recognizes the ECG signal names and its locations in the input image, as well as other metadata.~~
+    ~~For example, using [EasyOCR](https://github.com/JaidedAI/EasyOCR), or [Tesseract](https://github.com/tesseract-ocr/tesseract),~~
+    ~~or [TrOCR](https://huggingface.co/docs/transformers/en/model_doc/trocr).~~
+
+  - **Object detection model**: Detects the area (bounding box) of the ECG signal in the input image.
+    This bounding box, together with the location of the ECG signal names, can be used to crop each channel of the ECG signal.
+
+  - ~~**Edge sharpening algorithm**: Enhances and extracts the grid lines and the ECG signal from the cropped patches of the input image.~~
+
+  - **Segmentation model**: Segments the ECG signal from the cropped patches of the input image.
+    This model can be a U-Net, a DeepLabV3, or a Mask R-CNN, etc.
+
+The end-to-end model is simpler in terms of implementation, but it may be harder to train and optimize.
+Its effectiveness can not be guaranteed.
+
+The several-stage solution may be easier to train and optimize.
+However, it requires more effort to design and implement the models and algorithms. (Actually a system of models and algorithms.)
 
 </details>
 
