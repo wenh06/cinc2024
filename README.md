@@ -84,6 +84,8 @@ Curves of F1 score using different backbone sizes (all ConvNeXt architecture) ar
 
 ## Final results table
 
+Details of the final results can be found in the [official results page](https://moody-challenge.physionet.org/2024/results/).
+
 |                                              |   F-measure |    SNR |
 |:---------------------------------------------|------------:|-------:|
 | Rank                                         |       8     |  9     |
