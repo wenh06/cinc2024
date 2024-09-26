@@ -88,7 +88,7 @@ Details of the final results can be found in the [official results page](https:/
 
 |                                              |   F-measure |    SNR |
 |:---------------------------------------------|------------:|-------:|
-| Rank                                         |       8     |  9     |
+| Rank                                         |       9/16  |  13/16 |
 | Leaderboard                                  |       0.33  | -0.733 |
 | Color scans of clean papers                  |       0.332 | -0.148 |
 | Black-and-white scans of clean papers        |       0.327 | -1.267 |
