@@ -3,6 +3,10 @@
 [![docker-ci-and-test](https://github.com/wenh06/cinc2024/actions/workflows/docker-test.yml/badge.svg?branch=docker-test)](https://github.com/wenh06/cinc2024/actions/workflows/docker-test.yml)
 [![format-check](https://github.com/wenh06/cinc2024/actions/workflows/check-formatting.yml/badge.svg)](https://github.com/wenh06/cinc2024/actions/workflows/check-formatting.yml)
 
+<p align="left">
+  <img src="images/cinc2024-banner.jpg" width="40%" />
+</p>
+
 Digitization and Classification of ECG Images: The George B. Moody PhysioNet Challenge 2024
 
 [Challenge Website](https://moody-challenge.physionet.org/2024/)
