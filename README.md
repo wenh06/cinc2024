@@ -11,7 +11,7 @@ Digitization and Classification of ECG Images: The George B. Moody PhysioNet Cha
 
 [Challenge Website](https://moody-challenge.physionet.org/2024/)
 
-The figure below demonstrates the framework of the proposed method in this project.
+The figure below demonstrates the framework of the proposed method in this project (more details can be found in the [conference paper](https://github.com/wenh06/cinc2024_paper)).
 
 ![The framework](images/framework.svg)
 
