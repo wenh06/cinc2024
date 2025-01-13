@@ -50,10 +50,12 @@ The figure below demonstrates the framework of the proposed method in this proje
 
 - [README.md](README.md): this file, serves as the documentation of the project.
 - [cfg.py](cfg.py): the configuration file for the whole project.
+- [const.py](const.py): constant definitions, mostly the URLs for downloading the model weights.
 - [data_reader.py](data_reader.py): data reader, including data downloading, file listing, data loading, etc.
 - [dataset.py](dataset.py): dataset class, which feeds data to the models.
 - [Dockerfile](Dockerfile): docker file for building the docker image for submissions.
 - [evaluate_model.py](evaluate_model.py), [helper_code.py](helper_code.py), [remove_hidden_data.py](remove_hidden_data.py), [run_model.py](run_model.py), [train_model.py](train_model.py): scripts inherited from the [official baseline](https://github.com/physionetchallenges/python-example-2024.git) and [official scoring code](https://github.com/physionetchallenges/evaluation-2024.git). Modifications on these files are invalid and are immediately overwritten after being pulled by the organizers (or the submission system).
+- [outputs.py](outputs.py): container (dataclass) for the outputs of the models.
 - [sync_official.py](sync_official.py): script for synchronizing data from the official baseline and official scoring code.
 - [requirements.txt](requirements.txt), [requirements-docker.txt](requirements-docker.txt), [requirements-no-torch.txt](requirements-no-torch.txt): requirements files for different purposes.
 - [team_code.py](team_code.py): entry file for the submissions.
