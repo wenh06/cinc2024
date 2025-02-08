@@ -31,6 +31,8 @@ def main():
         for filename in file_list:
             src = official_dir[repo] / filename
             dst = project_dir / filename
+            if not dst.exists():
+                dst.touch()
             if src.read_text() == dst.read_text():
                 continue
             print(f"Copying **{src.relative_to(project_dir)}** " f"to **{dst.relative_to(project_dir)}**")
