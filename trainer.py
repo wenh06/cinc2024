@@ -235,7 +235,6 @@ class CINC2024Trainer(BaseTrainer):
                 - "dx" (optional): the Dx classification labels
                 - "digitization" (optional): the signal reconstruction labels
                 - "mask" (optional): the mask for the signal reconstruction
-                - "
 
         Returns
         -------
@@ -500,7 +499,7 @@ def evaluate_dx_model(
 
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
-            all_outputs.append(dx_model.inference(image, threshold=thresholds[0]))  # of type CINC2024Outputs
+            all_outputs.append(dx_model.inference(image.to(device), threshold=thresholds[0]))  # of type CINC2024Outputs
             pbar.update(len(image))
 
     metrics_keeps = ["dx"]
