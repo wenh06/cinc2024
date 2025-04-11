@@ -4,12 +4,12 @@ fail_fast: false
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
   - repo: https://github.com/psf/black
-    rev: 24.8.0
+    rev: 24.10.0
     hooks:
       - id: black
         args: [--line-length=128, --verbose]
@@ -23,3 +23,14 @@ repos:
     hooks:
       - id: isort
         args: [--profile=black, --line-length=128]
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.9.1
+    hooks:
+    - id: nbqa-black
+      args: [--line-length=128, --verbose]
+    - id: nbqa-isort
+      args: [--profile=black, --line-length=128]
