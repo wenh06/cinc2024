@@ -1,4 +1,5 @@
 import os
+import shutil  # noqa: F401
 import time
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import albumentations as A
 import numpy as np
 import transformers
 from torch_ecg.utils.download import http_get, url_is_reachable
+from torch_ecg.utils.misc import str2bool
 
 from const import (
     DATA_CACHE_DIR,
@@ -29,6 +31,12 @@ elif os.environ.get("HF_ENDPOINT", None) is None and (not url_is_reachable("http
 os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODEL_CACHE_DIR)
 os.environ["HF_HUB_CACHE"] = str(MODEL_CACHE_DIR)
 os.environ["HF_HOME"] = str(Path(MODEL_CACHE_DIR).parent)
+
+try:
+    TEST_FLAG = os.environ.get("CINC2024_REVENGER_TEST", False)
+    TEST_FLAG = str2bool(TEST_FLAG)
+except Exception:
+    TEST_FLAG = False
 
 
 def check_env():
@@ -190,6 +198,15 @@ def cache_data():
     # download the aux files
 
     # dr.download_aux_files(dst_dir=Path(DATA_CACHE_DIR) / "aux_files")
+
+    # remove the full data and the subset data if TEST_FLAG is True
+    # if TEST_FLAG:
+    #     print("Removing the full data and the subset data...")
+    #     for data_dir in [FULL_DATA_CACHE_DIR, SUBSET_DATA_CACHE_DIR]:
+    #         if os.path.exists(data_dir):
+    #             shutil.rmtree(data_dir)
+    #             Path(data_dir).mkdir(parents=True, exist_ok=True)
+    #     print("Full data and the subset data removed.")
 
 
 def test_albumentations():
