@@ -1,5 +1,4 @@
-"""
-"""
+""" """
 
 import gzip
 import json
