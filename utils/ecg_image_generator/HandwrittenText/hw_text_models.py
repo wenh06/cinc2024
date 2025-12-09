@@ -37,7 +37,6 @@ def download_en_core_sci_sm():
 
 
 def load_en_core_sci_sm(download: bool = False):
-    global en_core_sci_sm_model_dir
     if find_en_core_sci_sm() is None:
         if download:
             download_en_core_sci_sm()

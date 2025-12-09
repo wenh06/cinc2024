@@ -1,4 +1,5 @@
-""" """
+"""
+"""
 
 import os
 import re
@@ -354,12 +355,22 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
                 if Path(self.backbone_name_or_path).exists():
                     weight_file = list(Path(self.backbone_name_or_path).rglob("pytorch_model.bin"))[0]
                 else:
-                    weight_file = list(
-                        (Path(MODEL_CACHE_DIR) / Path(f"""models--{self.backbone_name_or_path.replace("/", "--")}"""))
-                        .expanduser()
-                        .resolve()
-                        .rglob("pytorch_model.bin")
-                    )[0]
+                    try:
+                        weight_file = list(
+                            (Path(MODEL_CACHE_DIR) / Path(f"""models--{self.backbone_name_or_path.replace("/", "--")}"""))
+                            .expanduser()
+                            .resolve()
+                            .rglob("pytorch_model.bin")
+                        )[0]
+                    except IndexError:
+                        print(
+                            list(
+                                (Path(MODEL_CACHE_DIR) / Path(f"""models--{self.backbone_name_or_path.replace("/", "--")}"""))
+                                .expanduser()
+                                .resolve()
+                                .rglob("*")
+                            )
+                        )
                 state_dict = torch.load(weight_file)
                 new_state_dict = {
                     "stage4.weight": state_dict["convnextv2.layernorm.weight"].detach().clone(),
