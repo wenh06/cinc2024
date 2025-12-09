@@ -2,7 +2,6 @@
 
 import os
 import re
-import time
 import warnings
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Sequence, Union
@@ -17,6 +16,7 @@ import torch.nn as nn
 import torchvision as tv
 import transformers
 from PIL import Image
+from safetensors.torch import load_file as safetensors_load
 from torch_ecg.utils.download import url_is_reachable
 from torch_ecg.utils.utils_nn import CkptMixin, SizeMixin
 
@@ -362,18 +362,19 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
                             .resolve()
                             .rglob("pytorch_model.bin")
                         )[0]
-                    except IndexError as e:
-                        print(
-                            list(
+                        state_dict = torch.load(weight_file)
+                    except Exception:
+                        try:
+                            weight_file = list(
                                 (Path(MODEL_CACHE_DIR) / Path(f"""models--{self.backbone_name_or_path.replace("/", "--")}"""))
                                 .expanduser()
                                 .resolve()
-                                .rglob("*")
-                            )
-                        )
-                        time.sleep(3)
-                        raise e
-                state_dict = torch.load(weight_file)
+                                .rglob("model.safetensors")
+                            )[0]
+                        except Exception as e:
+                            raise FileNotFoundError("Neither `pytorch_model.bin` nor `model.safetensors` found.") from e
+                        state_dict = safetensors_load(str(weight_file))
+
                 new_state_dict = {
                     "stage4.weight": state_dict["convnextv2.layernorm.weight"].detach().clone(),
                     "stage4.bias": state_dict["convnextv2.layernorm.bias"].detach().clone(),
