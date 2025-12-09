@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 import warnings
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Sequence, Union
@@ -361,7 +362,7 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
                             .resolve()
                             .rglob("pytorch_model.bin")
                         )[0]
-                    except IndexError:
+                    except IndexError as e:
                         print(
                             list(
                                 (Path(MODEL_CACHE_DIR) / Path(f"""models--{self.backbone_name_or_path.replace("/", "--")}"""))
@@ -370,6 +371,8 @@ class ImageBackbone(nn.Module, SizeMixin, CkptMixin):
                                 .rglob("*")
                             )
                         )
+                        time.sleep(3)
+                        raise e
                 state_dict = torch.load(weight_file)
                 new_state_dict = {
                     "stage4.weight": state_dict["convnextv2.layernorm.weight"].detach().clone(),
