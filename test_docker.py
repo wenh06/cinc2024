@@ -1,5 +1,4 @@
-"""
-"""
+""" """
 
 import os
 from copy import deepcopy
@@ -354,9 +353,12 @@ def test_entry() -> None:
         # folder_ref=str(Path(DATA_CACHE_DIR) / "synthetic_images"),
         folder_ref=str(Path(data_folder) / "synthetic_images"),
         folder_est=str(output_dir),
-        extra_scores=True,
-        score_file=None,
         no_shift=False,
+        extra_scores=True,
+        # score_file=None,
+        summary_score_file=None,
+        total_snr_file=None,
+        total_f_measure_file=None,
     )
     model_evaluator_func(model_evaluator_args)  # metrics are printed
 

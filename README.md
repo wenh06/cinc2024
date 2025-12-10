@@ -61,6 +61,7 @@ The figure below demonstrates the framework of the proposed method in this proje
 - [team_code.py](team_code.py): entry file for the submissions.
 - [test_local.py](test_local.py), [test_docker.py](test_docker.py), [test_run_challenge.sh](test_run_challenge.sh): scripts for testing the docker image and the local environment. The latter 2 files along with the [docker-test action](.github/workflows/docker-test.yml) are used for CI. Passing the CI almost guarantees that the submission will run successfully in the official environment, except for potential GPU-related issues (e.g. model weights and data are on different devices, i.e. CPU and GPU, in which case torch will raise an error).
 - [trainer.py](trainer.py): trainer class, which trains the models.
+- [train_models.ipynb](train_models.ipynb): notebook for training the models.
 - [submissions](submissions): log file for the submissions, including the key hyperparameters, the scores received, commit hash, etc. The log file is updated after each submission and organized as a YAML file.
 
 </details>
