@@ -137,8 +137,6 @@ However, it requires more effort to design and implement the models and algorith
 
 :point_right: [Back to TOC](#cinc2024)
 
-[CinC2020](https://github.com/DeepPSP/cinc2020) | [CinC2021](https://github.com/DeepPSP/cinc2021) | [CinC2022](https://github.com/DeepPSP/cinc2022) | [CinC2023](https://github.com/wenh06/cinc2023)
-
 ## Citation
 
 If you find this repository useful for your research, please consider citing the following paper:
@@ -158,3 +156,7 @@ If you find this repository useful for your research, please consider citing the
   collection = {{CinC2024}}
 }
 ```
+
+:point_right: [Back to TOC](#cinc2024)
+
+[CinC2020](https://github.com/DeepPSP/cinc2020) | [CinC2021](https://github.com/DeepPSP/cinc2021) | [CinC2022](https://github.com/DeepPSP/cinc2022) | [CinC2023](https://github.com/wenh06/cinc2023) | [CinC2025](https://github.com/wenh06/cinc2025)
