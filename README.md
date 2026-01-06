@@ -136,3 +136,25 @@ However, it requires more effort to design and implement the models and algorith
 </details>
 
 :point_right: [Back to TOC](#cinc2024)
+
+[CinC2020](https://github.com/DeepPSP/cinc2020) | [CinC2021](https://github.com/DeepPSP/cinc2021) | [CinC2022](https://github.com/DeepPSP/cinc2022) | [CinC2023](https://github.com/wenh06/cinc2023)
+
+## Citation
+
+If you find this repository useful for your research, please consider citing the following paper:
+
+```bibtex
+@inproceedings{Kang_cinc2024,
+       title = {{A Multi-Stage Framework for Simultaneous Digitization and Classification of Electrocardiogram Images}},
+      author = {Kang, Jingsu and WEN, Hao},
+   booktitle = {{2024 Computing in Cardiology Conference (CinC)}},
+      series = {{CinC2024}},
+      volume = {51},
+        issn = {2325-887X},
+         doi = {10.22489/cinc.2024.128},
+   publisher = {{Computing in Cardiology}},
+        year = {2024},
+       month = {12},
+  collection = {{CinC2024}}
+}
+```
