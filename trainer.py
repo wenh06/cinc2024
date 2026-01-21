@@ -321,15 +321,13 @@ class CINC2024Trainer(BaseTrainer):
             head_labels_classes = all_labels[0]["dx"][:log_head_num]
             log_head_num = min(log_head_num, len(head_scalar_preds))
             for n in range(log_head_num):
-                msg = textwrap.dedent(
-                    f"""
+                msg = textwrap.dedent(f"""
                 ----------------------------------------------
                 Dx scalar prediction:    {[round(item, 3) for item in head_scalar_preds[n].tolist()]}
                 Dx predicted classes:    {head_preds_classes[n]}
                 Dx label classes:        {head_labels_classes[n]}
                 ----------------------------------------------
-                """
-                )
+                """)
                 self.log_manager.log_message(msg)
 
         if self.train_config.predict_mask:
