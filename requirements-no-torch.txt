@@ -45,5 +45,5 @@ keras
 pyyaml
 qrcode
 safetensors
-dill==0.3.8
+dill==0.4.1
 humanize
