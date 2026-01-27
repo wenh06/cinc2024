@@ -1,12 +1,12 @@
-numpy==1.26.4
-scipy==1.12.0
+numpy>=2.2.0
+scipy>=1.12.0
 joblib==1.5.3
 # Cython==0.29.10
 pandas>=2.2.1,<3
-scikit-learn==1.4.0
-wfdb==3.2.0
-torch==2.2.2
-torchvision==0.17.2
+scikit-learn>=1.4.0
+wfdb
+torch>=2.2.2
+torchvision>=0.17.2
 transformers==4.48.0
 timm==0.9.16
 torch-ecg>=0.0.28
@@ -39,7 +39,7 @@ beautifulsoup4
 scikit-image
 imageio
 imutils
-imgaug
+imaug
 html5lib
 albumentations
 pycocotools

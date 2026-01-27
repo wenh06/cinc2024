@@ -7,7 +7,7 @@ It is a multi-head model for CINC2024. The backbone is a pre-trained image model
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 os.environ["ALBUMENTATIONS_DISABLE_VERSION_CHECK"] = "1"
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
@@ -89,6 +89,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
                         self.config.classification_head.remote_checkpoints_name
                     ],
                     model_dir=self.config.checkpoints,
+                    weights_only=False,
                 )
             else:
                 self.classification_head = ClassificationHead(
@@ -102,6 +103,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
                 self.digitization_head = DigitizationHead.from_remote(
                     url=self.config.digitization_head.remote_checkpoints[self.config.digitization_head.remote_checkpoints_name],
                     model_dir=self.config.checkpoints,
+                    weights_only=False,
                 )
             else:
                 self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)
@@ -277,7 +279,10 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
 
     @classmethod
     def from_checkpoint(
-        cls, path: Union[str, bytes, os.PathLike], device: Optional[torch.device] = None
+        cls,
+        path: Union[str, bytes, os.PathLike],
+        device: Optional[torch.device] = None,
+        weights_only: Literal[True, False, "auto"] = "auto",
     ) -> Tuple[nn.Module, dict]:
         """Load the whole model or specific heads from a checkpoint.
 
@@ -290,6 +295,8 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
         device : torch.device, optional
             Map location of the model parameters,
             defaults to "cuda" if available, otherwise "cpu".
+        weights_only : {"auto", True, False}, default "auto"
+            Whether to load only the weights of the model.
 
         Returns
         -------
@@ -303,8 +310,13 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
             candidates = list(Path(path).glob("*.pth")) + list(Path(path).glob("*.pt"))
             assert len(candidates) == 1, "The directory should contain only one checkpoint file"
             path = candidates[0]
+        if weights_only == "auto":
+            if hasattr(torch.serialization, "add_safe_globals"):
+                weights_only = True
+            else:
+                weights_only = False
         _device = device or DEFAULTS.device
-        ckpt = torch.load(path, map_location=_device)
+        ckpt = torch.load(path, map_location=_device, weights_only=weights_only)
         aux_config = ckpt.get("train_config", None) or ckpt.get("config", None)
         assert aux_config is not None, "input checkpoint has no sufficient data to recover a model"
         kwargs = dict(
@@ -338,6 +350,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
         model_dir: str,
         filename: Optional[str] = None,
         device: Optional[torch.device] = None,
+        weights_only: Literal[True, False, "auto"] = "auto",
     ) -> "MultiHead_CINC2024":
         """Load the model from remote heads.
 
@@ -353,6 +366,8 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
             Filename for downloading the model.
         device : torch.device, optional
             Device to load the model.
+        weights_only : {"auto", True, False}, default "auto"
+            Whether to load only the weights of the model.
 
         Returns
         -------
@@ -381,7 +396,12 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
                 assert len(candidates) == 1, "The directory should contain only one checkpoint file"
                 model_path = candidates[0].resolve()
         _device = device or DEFAULTS.device
-        ckpt = torch.load(model_path, map_location=_device)
+        if weights_only == "auto":
+            if hasattr(torch.serialization, "add_safe_globals"):
+                weights_only = True
+            else:
+                weights_only = False
+        ckpt = torch.load(model_path, map_location=_device, weights_only=weights_only)
         aux_config = ckpt.get("train_config", None) or ckpt.get("config", None)
         assert aux_config is not None, "input checkpoint has no sufficient data to recover a model"
         kwargs = dict(

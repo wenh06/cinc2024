@@ -207,7 +207,8 @@ def test_models() -> None:
 
     if SubmissionCfg.classifier is not None:
         model, train_config = MultiHead_CINC2024.from_checkpoint(
-            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
+            weights_only=False,
         )
         print("classifier loaded")
         print(model)

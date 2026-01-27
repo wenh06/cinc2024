@@ -1,9 +1,9 @@
-numpy==1.26.4
-scipy==1.12.0
+numpy>=2.2.0
+scipy>=1.12.0
 joblib==1.5.3
 # Cython==0.29.10
 pandas>=2.2.1,<3
-wfdb==3.2.0
+wfdb
 opencv-python
 tqdm
 biosppy
@@ -19,7 +19,7 @@ beautifulsoup4
 scikit-image
 imageio
 imutils
-imgaug
+imaug
 html5lib
 tensorflow
 keras
