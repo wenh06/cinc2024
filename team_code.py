@@ -268,20 +268,20 @@ def load_models(
     digitization_model = {}
     if SubmissionCfg.detector is not None:
         # detector, detector_train_cfg = ECGWaveformDetector.from_checkpoint(
-        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
+        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"], weights_only=False
         # )
         model_path = Path(model_folder) / SubmissionCfg.final_model_name["detector"]
-        detector, detector_train_cfg = ECGWaveformDetector.from_checkpoint(model_path, device=DEVICE)
+        detector, detector_train_cfg = ECGWaveformDetector.from_checkpoint(model_path, device=DEVICE, weights_only=False)
         digitization_model["detector"] = detector
         digitization_model["detector_train_cfg"] = detector_train_cfg
 
         print(f"Object detection model loaded from {str(model_path)}")
     if SubmissionCfg.digitizer is not None:
         # digitizer, digitizer_train_cfg = ECGWaveformDigitizer.from_checkpoint(
-        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"]
+        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"], weights_only=False
         # )
         model_path = Path(model_folder) / SubmissionCfg.final_model_name["digitizer"]
-        digitizer, digitizer_train_cfg = ECGWaveformDigitizer.from_checkpoint(model_path, device=DEVICE)
+        digitizer, digitizer_train_cfg = ECGWaveformDigitizer.from_checkpoint(model_path, device=DEVICE, weights_only=False)
         digitization_model["digitizer"] = digitizer
         digitization_model["digitizer_train_cfg"] = digitizer_train_cfg
 
@@ -290,10 +290,10 @@ def load_models(
     classification_model = {}
     if SubmissionCfg.classifier is not None:
         # classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(
-        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
+        #     Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"], weights_only=False
         # )
         model_path = Path(model_folder) / SubmissionCfg.final_model_name["classifier"]
-        classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(model_path, device=DEVICE)
+        classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(model_path, device=DEVICE, weights_only=False)
         classification_model["classifier"] = classifier
         classification_model["classifier_train_cfg"] = classifier_train_cfg
 
@@ -607,6 +607,7 @@ def train_classification_model(
     model, train_config = MultiHead_CINC2024.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
         device=DEVICE,
+        weights_only=False,
     )
     model_config = model.config
 
@@ -731,6 +732,7 @@ def train_object_detection_model(
     model, train_config = ECGWaveformDetector.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"],
         device=DEVICE,
+        weights_only=False,
     )
     model_config = model.config
 
@@ -854,6 +856,7 @@ def train_digitization_model(
     model, train_config = ECGWaveformDigitizer.from_checkpoint(
         Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
         device=DEVICE,
+        weights_only=False,
     )
     model_config = model.config
 

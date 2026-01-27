@@ -89,6 +89,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
                         self.config.classification_head.remote_checkpoints_name
                     ],
                     model_dir=self.config.checkpoints,
+                    weights_only=False,
                 )
             else:
                 self.classification_head = ClassificationHead(
@@ -102,6 +103,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
                 self.digitization_head = DigitizationHead.from_remote(
                     url=self.config.digitization_head.remote_checkpoints[self.config.digitization_head.remote_checkpoints_name],
                     model_dir=self.config.checkpoints,
+                    weights_only=False,
                 )
             else:
                 self.digitization_head = DigitizationHead(inp_shape=backbone_output_shape, config=self.config.digitization_head)

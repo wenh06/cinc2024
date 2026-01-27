@@ -72,7 +72,8 @@ def cache_pretrained_models():
             extract=False,
         )
         model, train_config = ECGWaveformDigitizer.from_checkpoint(
-            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"]
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.digitizer]["filename"],
+            weights_only=False,
         )
         print("digitizer loaded")
         print(f"digitizer: {model}")
@@ -87,7 +88,8 @@ def cache_pretrained_models():
             extract=False,
         )
         model, train_config = MultiHead_CINC2024.from_checkpoint(
-            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"]
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.classifier]["filename"],
+            weights_only=False,
         )
         print("classifier loaded")
         print(f"classifier: {model}")
@@ -102,7 +104,8 @@ def cache_pretrained_models():
             extract=False,
         )
         model, train_config = ECGWaveformDetector.from_checkpoint(
-            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"]
+            Path(MODEL_CACHE_DIR) / REMOTE_MODELS[SubmissionCfg.detector]["filename"],
+            weights_only=False,
         )
         print("detector loaded")
         print(f"detector: {model}")
