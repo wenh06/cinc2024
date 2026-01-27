@@ -19,7 +19,7 @@ beautifulsoup4
 scikit-image
 imageio
 imutils
-imgaug
+imgaug @ git+https://github.com/imaug/imaug.git
 html5lib
 tensorflow
 keras

@@ -36,7 +36,7 @@ beautifulsoup4
 scikit-image
 imageio
 imutils
-imgaug
+git+https://github.com/imaug/imaug/
 html5lib
 albumentations
 pycocotools
