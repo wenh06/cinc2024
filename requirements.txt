@@ -7,7 +7,7 @@ scikit-learn>=1.4.0
 wfdb
 torch>=2.2.2
 torchvision>=0.17.2
-transformers==4.48.0
+transformers==5.0.0
 timm==0.9.16
 torch-ecg>=0.0.28
 opencv-python
