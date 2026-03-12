@@ -262,12 +262,16 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
         None
 
         """
+        if "use_safetensors" not in kwargs:
+            kwargs["use_safetensors"] = False
         if not self.config.backbone_freeze:
-            super().save(path, train_config)
+            super().save(path, train_config, **kwargs)
             return
 
         # if the backbone is frozen, we need to save the heads only
-        path = Path(path)
+        if isinstance(path, bytes):
+            path = path.decode("utf-8")
+        path = Path(path)  # type: ignore
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
         to_save = {

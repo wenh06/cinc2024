@@ -330,10 +330,10 @@ def test_entry() -> None:
     # NOTE: data_folder will be overridden by one of
     # FULL_DATA_CACHE_DIR, TEST_DATA_CACHE_DIR, SUBSET_DATA_CACHE_DIR
     # in the `train_models` function
-    train_models(str(data_folder), str(tmp_model_dir), verbose=2)
+    train_models(str(data_folder), str(tmp_model_dir), verbose=True)
 
     # list the saved models
-    print(f"""Saved models: {list((Path(tmp_model_dir)).rglob("*"))}""")
+    # print(f"""Saved models: {list((Path(tmp_model_dir)).rglob("*"))}""")
 
     # run the model inference function (script)
     output_dir = tmp_output_dir
