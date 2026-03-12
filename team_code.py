@@ -639,7 +639,7 @@ def train_classification_model(
     train_config.backbone_freeze = False
 
     if TEST_FLAG:
-        train_config.batch_size = 4
+        train_config.batch_size = 1
         train_config.log_step = 5
     else:
         train_config.batch_size = 12  # 16G (Tesla T4)

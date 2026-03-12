@@ -1,6 +1,7 @@
 """ """
 
 import os
+import time
 from copy import deepcopy
 from pathlib import Path
 from typing import Union
@@ -334,6 +335,7 @@ def test_entry() -> None:
 
     # list the saved models
     # print(f"""Saved models: {list((Path(tmp_model_dir)).rglob("*"))}""")
+    time.sleep(30)  # wait for the file system to update
 
     # run the model inference function (script)
     output_dir = tmp_output_dir
@@ -350,6 +352,8 @@ def test_entry() -> None:
         verbose=2,
     )
     model_runner_func(model_runner_args)
+
+    time.sleep(30)  # wait for the file system to update
 
     print("   Evaluate model   ".center(80, "#"))
 
