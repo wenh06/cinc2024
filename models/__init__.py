@@ -243,7 +243,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
     def config(self) -> CFG:
         return self.__config
 
-    def save(self, path: Union[str, bytes, os.PathLike], train_config: CFG) -> None:
+    def save(self, path: Union[str, bytes, os.PathLike], train_config: CFG, **kwargs) -> None:
         """Save the model to disk.
 
         Parameters
@@ -253,6 +253,9 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
         train_config : CFG
             Config for training the model,
             used when one restores the model.
+        kwargs : dict
+            Extra kwargs for compatibility with ``torch_ecg``'s checkpoint saving interface.
+            Not used in this method.
 
         Returns
         -------
