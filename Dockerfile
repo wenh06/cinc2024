@@ -61,7 +61,7 @@ LABEL maintainer="wenh06@gmail.com"
 # https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo
 RUN apt update
 RUN apt install build-essential -y
-RUN apt install git ffmpeg libsm6 libxext6 vim libsndfile1 libxrender1 unzip -y
+RUN apt install git ffmpeg libsm6 libxext6 vim libsndfile1 libxrender1 unzip tree -y
 
 
 ## DO NOT EDIT the 3 lines.
@@ -124,6 +124,8 @@ RUN python post_docker_build.py
 # TODO: pass the path as environment variables
 RUN du -sh $DATA_CACHE_DIR
 RUN du -sh $MODEL_CACHE_DIR
+RUN tree -L 2 $DATA_CACHE_DIR
+RUN tree -L 2 $MODEL_CACHE_DIR
 
 
 # NOTE: also run test_local.py to test locally

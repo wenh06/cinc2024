@@ -332,6 +332,9 @@ def test_entry() -> None:
     # in the `train_models` function
     train_models(str(data_folder), str(tmp_model_dir), verbose=2)
 
+    # list the saved models
+    print(f"""Saved models: {list((Path(tmp_model_dir)).rglob("*"))}""")
+
     # run the model inference function (script)
     output_dir = tmp_output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
