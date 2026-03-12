@@ -17,7 +17,7 @@ env:
   revenger_test_dir: /challenge/test
   revenger_output_dir: /challenge/output
   docker_main_filename: Dockerfile
-  DOCKER_HUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKER_HUB_USERNAME: wenh06
   DOCKER_HUB_REPOSITORY: deeppsp-cinc2024-docker-image
   DOCKER_IMAGE_TAG: latest
 
