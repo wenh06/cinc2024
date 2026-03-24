@@ -243,7 +243,7 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
     def config(self) -> CFG:
         return self.__config
 
-    def save(self, path: Union[str, bytes, os.PathLike], train_config: CFG) -> None:
+    def save(self, path: Union[str, bytes, os.PathLike], train_config: CFG, **kwargs) -> None:
         """Save the model to disk.
 
         Parameters
@@ -253,18 +253,25 @@ class MultiHead_CINC2024(nn.Module, SizeMixin, CkptMixin):
         train_config : CFG
             Config for training the model,
             used when one restores the model.
+        kwargs : dict
+            Extra kwargs for compatibility with ``torch_ecg``'s checkpoint saving interface.
+            Not used in this method.
 
         Returns
         -------
         None
 
         """
+        if "use_safetensors" not in kwargs:
+            kwargs["use_safetensors"] = False
         if not self.config.backbone_freeze:
-            super().save(path, train_config)
+            super().save(path, train_config, **kwargs)
             return
 
         # if the backbone is frozen, we need to save the heads only
-        path = Path(path)
+        if isinstance(path, bytes):
+            path = path.decode("utf-8")
+        path = Path(path)  # type: ignore
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
         to_save = {

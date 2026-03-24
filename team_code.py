@@ -295,7 +295,7 @@ def load_models(
         model_path = Path(model_folder) / SubmissionCfg.final_model_name["classifier"]
         classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(model_path, device=DEVICE, weights_only=False)
         classification_model["classifier"] = classifier
-        classification_model["classifier_train_cfg"] = classifier_train_cfg
+        classification_model["classifier_train_cfg"] = CFG(classifier_train_cfg)
 
         print(f"Classification model loaded from {str(model_path)}")
 
@@ -639,7 +639,7 @@ def train_classification_model(
     train_config.backbone_freeze = False
 
     if TEST_FLAG:
-        train_config.batch_size = 4
+        train_config.batch_size = 1
         train_config.log_step = 5
     else:
         train_config.batch_size = 12  # 16G (Tesla T4)

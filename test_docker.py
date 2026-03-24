@@ -1,6 +1,7 @@
 """ """
 
 import os
+import time
 from copy import deepcopy
 from pathlib import Path
 from typing import Union
@@ -330,7 +331,11 @@ def test_entry() -> None:
     # NOTE: data_folder will be overridden by one of
     # FULL_DATA_CACHE_DIR, TEST_DATA_CACHE_DIR, SUBSET_DATA_CACHE_DIR
     # in the `train_models` function
-    train_models(str(data_folder), str(tmp_model_dir), verbose=2)
+    train_models(str(data_folder), str(tmp_model_dir), verbose=True)
+
+    # list the saved models
+    # print(f"""Saved models: {list((Path(tmp_model_dir)).rglob("*"))}""")
+    time.sleep(30)  # wait for the file system to update
 
     # run the model inference function (script)
     output_dir = tmp_output_dir
@@ -347,6 +352,8 @@ def test_entry() -> None:
         verbose=2,
     )
     model_runner_func(model_runner_args)
+
+    time.sleep(30)  # wait for the file system to update
 
     print("   Evaluate model   ".center(80, "#"))
 
