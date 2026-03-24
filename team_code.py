@@ -295,7 +295,7 @@ def load_models(
         model_path = Path(model_folder) / SubmissionCfg.final_model_name["classifier"]
         classifier, classifier_train_cfg = MultiHead_CINC2024.from_checkpoint(model_path, device=DEVICE, weights_only=False)
         classification_model["classifier"] = classifier
-        classification_model["classifier_train_cfg"] = classifier_train_cfg
+        classification_model["classifier_train_cfg"] = CFG(classifier_train_cfg)
 
         print(f"Classification model loaded from {str(model_path)}")
 
