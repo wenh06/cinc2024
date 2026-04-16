@@ -5,7 +5,7 @@ joblib==1.5.3
 pandas>=2.2.1,<4
 scikit-learn>=1.4.0
 wfdb
-transformers==4.48.0
+transformers==5.5.4
 timm==0.9.16
 opencv-python
 torchsummary
