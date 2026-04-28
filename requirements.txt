@@ -9,7 +9,7 @@ torch>=2.2.2
 torchvision>=0.17.2
 transformers==4.48.0
 timm==1.0.26
-torch-ecg>=0.0.28
+torch-ecg>=0.0.31
 opencv-python
 torchsummary
 tensorboardX
