@@ -132,6 +132,17 @@ def cache_data():
     dr = CINC2024Reader(**reader_kwargs)
     dr.download(name="subset-tiny")
 
+    # the subset zips do not ship ptbxl_database.csv; fetch the official metadata
+    # from the PhysioNet open-data bucket on AWS S3 (ref. cinc2025)
+    metadata_csv = Path(TEST_DATA_CACHE_DIR) / "ptbxl_database.csv"
+    if not metadata_csv.exists():
+        ret = os.system(
+            "aws s3 cp --no-sign-request "
+            "s3://physionet-open/ptb-xl/1.0.3/ptbxl_database.csv "
+            f"'{metadata_csv}'"
+        )
+        assert ret == 0, f"failed to download ptbxl_database.csv to {metadata_csv}"
+
     print("   Checking the action test data   ".center(80, "#"))
     print(f"{len(dr._df_metadata) = }")
     print(f"{len(dr._df_records) = }")
@@ -205,8 +216,7 @@ if __name__ == "__main__":
     time.sleep(2)
     cache_pretrained_models()
     time.sleep(2)
-    # cache_data()  # TEMP: skip gdrive-hosted data caching (rate-limited); the CI workflow
-    # downloads subset-tiny + synthetic images outside the image and mounts them at runtime.
+    cache_data()
     time.sleep(2)
     test_albumentations()
     print("Done.")

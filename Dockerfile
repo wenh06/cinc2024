@@ -111,6 +111,15 @@ RUN pip install -r requirements-docker.txt
 # list packages after installing requirements
 RUN pip list
 
+# install AWS CLI v2 (not installed in the base image), ref. cinc2025
+# https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf awscliv2.zip aws
+# verify the installation
+RUN aws --version && which aws
+
 # copy the whole project to the docker container
 COPY ./ /challenge
 
