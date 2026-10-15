@@ -112,9 +112,10 @@ RUN pip install -r requirements-docker.txt
 RUN pip list
 
 # install AWS CLI v2 (not installed in the base image), ref. cinc2025
+# NOTE: this base image has neither curl nor unzip, use python instead
 # https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
+RUN python -c "from urllib.request import urlretrieve; urlretrieve('https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip', 'awscliv2.zip')" \
+    && python -m zipfile -e awscliv2.zip . \
     && ./aws/install \
     && rm -rf awscliv2.zip aws
 # verify the installation
