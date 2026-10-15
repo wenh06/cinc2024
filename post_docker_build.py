@@ -251,7 +251,8 @@ if __name__ == "__main__":
     time.sleep(2)
     cache_pretrained_models()
     time.sleep(2)
-    cache_data()  # or prepare_synthetic_images(), prepare_synthetic_images NOT tested yet.
+    # cache_data()  # TEMP: skip gdrive-hosted data caching (rate-limited); the CI workflow
+    # downloads subset-tiny + synthetic images outside the image and mounts them at runtime.
     time.sleep(2)
     test_albumentations()
     print("Done.")

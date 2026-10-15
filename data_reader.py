@@ -1379,12 +1379,12 @@ class CINC2024Reader(PhysioNetDataBase):
 
     def download_synthetic_images(self, set_name: str = "subset") -> None:
         """Download the synthetic files generated offline from Google Drive."""
-        if url_is_reachable("https://drive.google.com/"):
-            source = "google-drive"
-            url = self.__synthetic_images_url__[set_name]
-        elif url_is_reachable("https://deep-psp.tech"):
+        if url_is_reachable("https://deep-psp.tech"):
             source = "deep-psp"
             url = self.__synthetic_images_url__[f"{set_name}-alt"]
+        elif url_is_reachable("https://drive.google.com/"):
+            source = "google-drive"
+            url = self.__synthetic_images_url__[set_name]
         else:
             self.logger.warn("Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded.")
             return
@@ -1760,10 +1760,10 @@ class CINC2024Reader(PhysioNetDataBase):
                     "filename": "ptb-xl-subset.zip",
                 },
             }
-            if url_is_reachable("https://drive.google.com/"):
-                source = "google-drive"
-            elif url_is_reachable("https://deep-psp.tech"):
+            if url_is_reachable("https://deep-psp.tech"):
                 source = "deep-psp"
+            elif url_is_reachable("https://drive.google.com/"):
+                source = "google-drive"
             else:
                 self.logger.warn(
                     "Can reach neither Google Drive nor deep-psp.tech. The synthetic images will not be downloaded."
