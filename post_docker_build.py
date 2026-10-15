@@ -60,7 +60,9 @@ def check_env():
 def cache_pretrained_models():
     """Cache the pretrained models."""
     print("Caching the pretrained models...")
-    if url_is_reachable("https://drive.google.com/"):
+    if url_is_reachable("https://deep-psp.tech"):
+        remote_model_source = "deep-psp"
+    elif url_is_reachable("https://drive.google.com/"):
         remote_model_source = "google-drive"
     else:
         remote_model_source = "deep-psp"
