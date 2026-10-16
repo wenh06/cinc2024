@@ -10,7 +10,9 @@ timm==1.0.26
 opencv-python
 torchsummary
 tensorboardX
-tqdm
+# tqdm>=4.70.1 for pandas 3 support (the pytorch base image ships 4.67.1,
+# whose pandas integration uses internals removed in pandas 3.0)
+tqdm>=4.70.1
 gdown
 biosppy
 deprecated
