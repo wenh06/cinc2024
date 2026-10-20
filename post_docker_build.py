@@ -137,9 +137,7 @@ def cache_data():
     metadata_csv = Path(TEST_DATA_CACHE_DIR) / "ptbxl_database.csv"
     if not metadata_csv.exists():
         ret = os.system(
-            "aws s3 cp --no-sign-request "
-            "s3://physionet-open/ptb-xl/1.0.3/ptbxl_database.csv "
-            f"'{metadata_csv}'"
+            "aws s3 cp --no-sign-request " "s3://physionet-open/ptb-xl/1.0.3/ptbxl_database.csv " f"'{metadata_csv}'"
         )
         assert ret == 0, f"failed to download ptbxl_database.csv to {metadata_csv}"
 
