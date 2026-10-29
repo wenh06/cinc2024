@@ -11,11 +11,9 @@ from torch_ecg.utils.misc import str2bool
 
 from const import (
     DATA_CACHE_DIR,
-    FULL_DATA_CACHE_DIR,
     MODEL_CACHE_DIR,
     PROJECT_DIR,
     REMOTE_MODELS,
-    SUBSET_DATA_CACHE_DIR,
     TEST_DATA_CACHE_DIR,
 )
 from data_reader import CINC2024Reader
